@@ -1,21 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import { createMenuEntry, deleteMenuEntry, importMenuItemsFromCSV } from "@/app/actions/menu";
-import { Trash2, PlusCircle, Tag, IndianRupee, FileText, LayoutGrid, CheckCircle2, ArrowLeft, Upload, FileUp } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { createMenuEntry, deleteMenuEntry, importMenuItemsFromCSV, deleteMultipleMenuEntries, updateMenuEntry } from "@/app/actions/menu";
+import { Trash2, PlusCircle, Tag, IndianRupee, FileText, LayoutGrid, CheckCircle2, ArrowLeft, Upload, FileUp, Loader2, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ConfirmModal from "./ConfirmModal";
+import CSVMappingModal from "./CSVMappingModal";
 
 export default function MenuClient({ initialMenuItems }: { initialMenuItems: any[] }) {
     const [menuItems, setMenuItems] = useState(initialMenuItems);
-    const [view, setView] = useState<"list" | "add">("list");
+    const [view, setView] = useState<"list" | "add" | "edit">("list");
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: "" });
+    const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null);
+    const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<any>(null);
     const router = useRouter();
+    const formRef = useRef<HTMLFormElement>(null);
+
+    useEffect(() => {
+        if (view === "edit" && editingItem && formRef.current) {
+            const form = formRef.current;
+            (form.elements.namedItem("name") as HTMLInputElement).value = editingItem.name;
+            (form.elements.namedItem("price") as HTMLInputElement).value = editingItem.price;
+            (form.elements.namedItem("category") as HTMLInputElement).value = editingItem.category || "";
+            (form.elements.namedItem("description") as HTMLTextAreaElement).value = editingItem.description || "";
+        }
+    }, [view, editingItem]);
 
     const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        // Only allow digits and a single decimal point
         const val = e.target.value.replace(/[^0-9.]/g, "");
         const parts = val.split(".");
         if (parts.length > 2) {
@@ -46,22 +62,73 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
         setLoading(false);
     };
 
+    const handleBulkDelete = async () => {
+        if (selectedIds.length === 0) return;
+
+        setLoading(true);
+        try {
+            const res = await deleteMultipleMenuEntries(selectedIds);
+            if (res.success) {
+                setMenuItems(prev => prev.filter(item => !selectedIds.includes(item._id.toString())));
+                setSelectedIds([]);
+                setIsBulkDeleteModalOpen(false);
+                router.refresh();
+            } else {
+                alert(res.error || "Bulk delete failed");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("An error occurred during bulk deletion");
+        }
+        setLoading(false);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === menuItems.length && menuItems.length > 0) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(menuItems.map(item => item._id.toString()));
+        }
+    };
+
+    const toggleSelectItem = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
     const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         const formData = new FormData(e.currentTarget);
 
-        const res = await createMenuEntry(formData);
-        if (res.success && res.menuItem) {
-            setMenuItems(prev => [res.menuItem, ...prev]);
-            setSuccess(true);
-            setTimeout(() => {
-                setSuccess(false);
-                setView("list");
-                router.refresh();
-            }, 1000);
+        if (view === "edit" && editingItem) {
+            const res = await updateMenuEntry(editingItem._id.toString(), formData);
+            if (res.success && res.menuItem) {
+                setMenuItems(prev => prev.map(item => item._id === res.menuItem._id ? res.menuItem : item));
+                setSuccess(true);
+                setTimeout(() => {
+                    setSuccess(false);
+                    setView("list");
+                    setEditingItem(null);
+                    router.refresh();
+                }, 1000);
+            } else {
+                alert(res.error || "Failed to update menu item");
+            }
         } else {
-            alert(res.error || "Failed to create menu item");
+            const res = await createMenuEntry(formData);
+            if (res.success && res.menuItem) {
+                setMenuItems(prev => [res.menuItem, ...prev]);
+                setSuccess(true);
+                setTimeout(() => {
+                    setSuccess(false);
+                    setView("list");
+                    router.refresh();
+                }, 1000);
+            } else {
+                alert(res.error || "Failed to create menu item");
+            }
         }
         setLoading(false);
     };
@@ -71,44 +138,76 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
         if (!file) return;
 
         setLoading(true);
+
+        const parseCSVLine = (line: string) => {
+            const values = [];
+            let current = "";
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    values.push(current.trim().replace(/^"|"$/g, ""));
+                    current = "";
+                } else {
+                    current += char;
+                }
+            }
+            values.push(current.trim().replace(/^"|"$/g, ""));
+            return values;
+        };
+
         const reader = new FileReader();
         reader.onload = async (event) => {
             const text = event.target?.result as string;
-            const lines = text.split("\n");
-            const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
-
-            const nameIdx = headers.indexOf("name");
-            const priceIdx = headers.indexOf("price");
-            const categoryIdx = headers.indexOf("category");
-            const descIdx = headers.indexOf("description");
-
-            if (nameIdx === -1 || priceIdx === -1) {
-                alert("CSV must have 'Name' and 'Price' columns.");
+            const lines = text.split("\n").map(l => l.trim()).filter(l => l !== "");
+            if (lines.length < 2) {
+                alert("CSV must have at least a header row and one data row.");
                 setLoading(false);
                 return;
             }
 
-            const items: any[] = [];
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                const row = lines[i].split(",").map(r => r.trim());
-                if (row.length < 2) continue;
+            const headers = parseCSVLine(lines[0]);
+            const rows = lines.slice(1).map(l => parseCSVLine(l));
 
-                items.push({
-                    name: row[nameIdx],
-                    price: parseFloat(row[priceIdx]),
-                    category: categoryIdx !== -1 ? row[categoryIdx] : "",
-                    description: descIdx !== -1 ? row[descIdx] : ""
-                });
-            }
+            setCsvData({ headers, rows });
+            setIsMappingModalOpen(true);
+            setLoading(false);
+            e.target.value = "";
+        };
+        reader.readAsText(file);
+    };
 
-            if (items.length === 0) {
-                alert("No valid items found in CSV.");
-                setLoading(false);
-                return;
-            }
+    const handleMappingConfirm = async (mapping: Record<string, string>) => {
+        if (!csvData) return;
+        setIsMappingModalOpen(false);
+        setLoading(true);
 
-            const res = await importMenuItemsFromCSV(items);
+        const { headers, rows } = csvData;
+        const nameIdx = headers.indexOf(mapping.name);
+        const priceIdx = headers.indexOf(mapping.price);
+        const categoryIdx = mapping.category ? headers.indexOf(mapping.category) : -1;
+        const descIdx = mapping.description ? headers.indexOf(mapping.description) : -1;
+
+        const itemsToImport = rows.map(row => {
+            const priceVal = parseFloat(row[priceIdx]);
+            return {
+                name: row[nameIdx],
+                price: isNaN(priceVal) ? 0 : priceVal,
+                category: categoryIdx !== -1 ? row[categoryIdx] : "",
+                description: descIdx !== -1 ? row[descIdx] : ""
+            };
+        }).filter(item => item.name && item.name.trim() !== "");
+
+        if (itemsToImport.length === 0) {
+            alert("No valid items found to import.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const res = await importMenuItemsFromCSV(itemsToImport);
             if (res.success) {
                 alert(`Successfully imported ${res.count} items!`);
                 router.refresh();
@@ -116,9 +215,11 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
             } else {
                 alert(res.error || "Import failed");
             }
-            setLoading(false);
-        };
-        reader.readAsText(file);
+        } catch (err) {
+            console.error(err);
+            alert("An error occurred during import");
+        }
+        setLoading(false);
     };
 
     return (
@@ -130,13 +231,13 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                 </div>
                 {view === "list" ? (
                     <div className="flex flex-wrap gap-3 w-full md:w-auto">
-                        <label className="flex-1 md:flex-none flex items-center justify-center gap-2 py-3 px-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl font-bold shadow-sm transition-all cursor-pointer">
+                        <label className="flex-1 md:flex-none flex items-center justify-center gap-2 py-3 px-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl font-bold shadow-sm cursor-pointer">
                             <FileUp size={18} className="text-orange-500" />
                             Import CSV
                             <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} disabled={loading} />
                         </label>
                         <button
-                            onClick={() => setView("add")}
+                            onClick={() => { setEditingItem(null); setView("add"); }}
                             className="flex-1 md:flex-none flex items-center justify-center gap-2 py-3 px-6 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold shadow-lg shadow-orange-100 transition-all active:scale-95"
                         >
                             <PlusCircle size={18} /> Add Menu Item
@@ -144,7 +245,7 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                     </div>
                 ) : (
                     <button
-                        onClick={() => setView("list")}
+                        onClick={() => { setView("list"); setEditingItem(null); }}
                         className="flex items-center justify-center gap-2 py-3 px-6 bg-white border border-gray-200 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
                     >
                         <ArrowLeft size={18} /> Back to Catalog
@@ -152,7 +253,7 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                 )}
             </div>
 
-            {view === "add" ? (
+            {view === "add" || view === "edit" ? (
                 <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <div className="bg-white p-8 rounded-3xl shadow-xl border border-orange-50 relative overflow-hidden">
                         {success && (
@@ -160,19 +261,19 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                                 <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center">
                                     <CheckCircle2 size={32} />
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900">Item Added!</h3>
+                                <h3 className="text-xl font-bold text-gray-900">{view === "edit" ? "Item Updated!" : "Item Added!"}</h3>
                                 <p className="text-gray-500 text-sm">Updating catalog...</p>
                             </div>
                         )}
 
                         <div className="flex items-center gap-3 mb-8">
                             <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl">
-                                <PlusCircle size={24} />
+                                {view === "edit" ? <Pencil size={24} /> : <PlusCircle size={24} />}
                             </div>
-                            <h2 className="text-xl font-black text-gray-900 tracking-tight">Item Details</h2>
+                            <h2 className="text-xl font-black text-gray-900 tracking-tight">{view === "edit" ? "Edit Item Details" : "Item Details"}</h2>
                         </div>
 
-                        <form onSubmit={onSubmit} className="space-y-6">
+                        <form ref={formRef} onSubmit={onSubmit} className="space-y-6">
                             <div className="space-y-1.5">
                                 <label htmlFor="name" className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Item Name *</label>
                                 <input
@@ -230,7 +331,7 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                                 disabled={loading}
                                 className="w-full py-5 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black shadow-xl shadow-orange-100 transition-all active:scale-95 text-sm flex items-center justify-center gap-2"
                             >
-                                {loading ? "Saving..." : "Save Menu Item"}
+                                {loading ? "Saving..." : (view === "edit" ? "Update Menu Item" : "Save Menu Item")}
                             </button>
                         </form>
                     </div>
@@ -251,6 +352,14 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                             <table className="w-full text-left">
                                 <thead className="bg-gray-50/50">
                                     <tr>
+                                        <th className="px-6 py-4 w-12 text-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.length === menuItems.length && menuItems.length > 0}
+                                                onChange={toggleSelectAll}
+                                                className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                                            />
+                                        </th>
                                         <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product Info</th>
                                         <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Category</th>
                                         <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Price</th>
@@ -259,7 +368,15 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {menuItems.map((item) => (
-                                        <tr key={item._id.toString()} className="hover:bg-orange-50/20 transition-colors group">
+                                        <tr key={item._id.toString()} className={`hover:bg-orange-50/20 transition-colors group ${selectedIds.includes(item._id.toString()) ? 'bg-orange-50/30' : ''}`}>
+                                            <td className="px-6 py-5 text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(item._id.toString())}
+                                                    onChange={() => toggleSelectItem(item._id.toString())}
+                                                    className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                                                />
+                                            </td>
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center gap-4">
                                                     <div className="min-w-[40px] h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md">
@@ -288,19 +405,28 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                                                 ₹{parseFloat(item.price).toFixed(2)}
                                             </td>
                                             <td className="px-6 py-5 text-right px-10">
-                                                <button
-                                                    onClick={() => setDeleteModal({ isOpen: true, id: item._id.toString() })}
-                                                    className="p-3 text-red-100 group-hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all"
-                                                    title="Delete Item"
-                                                >
-                                                    <Trash2 size={20} />
-                                                </button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        onClick={() => { setEditingItem(item); setView("edit"); }}
+                                                        className="p-2.5 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all"
+                                                        title="Edit Item"
+                                                    >
+                                                        <Pencil size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDeleteModal({ isOpen: true, id: item._id.toString() })}
+                                                        className="p-2.5 text-red-100 group-hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                        title="Delete Item"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
                                     {menuItems.length === 0 && (
                                         <tr>
-                                            <td colSpan={4} className="px-6 py-20 text-center">
+                                            <td colSpan={5} className="px-6 py-20 text-center">
                                                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                                     <LayoutGrid className="text-gray-200" size={40} />
                                                 </div>
@@ -325,6 +451,60 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                 confirmText="Yes, Remove Item"
                 isLoading={loading}
             />
+
+            <ConfirmModal
+                isOpen={isBulkDeleteModalOpen}
+                onClose={() => setIsBulkDeleteModalOpen(false)}
+                onConfirm={handleBulkDelete}
+                title={`Delete ${selectedIds.length} Items?`}
+                message={`Are you sure you want to remove these ${selectedIds.length} items from your catalog? This action cannot be undone.`}
+                confirmText="Yes, Delete All"
+                isLoading={loading}
+            />
+
+            <CSVMappingModal
+                isOpen={isMappingModalOpen}
+                onClose={() => setIsMappingModalOpen(false)}
+                headers={csvData?.headers || []}
+                previewRows={csvData?.rows.slice(0, 3) || []}
+                onConfirm={handleMappingConfirm}
+            />
+
+            {selectedIds.length > 0 && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 animate-in slide-in-from-bottom-8 duration-500">
+                    <div className="bg-gray-900 border border-white/10 px-8 py-5 rounded-[2rem] shadow-2xl backdrop-blur-xl flex items-center gap-8 ring-1 ring-white/20">
+                        <div className="flex flex-col">
+                            <span className="text-white font-black text-sm tracking-tight">{selectedIds.length} items selected</span>
+                            <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Bulk Actions Available</span>
+                        </div>
+                        <div className="h-8 w-px bg-white/10" />
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setSelectedIds([])}
+                                className="px-5 py-2.5 text-gray-400 hover:text-white text-xs font-black transition-colors"
+                            >
+                                Deselect
+                            </button>
+                            <button
+                                onClick={() => setIsBulkDeleteModalOpen(true)}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-400 text-white rounded-xl text-xs font-black shadow-lg shadow-red-900/20 transition-all active:scale-95"
+                            >
+                                <Trash2 size={16} />
+                                Delete Selected
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {loading && !isMappingModalOpen && !deleteModal.isOpen && !isBulkDeleteModalOpen && (
+                <div className="fixed inset-0 z-[120] bg-white/60 backdrop-blur-sm flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="w-12 h-12 text-orange-500 animate-spin" />
+                        <p className="text-sm font-black text-gray-900 animate-pulse">Processing your catalog...</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
