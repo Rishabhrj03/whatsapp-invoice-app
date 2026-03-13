@@ -34,6 +34,7 @@ export default function DashboardLayoutClient({
         { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
         { href: "/customers", icon: Users, label: "Customers" },
         { href: "/menu", icon: MenuIcon, label: "Menu Items" },
+        { href: "/transactions", icon: MessageSquareShare, label: "Transactions" },
         { href: "/invoice/create", icon: FileText, label: "Create Invoice" },
     ];
 

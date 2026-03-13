@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createMenuEntry, deleteMenuEntry } from "@/app/actions/menu";
-import { Trash2, PlusCircle, Tag, IndianRupee, FileText, LayoutGrid, CheckCircle2, ArrowLeft } from "lucide-react";
+import { createMenuEntry, deleteMenuEntry, importMenuItemsFromCSV } from "@/app/actions/menu";
+import { Trash2, PlusCircle, Tag, IndianRupee, FileText, LayoutGrid, CheckCircle2, ArrowLeft, Upload, FileUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ConfirmModal from "./ConfirmModal";
 
@@ -66,6 +66,61 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
         setLoading(false);
     };
 
+    const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setLoading(true);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const text = event.target?.result as string;
+            const lines = text.split("\n");
+            const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+
+            const nameIdx = headers.indexOf("name");
+            const priceIdx = headers.indexOf("price");
+            const categoryIdx = headers.indexOf("category");
+            const descIdx = headers.indexOf("description");
+
+            if (nameIdx === -1 || priceIdx === -1) {
+                alert("CSV must have 'Name' and 'Price' columns.");
+                setLoading(false);
+                return;
+            }
+
+            const items: any[] = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const row = lines[i].split(",").map(r => r.trim());
+                if (row.length < 2) continue;
+
+                items.push({
+                    name: row[nameIdx],
+                    price: parseFloat(row[priceIdx]),
+                    category: categoryIdx !== -1 ? row[categoryIdx] : "",
+                    description: descIdx !== -1 ? row[descIdx] : ""
+                });
+            }
+
+            if (items.length === 0) {
+                alert("No valid items found in CSV.");
+                setLoading(false);
+                return;
+            }
+
+            const res = await importMenuItemsFromCSV(items);
+            if (res.success) {
+                alert(`Successfully imported ${res.count} items!`);
+                router.refresh();
+                window.location.reload();
+            } else {
+                alert(res.error || "Import failed");
+            }
+            setLoading(false);
+        };
+        reader.readAsText(file);
+    };
+
     return (
         <div className="space-y-8 pb-12">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -74,12 +129,19 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                     <p className="text-gray-500 text-sm mt-1">Manage your standard inventory items and pricing.</p>
                 </div>
                 {view === "list" ? (
-                    <button
-                        onClick={() => setView("add")}
-                        className="flex items-center justify-center gap-2 py-3 px-6 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold shadow-lg shadow-orange-100 transition-all active:scale-95"
-                    >
-                        <PlusCircle size={18} /> Add Menu Item
-                    </button>
+                    <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                        <label className="flex-1 md:flex-none flex items-center justify-center gap-2 py-3 px-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl font-bold shadow-sm transition-all cursor-pointer">
+                            <FileUp size={18} className="text-orange-500" />
+                            Import CSV
+                            <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} disabled={loading} />
+                        </label>
+                        <button
+                            onClick={() => setView("add")}
+                            className="flex-1 md:flex-none flex items-center justify-center gap-2 py-3 px-6 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold shadow-lg shadow-orange-100 transition-all active:scale-95"
+                        >
+                            <PlusCircle size={18} /> Add Menu Item
+                        </button>
+                    </div>
                 ) : (
                     <button
                         onClick={() => setView("list")}

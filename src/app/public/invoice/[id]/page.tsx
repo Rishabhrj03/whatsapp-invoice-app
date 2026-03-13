@@ -21,6 +21,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
             title: `Digital Invoice - ${customer?.name}`,
             description: `Total: ₹${invoice.totalAmount.toLocaleString('en-IN')} | Professional Bill from WA Invoice App`,
             type: 'website',
+            images: ["/icons/icon-512x512.png"],
         }
     };
 }

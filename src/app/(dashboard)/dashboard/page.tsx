@@ -2,6 +2,7 @@ import dbConnect from "@/lib/mongoose";
 import Customer from "@/models/Customer";
 import Invoice from "@/models/Invoice";
 import MenuEntry from "@/models/MenuEntry";
+import { auth } from "@/auth";
 import {
     Users,
     FileText,
@@ -17,15 +18,18 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
     await dbConnect();
+    const session = await auth();
+    const userId = session?.user?.id;
+    if (!userId) return null;
 
     const [customerCount, invoiceCount, menuCount, invoices] = await Promise.all([
-        Customer.countDocuments(),
-        Invoice.countDocuments(),
-        MenuEntry.countDocuments(),
-        Invoice.find().sort({ date: -1 }).limit(10), // Get last 10
+        Customer.countDocuments({ userId }),
+        Invoice.countDocuments({ userId }),
+        MenuEntry.countDocuments({ userId }),
+        Invoice.find({ userId }).sort({ date: -1 }).limit(10), // Get last 10
     ]);
 
-    const allInvoices = await Invoice.find();
+    const allInvoices = await Invoice.find({ userId });
     const totalAmount = allInvoices.reduce((acc, curr) => acc + curr.totalAmount, 0);
 
     const stats = [
@@ -73,6 +77,10 @@ export default async function DashboardPage() {
                     <p className="text-gray-500 text-sm mt-1">
                         Welcome back! Here's what's happening today.
                     </p>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 px-4 py-2 rounded-2xl flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="text-xs font-bold text-blue-700">Viewing your personal data</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <a
@@ -157,10 +165,10 @@ export default async function DashboardPage() {
                                             <td className="px-6 py-4 text-sm font-medium">
                                                 <span
                                                     className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${inv.status === "Paid"
-                                                            ? "bg-green-100 text-green-700"
-                                                            : inv.status === "Sent"
-                                                                ? "bg-blue-100 text-blue-700"
-                                                                : "bg-gray-100 text-gray-600"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : inv.status === "Sent"
+                                                            ? "bg-blue-100 text-blue-700"
+                                                            : "bg-gray-100 text-gray-600"
                                                         }`}
                                                 >
                                                     {inv.status}
@@ -203,6 +211,6 @@ export default async function DashboardPage() {
                     </Link>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

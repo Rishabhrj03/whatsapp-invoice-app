@@ -3,14 +3,18 @@ import Customer from "@/models/Customer";
 import MenuEntry from "@/models/MenuEntry";
 import CreateInvoiceForm from "@/components/CreateInvoiceForm";
 
+import { auth } from "@/auth";
+
 export const dynamic = "force-dynamic";
 
 export default async function CreateInvoicePage() {
     await dbConnect();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     const [customers, menuItems] = await Promise.all([
-        Customer.find().sort({ name: 1 }),
-        MenuEntry.find().sort({ name: 1 })
+        Customer.find({ userId }).sort({ name: 1 }),
+        MenuEntry.find({ userId }).sort({ name: 1 })
     ]);
 
     // Convert mongoose documents to plain JSON to be passed to Client Component

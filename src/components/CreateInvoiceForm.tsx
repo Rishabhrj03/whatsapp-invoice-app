@@ -1,33 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createInvoice } from "@/app/actions/invoice";
-import { Plus, Trash2, Send, FileDown, Eye, Edit2, CheckCircle } from "lucide-react";
+import {
+    Plus, Trash2, Send, FileDown, Eye, Edit2,
+    CheckCircle, UserPlus, ShoppingBag, CreditCard,
+    ChevronRight, Calendar, Info
+} from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import CustomerSelector from "./CustomerSelector";
+import AddCustomerModal from "./AddCustomerModal";
+import { useRouter } from "next/navigation";
 
 export default function CreateInvoiceForm({
-    customers,
+    customers: initialCustomers,
     menuItems,
 }: {
     customers: any[];
     menuItems: any[];
 }) {
+    const router = useRouter();
+    const [customers, setCustomers] = useState(initialCustomers);
     const [customerId, setCustomerId] = useState("");
-    const [items, setItems] = useState<
-        { menuEntryId: string; name: string; price: number; quantity: number }[]
-    >([]);
+    const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+    const [items, setItems] = useState<{ menuEntryId: string; name: string; price: number; quantity: number }[]>([]);
     const [comment, setComment] = useState("");
     const [loading, setLoading] = useState(false);
     const [successData, setSuccessData] = useState<any>(null);
     const [invoiceId, setInvoiceId] = useState("");
     const [isPreview, setIsPreview] = useState(false);
-
     const [hasDownloaded, setHasDownloaded] = useState(false);
     const [canShare, setCanShare] = useState(false);
+    const [currentDate, setCurrentDate] = useState("");
 
     // Check share compatibility on mount
     useEffect(() => {
+        setCurrentDate(new Date().toLocaleDateString());
         if (typeof navigator !== "undefined" && !!navigator.share) {
             const file = new File(["test"], "test.pdf", { type: "application/pdf" });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -215,8 +224,8 @@ export default function CreateInvoiceForm({
     };
 
     const handleSubmit = async () => {
-        if (!customerId || items.length === 0 || items.some((i) => !i.menuEntryId)) {
-            alert("Please select a customer and at least one valid item.");
+        if (items.length === 0 || items.some((i) => !i.menuEntryId)) {
+            alert("Please add at least one valid item.");
             return;
         }
 
@@ -341,13 +350,13 @@ export default function CreateInvoiceForm({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
                     <div className="space-y-1">
                         <h3 className="text-xs font-bold text-gray-400 uppercase">Billing To</h3>
-                        <p className="text-lg font-bold text-gray-800">{selectedCustomer?.name}</p>
+                        <p className="text-lg font-bold text-gray-800">{selectedCustomer?.name || "Walk-in / Guest"}</p>
                         <p className="text-sm text-gray-600">{selectedCustomer?.phoneNumber}</p>
                         <p className="text-sm text-gray-600">{selectedCustomer?.address}</p>
                     </div>
                     <div className="md:text-right space-y-1">
                         <h3 className="text-xs font-bold text-gray-400 uppercase">Invoice Date</h3>
-                        <p className="text-gray-800 font-medium">{new Date().toLocaleDateString()}</p>
+                        <p className="text-gray-800 font-medium">{currentDate}</p>
                     </div>
                 </div>
 
@@ -412,174 +421,221 @@ export default function CreateInvoiceForm({
         );
     }
 
+    const handleCustomerAdded = (newCustomer: any) => {
+        setCustomers(prev => [...prev, newCustomer]);
+        setCustomerId(newCustomer._id);
+    };
+
     return (
-        <form
-            onSubmit={(e) => {
-                e.preventDefault();
-                setIsPreview(true);
-            }}
-            className="space-y-8 bg-white p-4 md:p-8 rounded-lg shadow-sm border border-gray-100"
-        >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1 pointer-events-none">
-                        Select Customer *
-                    </label>
-                    <select
-                        value={customerId}
-                        onChange={(e) => setCustomerId(e.target.value)}
-                        required
-                        className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black bg-gray-50"
-                    >
-                        <option value="">-- Choose Customer --</option>
-                        {customers.map((c) => (
-                            <option key={c._id} value={c._id}>
-                                {c.name} ({c.phoneNumber})
-                            </option>
-                        ))}
-                    </select>
-                </div>
+        <div className="relative">
+            <AddCustomerModal
+                isOpen={isCustomerModalOpen}
+                onClose={() => setIsCustomerModalOpen(false)}
+                onSuccess={handleCustomerAdded}
+            />
 
-                <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">
-                        Invoice Date
-                    </label>
-                    <input
-                        type="text"
-                        value={new Date().toLocaleDateString()}
-                        disabled
-                        className="block w-full px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm text-gray-500 sm:text-sm font-medium"
-                    />
-                </div>
-            </div>
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    setIsPreview(true);
+                }}
+                className="space-y-10"
+            >
+                {/* Header Section */}
+                <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-8 relative">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
 
-            <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-gray-800">Menu Items</h3>
-                    <button
-                        type="button"
-                        onClick={handleAddItem}
-                        className="flex items-center gap-2 py-2 px-4 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-bold text-sm transition-all"
-                    >
-                        <Plus size={18} /> Add New Item
-                    </button>
-                </div>
-
-                {items.length === 0 ? (
-                    <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 bg-gray-50">
-                        <Plus className="mx-auto mb-2 text-gray-300" size={48} />
-                        <p className="font-medium">No items added yet</p>
-                        <p className="text-xs">Click 'Add New Item' to begin your invoice</p>
+                    <div className="space-y-6">
+                        <CustomerSelector
+                            customers={customers}
+                            selectedId={customerId}
+                            onSelect={setCustomerId}
+                            onAddNew={() => setIsCustomerModalOpen(true)}
+                        />
                     </div>
-                ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                        {items.map((item, index) => (
-                            <div
-                                key={index}
-                                className="group relative flex flex-col md:flex-row gap-4 p-5 border border-gray-200 rounded-xl bg-white shadow-sm hover:border-blue-200 transition-all"
-                            >
-                                <div className="flex-1 space-y-1">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                        Menu Item
-                                    </label>
-                                    <select
-                                        value={item.menuEntryId}
-                                        onChange={(e) =>
-                                            handleItemChange(index, "menuEntryId", e.target.value)
-                                        }
-                                        required
-                                        className="block w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-black bg-white"
-                                    >
-                                        <option value="">-- Select Item --</option>
-                                        {menuItems.map((m) => (
-                                            <option key={m._id} value={m._id}>
-                                                {m.name} - ₹{m.price}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
 
-                                <div className="flex gap-4">
-                                    <div className="w-full md:w-28 space-y-1">
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                            Price
-                                        </label>
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
-                                            <input
-                                                type="number"
-                                                value={item.price}
-                                                disabled
-                                                className="block w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 font-medium"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="w-full md:w-24 space-y-1">
-                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                            Qty
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={item.quantity}
-                                            onChange={(e) =>
-                                                handleItemChange(index, "quantity", parseInt(e.target.value) || 1)
-                                            }
-                                            required
-                                            className="block w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm text-black font-bold"
-                                        />
-                                    </div>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveItem(index)}
-                                    className="md:self-end p-2.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border md:border-transparent border-red-100"
-                                    title="Remove Item"
-                                >
-                                    <Trash2 size={20} />
-                                </button>
+                    <div className="space-y-6">
+                        <div className="relative">
+                            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+                                <Calendar size={14} className="text-gray-400" />
+                                Invoice Date
+                            </label>
+                            <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 flex items-center justify-between">
+                                <span>{currentDate || "Loading..."}</span>
+                                <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Current</span>
                             </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <div className="border-t border-gray-100 pt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                    <label className="block text-sm font-bold text-gray-700">Additional Remarks</label>
-                    <textarea
-                        rows={4}
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 text-sm text-black"
-                        placeholder="Special instructions, terms, or personalized message..."
-                    ></textarea>
-                </div>
-
-                <div className="bg-gray-50 p-6 rounded-2xl space-y-4">
-                    <div className="flex justify-between items-center text-gray-500 font-medium">
-                        <span>Subtotal</span>
-                        <span>₹{totalAmount.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center border-t border-gray-200 pt-4">
-                        <span className="text-xl font-bold text-gray-800">Grand Total</span>
-                        <span className="text-3xl font-black text-blue-600">₹{totalAmount.toFixed(2)}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="pt-8 flex flex-col sm:flex-row justify-end gap-3">
-                <button
-                    type="submit"
-                    disabled={items.length === 0}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 py-3 px-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none"
-                >
-                    <Eye size={20} />
-                    Preview Invoice
-                </button>
-            </div>
-        </form>
+                {/* Items Section */}
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="px-6 py-5 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100">
+                                <ShoppingBag size={18} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900 tracking-tight">Service Items</h3>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Pricing & Quantity</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleAddItem}
+                            className="flex items-center gap-2 py-2.5 px-5 bg-white border border-gray-200 hover:border-blue-500 hover:text-blue-600 text-gray-700 rounded-xl font-black text-xs transition-all shadow-sm active:scale-95"
+                        >
+                            <Plus size={16} /> Add Item
+                        </button>
+                    </div>
+
+                    <div className="p-6">
+                        {items.length === 0 ? (
+                            <div className="text-center py-16 border-2 border-dashed border-gray-100 rounded-3xl bg-gray-50/50 space-y-3 cursor-pointer hover:bg-gray-50 transition-colors" onClick={handleAddItem}>
+                                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mx-auto">
+                                    <Plus className="text-gray-300" size={32} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-400">Your invoice is empty</p>
+                                    <p className="text-[10px] text-gray-400 uppercase tracking-widest">Click 'Add Item' to begin billing</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {items.map((item, index) => (
+                                    <div
+                                        key={index}
+                                        className="group relative flex flex-col md:flex-row gap-6 p-6 border border-gray-100 rounded-2xl bg-white hover:border-blue-200 hover:shadow-md hover:shadow-blue-50/50 transition-all animate-in fade-in slide-in-from-left-4 duration-300"
+                                    >
+                                        <div className="flex-1 space-y-1.5">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Menu Item</label>
+                                            <select
+                                                value={item.menuEntryId}
+                                                onChange={(e) =>
+                                                    handleItemChange(index, "menuEntryId", e.target.value)
+                                                }
+                                                required
+                                                className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-bold text-gray-900 bg-gray-50/50 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%20stroke%3D%22currentColor%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22m19%209-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] bg-[right_1rem_center] bg-no-repeat"
+                                            >
+                                                <option value="">-- Choose from Menu --</option>
+                                                {menuItems.map((m) => (
+                                                    <option key={m._id} value={m._id}>
+                                                        {m.name} (₹{m.price})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="flex gap-4">
+                                            <div className="w-full md:w-32 space-y-1.5">
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Unit Price</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
+                                                    <input
+                                                        type="number"
+                                                        value={item.price}
+                                                        disabled
+                                                        className="block w-full pl-8 pr-4 py-3 bg-gray-100 border border-transparent rounded-xl text-sm text-gray-500 font-black cursor-not-allowed"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="w-full md:w-28 space-y-1.5">
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Quantity</label>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    value={item.quantity}
+                                                    onChange={(e) =>
+                                                        handleItemChange(index, "quantity", parseInt(e.target.value) || 1)
+                                                    }
+                                                    required
+                                                    className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-black text-gray-900 bg-white"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="hidden md:flex flex-col justify-center items-end min-w-[100px] border-l border-gray-50 pl-6">
+                                            <p className="text-[10px] font-black text-gray-300 uppercase tracking-tighter">Line Total</p>
+                                            <p className="text-md font-black text-blue-600 tracking-tight">₹{(item.price * item.quantity).toFixed(2)}</p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveItem(index)}
+                                            className="md:self-center p-3 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-gray-50 md:border-transparent"
+                                            title="Remove Item"
+                                        >
+                                            <Trash2 size={20} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Footer and Totals */}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                    <div className="lg:col-span-3 bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Info size={14} className="text-gray-400" />
+                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Additional Terms or Remarks</h4>
+                        </div>
+                        <textarea
+                            rows={5}
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            className="block w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl shadow-inner focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm text-gray-800 placeholder:text-gray-300 outline-none"
+                            placeholder="Add thank you note, payment details, or special instructions..."
+                        ></textarea>
+                    </div>
+
+                    <div className="lg:col-span-2 bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden flex flex-col justify-between group">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-32 -mt-32 blur-3xl pointer-events-none group-hover:bg-blue-500/20 transition-colors duration-700" />
+
+                        <div className="space-y-6 relative">
+                            <div className="flex justify-between items-center text-gray-400">
+                                <span className="text-xs font-black uppercase tracking-widest">Net Summary</span>
+                                <CreditCard size={18} />
+                            </div>
+
+                            <div className="space-y-3 pb-6 border-b border-white/10">
+                                <div className="flex justify-between text-gray-400 text-sm font-medium">
+                                    <span>Subtotal</span>
+                                    <span>₹{totalAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-gray-400 text-sm font-medium">
+                                    <span>Discount / Tax</span>
+                                    <span className="italic text-[10px] uppercase">Calculated in Summary</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 relative space-y-8">
+                            <div className="flex justify-between items-end">
+                                <div>
+                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Grand Total</p>
+                                    <p className="text-4xl font-black text-white tracking-tighter">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                </div>
+                                <div className="bg-white/10 px-3 py-1 rounded-full backdrop-blur-md border border-white/10">
+                                    <span className="text-[10px] font-bold text-white uppercase tracking-tighter">INR (₹)</span>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={items.length === 0}
+                                className="w-full flex items-center justify-center gap-3 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale group"
+                            >
+                                <Eye size={20} className="group-hover:scale-110 transition-transform" />
+                                Generate & Preview Bill
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
     );
 }

@@ -5,6 +5,7 @@ export interface IMenuEntry extends Document {
     price: number;
     description?: string;
     category?: string;
+    userId: mongoose.Types.ObjectId;
     createdAt: Date;
 }
 
@@ -14,6 +15,7 @@ const MenuEntrySchema = new Schema<IMenuEntry>(
         price: { type: Number, required: true },
         description: { type: String, required: false },
         category: { type: String, required: false },
+        userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     },
     { timestamps: true }
 );

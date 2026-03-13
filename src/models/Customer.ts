@@ -6,6 +6,7 @@ export interface ICustomer extends Document {
     anniversaryDate?: string;
     birthdayDate?: string;
     address?: string;
+    userId: mongoose.Types.ObjectId;
     createdAt: Date;
 }
 
@@ -16,6 +17,7 @@ const CustomerSchema = new Schema<ICustomer>(
         anniversaryDate: { type: String, required: false },
         birthdayDate: { type: String, required: false },
         address: { type: String, required: false },
+        userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     },
     { timestamps: true }
 );

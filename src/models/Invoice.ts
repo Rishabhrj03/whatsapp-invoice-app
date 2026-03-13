@@ -16,6 +16,7 @@ export interface IInvoice extends Document {
     comment?: string;
     date: Date;
     status: 'Draft' | 'Sent' | 'Paid';
+    userId: mongoose.Types.ObjectId;
     createdAt: Date;
 }
 
@@ -28,12 +29,13 @@ const InvoiceItemSchema = new Schema<IInvoiceItem>({
 
 const InvoiceSchema = new Schema<IInvoice>(
     {
-        customer: { type: Schema.Types.ObjectId, ref: 'Customer', required: true },
+        customer: { type: Schema.Types.ObjectId, ref: 'Customer', required: false },
         items: [InvoiceItemSchema],
         totalAmount: { type: Number, required: true },
         comment: { type: String, required: false },
         date: { type: Date, default: Date.now },
         status: { type: String, enum: ['Draft', 'Sent', 'Paid'], default: 'Draft' },
+        userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     },
     { timestamps: true }
 );
