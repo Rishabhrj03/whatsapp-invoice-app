@@ -36,7 +36,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     throw new InvalidLoginError();
                 }
 
-                return { id: user._id.toString(), email: user.email, name: user.name };
+                return {
+                    id: user._id.toString(),
+                    email: user.email,
+                    name: user.name,
+                    role: user.role,
+                    businessName: user.businessName
+                };
             }
         })
     ],
@@ -44,18 +50,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         signIn: "/login",
     },
     session: {
-        strategy: "jwt"
+        strategy: "jwt",
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+    },
+    cookies: {
+        sessionToken: {
+            name: `next-auth.session-token`,
+            options: {
+                httpOnly: true,
+                sameSite: "lax",
+                path: "/",
+                secure: process.env.NODE_ENV === "production",
+                maxAge: 30 * 24 * 60 * 60, // 30 days
+            },
+        },
     },
     callbacks: {
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
+                token.role = (user as any).role;
+                token.businessName = (user as any).businessName;
             }
             return token;
         },
         async session({ session, token }) {
             if (token && session.user) {
                 session.user.id = token.id as string;
+                (session.user as any).role = token.role as string;
+                (session.user as any).businessName = token.businessName as string;
             }
             return session;
         }

@@ -4,12 +4,14 @@ import dbConnect from "@/lib/mongoose";
 import Invoice from "@/models/Invoice";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { getEffectiveUserId } from "@/lib/auth-utils";
 
 export async function createInvoice(data: any) {
     try {
         await dbConnect();
         const session = await auth();
-        if (!session?.user?.id) {
+        const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId || !session?.user?.id) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -20,7 +22,8 @@ export async function createInvoice(data: any) {
             comment: data.comment,
             date: new Date(),
             status: "Sent",
-            userId: session.user.id,
+            userId: effectiveUserId,
+            createdBy: session.user.id,
         });
 
         revalidatePath("/dashboard");

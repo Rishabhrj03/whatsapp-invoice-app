@@ -1,20 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Search, UserPlus, Check, ChevronsUpDown, User, X } from "lucide-react";
+import { Search, Check, ChevronsUpDown, User, X } from "lucide-react";
 
 interface CustomerSelectorProps {
     customers: any[];
     selectedId: string;
     onSelect: (id: string) => void;
-    onAddNew: () => void;
+    onAddNew: () => void; // Keeping prop in interface just in case, though it's removed from UI here
 }
 
 export default function CustomerSelector({
     customers,
     selectedId,
     onSelect,
-    onAddNew,
 }: CustomerSelectorProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -46,7 +45,7 @@ export default function CustomerSelector({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl hover:bg-white hover:border-blue-400 transition-all text-left shadow-sm group"
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl hover:bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 transition-all text-left shadow-sm group"
             >
                 <div className="flex items-center gap-3">
                     <div className={`p-1.5 rounded-lg ${selectedCustomer ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
@@ -54,7 +53,7 @@ export default function CustomerSelector({
                     </div>
                     <div>
                         <p className={`text-sm font-bold ${selectedCustomer ? 'text-gray-900' : 'text-gray-500'}`}>
-                            {selectedCustomer ? selectedCustomer.name : "Walk-in / Guest"}
+                            {selectedCustomer ? selectedCustomer.name : "Guest"}
                         </p>
                         {selectedCustomer && (
                             <p className="text-[10px] text-gray-400 font-medium">{selectedCustomer.phoneNumber}</p>
@@ -86,7 +85,7 @@ export default function CustomerSelector({
                         )}
                     </div>
 
-                    <div className="max-h-[240px] overflow-y-auto space-y-1 custom-scrollbar">
+                    <div className="max-h-[240px] overflow-y-auto space-y-1 custom-scrollbar pb-2">
                         <button
                             type="button"
                             onClick={() => {
@@ -95,7 +94,7 @@ export default function CustomerSelector({
                             }}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-colors ${!selectedId ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-600'}`}
                         >
-                            <span className="font-bold text-black">Walk-in / Guest</span>
+                            <span className="font-bold text-black">Guest</span>
                             {!selectedId && <Check size={16} />}
                         </button>
 
@@ -119,25 +118,11 @@ export default function CustomerSelector({
                                     {selectedId === c._id && <Check size={16} />}
                                 </button>
                             ))
-                        ) : searchTerm && (
+                        ) : searchTerm ? (
                             <div className="p-4 text-center">
                                 <p className="text-xs text-gray-400 font-medium uppercase tracking-widest leading-loose">No customers matching "{searchTerm}"</p>
                             </div>
-                        )}
-                    </div>
-
-                    <div className="mt-2 pt-2 border-t border-gray-50">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setIsOpen(false);
-                                onAddNew();
-                            }}
-                            className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs shadow-lg shadow-blue-100 transition-all active:scale-95"
-                        >
-                            <UserPlus size={16} />
-                            Add New Customer
-                        </button>
+                        ) : null}
                     </div>
                 </div>
             )}

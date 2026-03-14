@@ -2,14 +2,17 @@
 
 import dbConnect from "@/lib/mongoose";
 import MenuEntry from "@/models/MenuEntry";
+import Category from "@/models/Category";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { getEffectiveUserId } from "@/lib/auth-utils";
 
 export async function createMenuEntry(formData: FormData) {
     try {
         await dbConnect();
         const session = await auth();
-        if (!session?.user?.id) {
+        const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId || !session?.user?.id) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -27,7 +30,8 @@ export async function createMenuEntry(formData: FormData) {
             price,
             ...(description && { description }),
             ...(category && { category }),
-            userId: session.user.id,
+            userId: effectiveUserId,
+            createdBy: session.user.id,
         });
 
         revalidatePath("/menu");
@@ -44,11 +48,11 @@ export async function createMenuEntry(formData: FormData) {
 export async function deleteMenuEntry(id: string) {
     try {
         await dbConnect();
-        const session = await auth();
-        if (!session?.user?.id) {
+        const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId) {
             return { success: false, error: "Unauthorized" };
         }
-        await MenuEntry.findOneAndDelete({ _id: id, userId: session.user.id });
+        await MenuEntry.findOneAndDelete({ _id: id, userId: effectiveUserId });
         revalidatePath("/menu");
         return { success: true };
     } catch (error: any) {
@@ -60,14 +64,37 @@ export async function importMenuItemsFromCSV(items: any[]) {
     try {
         await dbConnect();
         const session = await auth();
-        if (!session?.user?.id) {
+        const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId || !session?.user?.id) {
             return { success: false, error: "Unauthorized" };
         }
 
-        const userId = session.user.id;
+        // Auto-create missing categories
+        const categoriesInImport = Array.from(new Set(items.map(item => item.category).filter(Boolean))) as string[];
+        if (categoriesInImport.length > 0) {
+            const existingCategories = await Category.find({
+                userId: effectiveUserId,
+                name: { $in: categoriesInImport.map(n => new RegExp(`^${n}$`, 'i')) }
+            }).select('name').lean();
+
+            const existingNames = new Set(existingCategories.map((c: any) => c.name.toLowerCase()));
+            const missingCategoriesNames = categoriesInImport.filter(name => !existingNames.has(name.toLowerCase()));
+
+            if (missingCategoriesNames.length > 0) {
+                const newCategories = missingCategoriesNames.map(name => ({
+                    name: name.trim(),
+                    userId: effectiveUserId,
+                    createdBy: session.user?.id,
+                    color: '#f97316'
+                }));
+                await Category.insertMany(newCategories);
+            }
+        }
+
         const itemsWithUserId = items.map(item => ({
             ...item,
-            userId: userId
+            userId: effectiveUserId,
+            createdBy: session?.user?.id
         }));
 
         await MenuEntry.insertMany(itemsWithUserId);
@@ -82,11 +109,11 @@ export async function importMenuItemsFromCSV(items: any[]) {
 export async function deleteMultipleMenuEntries(ids: string[]) {
     try {
         await dbConnect();
-        const session = await auth();
-        if (!session?.user?.id) {
+        const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId) {
             return { success: false, error: "Unauthorized" };
         }
-        await MenuEntry.deleteMany({ _id: { $in: ids }, userId: session.user.id });
+        await MenuEntry.deleteMany({ _id: { $in: ids }, userId: effectiveUserId });
         revalidatePath("/menu");
         return { success: true };
     } catch (error: any) {
@@ -99,7 +126,8 @@ export async function updateMenuEntry(id: string, formData: FormData) {
     try {
         await dbConnect();
         const session = await auth();
-        if (!session?.user?.id) {
+        const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId || !session?.user?.id) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -109,7 +137,7 @@ export async function updateMenuEntry(id: string, formData: FormData) {
         const description = formData.get("description") as string;
 
         const updatedItem = await MenuEntry.findOneAndUpdate(
-            { _id: id, userId: session.user.id },
+            { _id: id, userId: effectiveUserId },
             { name, price, category, description },
             { new: true }
         );

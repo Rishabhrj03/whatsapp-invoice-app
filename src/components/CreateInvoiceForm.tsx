@@ -5,26 +5,35 @@ import { createInvoice } from "@/app/actions/invoice";
 import {
     Plus, Trash2, Send, FileDown, Eye, Edit2,
     CheckCircle, UserPlus, ShoppingBag, CreditCard,
-    ChevronRight, Calendar, Info
+    ChevronRight, Calendar, Info, Tag
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import CustomerSelector from "./CustomerSelector";
+import MenuSelector from "./MenuSelector";
 import AddCustomerModal from "./AddCustomerModal";
+import CreateCategoryModal from "./CreateCategoryModal";
+import CategorySelector from "./CategorySelector";
 import { useRouter } from "next/navigation";
 
 export default function CreateInvoiceForm({
     customers: initialCustomers,
     menuItems,
+    categories: initialCategories = [],
+    user: initialUser,
 }: {
     customers: any[];
     menuItems: any[];
+    categories?: any[];
+    user?: any;
 }) {
     const router = useRouter();
     const [customers, setCustomers] = useState(initialCustomers);
+    const [categories, setCategories] = useState(initialCategories);
     const [customerId, setCustomerId] = useState("");
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-    const [items, setItems] = useState<{ menuEntryId: string; name: string; price: number; quantity: number }[]>([]);
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [items, setItems] = useState<{ categoryId: string; menuEntryId: string; name: string; price: number; quantity: number }[]>([]);
     const [comment, setComment] = useState("");
     const [loading, setLoading] = useState(false);
     const [successData, setSuccessData] = useState<any>(null);
@@ -53,7 +62,7 @@ export default function CreateInvoiceForm({
     const selectedCustomer = customers.find((c) => c._id === customerId);
 
     const handleAddItem = () => {
-        setItems([...items, { menuEntryId: "", name: "", price: 0, quantity: 1 }]);
+        setItems([...items, { categoryId: "", menuEntryId: "", name: "", price: 0, quantity: 1 }]);
     };
 
     const handleRemoveItem = (index: number) => {
@@ -94,10 +103,20 @@ export default function CreateInvoiceForm({
         // Business Info
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
-        doc.text("WA Invoice App", 14, 45);
+        doc.text(initialUser?.businessName || "WA Invoice App", 14, 45);
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
         doc.text("Premium Digital Billing", 14, 50);
+
+        // Add logo if URL is present
+        if (initialUser?.logoUrl) {
+            try {
+                // jspdf's addImage takes a URL, base64, or image element
+                doc.addImage(initialUser.logoUrl, 'PNG', 160, 10, 30, 30);
+            } catch (e) {
+                console.error("Failed to add logo to PDF:", e);
+            }
+        }
 
         // Customer Info
         doc.setFontSize(12);
@@ -350,7 +369,7 @@ export default function CreateInvoiceForm({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
                     <div className="space-y-1">
                         <h3 className="text-xs font-bold text-gray-400 uppercase">Billing To</h3>
-                        <p className="text-lg font-bold text-gray-800">{selectedCustomer?.name || "Walk-in / Guest"}</p>
+                        <p className="text-lg font-bold text-gray-800">{selectedCustomer?.name || "Guest"}</p>
                         <p className="text-sm text-gray-600">{selectedCustomer?.phoneNumber}</p>
                         <p className="text-sm text-gray-600">{selectedCustomer?.address}</p>
                     </div>
@@ -434,6 +453,14 @@ export default function CreateInvoiceForm({
                 onSuccess={handleCustomerAdded}
             />
 
+            <CreateCategoryModal
+                isOpen={isCategoryModalOpen}
+                onClose={() => setIsCategoryModalOpen(false)}
+                onSuccess={(newCat: any) => {
+                    setCategories(prev => [...prev, newCat].sort((a, b) => a.name.localeCompare(b.name)));
+                }}
+            />
+
             <form
                 onSubmit={(e) => {
                     e.preventDefault();
@@ -446,12 +473,25 @@ export default function CreateInvoiceForm({
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
 
                     <div className="space-y-6">
-                        <CustomerSelector
-                            customers={customers}
-                            selectedId={customerId}
-                            onSelect={setCustomerId}
-                            onAddNew={() => setIsCustomerModalOpen(true)}
-                        />
+                        <div className="flex items-end gap-3">
+                            <div className="flex-1">
+                                <CustomerSelector
+                                    customers={customers}
+                                    selectedId={customerId}
+                                    onSelect={setCustomerId}
+                                    onAddNew={() => setIsCustomerModalOpen(true)}
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsCustomerModalOpen(true)}
+                                className="h-[46px] px-4 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-100 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95"
+                                title="Add New Customer"
+                            >
+                                <UserPlus size={18} />
+                                <span className="hidden sm:inline text-sm">New</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div className="space-y-6">
@@ -469,7 +509,7 @@ export default function CreateInvoiceForm({
                 </div>
 
                 {/* Items Section */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100">
                     <div className="px-6 py-5 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100">
@@ -506,24 +546,48 @@ export default function CreateInvoiceForm({
                                     <div
                                         key={index}
                                         className="group relative flex flex-col md:flex-row gap-6 p-6 border border-gray-100 rounded-2xl bg-white hover:border-blue-200 hover:shadow-md hover:shadow-blue-50/50 transition-all animate-in fade-in slide-in-from-left-4 duration-300"
+                                        style={{ zIndex: items.length - index }}
                                     >
-                                        <div className="flex-1 space-y-1.5">
+                                        <div className="flex-1 space-y-1.5 min-w-[150px]">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Category</label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsCategoryModalOpen(true)}
+                                                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md transition-colors"
+                                                >
+                                                    <Plus size={10} /> New
+                                                </button>
+                                            </div>
+                                            <div className="relative">
+                                                <CategorySelector
+                                                    categories={categories}
+                                                    selectedId={item.categoryId || ""}
+                                                    onSelect={(name) => {
+                                                        const newItems = [...items];
+                                                        newItems[index] = { ...newItems[index], categoryId: name, menuEntryId: "", name: "", price: 0 };
+                                                        setItems(newItems);
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex-1 space-y-1.5 min-w-[200px]">
                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Menu Item</label>
-                                            <select
-                                                value={item.menuEntryId}
-                                                onChange={(e) =>
-                                                    handleItemChange(index, "menuEntryId", e.target.value)
-                                                }
-                                                required
-                                                className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-bold text-gray-900 bg-gray-50/50 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%20stroke%3D%22currentColor%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22m19%209-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem] bg-[right_1rem_center] bg-no-repeat"
-                                            >
-                                                <option value="">-- Choose from Menu --</option>
-                                                {menuItems.map((m) => (
-                                                    <option key={m._id} value={m._id}>
-                                                        {m.name} (₹{m.price})
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <MenuSelector
+                                                menuItems={item.categoryId ? menuItems.filter(m => m.category?.toLowerCase().trim() === item.categoryId.toLowerCase().trim()) : menuItems}
+                                                selectedId={item.menuEntryId}
+                                                onSelect={(id: string, name: string, price: number) => {
+                                                    const newItems = [...items];
+                                                    newItems[index] = {
+                                                        ...newItems[index],
+                                                        menuEntryId: id,
+                                                        name: name,
+                                                        price: price,
+                                                    };
+                                                    setItems(newItems);
+                                                }}
+                                            />
                                         </div>
 
                                         <div className="flex gap-4">

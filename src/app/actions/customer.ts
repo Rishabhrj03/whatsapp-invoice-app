@@ -4,16 +4,19 @@ import dbConnect from "@/lib/mongoose";
 import Customer from "@/models/Customer";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { getEffectiveUserId } from "@/lib/auth-utils";
 
 export async function createCustomer(formData: FormData) {
     try {
         await dbConnect();
         const session = await auth();
-        if (!session?.user?.id) {
+        const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId || !session?.user?.id) {
             return { success: false, error: "Unauthorized" };
         }
 
         const name = formData.get("name") as string;
+        // ... (rest of form data extraction)
         const phoneNumber = formData.get("phoneNumber") as string;
         const anniversaryDate = formData.get("anniversaryDate") as string;
         const birthdayDate = formData.get("birthdayDate") as string;
@@ -29,7 +32,8 @@ export async function createCustomer(formData: FormData) {
             ...(anniversaryDate && { anniversaryDate }),
             ...(birthdayDate && { birthdayDate }),
             ...(address && { address }),
-            userId: session.user.id,
+            userId: effectiveUserId,
+            createdBy: session.user.id,
         });
 
         revalidatePath("/customers");
@@ -46,11 +50,11 @@ export async function createCustomer(formData: FormData) {
 export async function deleteCustomer(id: string) {
     try {
         await dbConnect();
-        const session = await auth();
-        if (!session?.user?.id) {
+        const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId) {
             return { success: false, error: "Unauthorized" };
         }
-        await Customer.findOneAndDelete({ _id: id, userId: session.user.id });
+        await Customer.findOneAndDelete({ _id: id, userId: effectiveUserId });
         revalidatePath("/customers");
         return { success: true };
     } catch (error: any) {

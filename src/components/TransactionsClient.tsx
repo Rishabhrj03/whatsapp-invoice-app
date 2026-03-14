@@ -17,7 +17,7 @@ export default function TransactionsClient({ initialInvoices }: { initialInvoice
     const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
 
     const filteredInvoices = initialInvoices.filter((inv) => {
-        const customerName = inv.customer?.name?.toLowerCase() || "walk-in guest";
+        const customerName = inv.customer?.name?.toLowerCase() || "guest";
         return customerName.includes(searchQuery.toLowerCase());
     });
 
@@ -92,7 +92,7 @@ export default function TransactionsClient({ initialInvoices }: { initialInvoice
                                         </td>
                                         <td className="px-6 py-4">
                                             <p className="text-sm font-bold text-gray-800">
-                                                {inv.customer?.name || <span className="text-gray-400 italic font-medium">Walk-in Guest</span>}
+                                                {inv.customer?.name || <span className="text-gray-400 italic font-medium">Guest</span>}
                                             </p>
                                             <p className="text-xs text-gray-500 truncate max-w-[150px]">
                                                 {inv.customer?.phoneNumber || "No contact info"}

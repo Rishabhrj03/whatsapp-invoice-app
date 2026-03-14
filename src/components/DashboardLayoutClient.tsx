@@ -18,8 +18,10 @@ import {
 interface DashboardLayoutClientProps {
     children: React.ReactNode;
     user: {
+        id?: string | null;
         name?: string | null;
         email?: string | null;
+        role?: string | null;
     };
 }
 
@@ -36,15 +38,17 @@ export default function DashboardLayoutClient({
         { href: "/menu", icon: MenuIcon, label: "Menu Items" },
         { href: "/transactions", icon: MessageSquareShare, label: "Transactions" },
         { href: "/invoice/create", icon: FileText, label: "Create Invoice" },
+        { href: "/settings", icon: MenuIcon, label: "Settings" },
+        ...(user.role === 'OWNER' ? [{ href: "/team", icon: Users, label: "Team" }] : []),
     ];
 
     const SidebarContent = () => (
         <>
             <div className="p-4 border-b flex items-center justify-between lg:block">
-                <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                     <img src="/icons/icon-192x192.png" alt="Logo" className="w-8 h-8" />
-                    WA Invoice
-                </h1>
+                    <h1 className="text-xl font-bold text-gray-800">WA Invoice</h1>
+                </Link>
                 <button
                     onClick={() => setIsSidebarOpen(false)}
                     className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded"
@@ -120,10 +124,10 @@ export default function DashboardLayoutClient({
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Mobile Header */}
                 <header className="lg:hidden bg-white border-b p-4 flex items-center justify-between">
-                    <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                         <img src="/icons/icon-192x192.png" alt="Logo" className="w-8 h-8" />
-                        WA Invoice
-                    </h1>
+                        <h1 className="text-lg font-bold text-gray-800">WA Invoice</h1>
+                    </Link>
                     <button
                         onClick={() => setIsSidebarOpen(true)}
                         className="p-2 text-gray-500 hover:bg-gray-100 rounded"

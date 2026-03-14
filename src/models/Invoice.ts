@@ -17,6 +17,7 @@ export interface IInvoice extends Document {
     date: Date;
     status: 'Draft' | 'Sent' | 'Paid';
     userId: mongoose.Types.ObjectId;
+    createdBy?: mongoose.Types.ObjectId;
     createdAt: Date;
 }
 
@@ -36,6 +37,7 @@ const InvoiceSchema = new Schema<IInvoice>(
         date: { type: Date, default: Date.now },
         status: { type: String, enum: ['Draft', 'Sent', 'Paid'], default: 'Draft' },
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Useful for STAFF tracking
     },
     { timestamps: true }
 );

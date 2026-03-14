@@ -17,7 +17,6 @@ export const metadata: Metadata = {
   title: "WA Invoice App",
   description: "Premium Digital WhatsApp Invoicing App",
   manifest: "/manifest.json",
-  themeColor: "#2563eb",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -26,6 +25,10 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+};
+
+export const viewport = {
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({

@@ -2,13 +2,17 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createMenuEntry, deleteMenuEntry, importMenuItemsFromCSV, deleteMultipleMenuEntries, updateMenuEntry } from "@/app/actions/menu";
+import { deleteCategory, updateCategory } from "@/app/actions/category";
 import { Trash2, PlusCircle, Tag, IndianRupee, FileText, LayoutGrid, CheckCircle2, ArrowLeft, Upload, FileUp, Loader2, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ConfirmModal from "./ConfirmModal";
 import CSVMappingModal from "./CSVMappingModal";
+import CreateCategoryModal from "./CreateCategoryModal";
 
-export default function MenuClient({ initialMenuItems }: { initialMenuItems: any[] }) {
+export default function MenuClient({ initialMenuItems, initialCategories = [] }: { initialMenuItems: any[], initialCategories?: any[] }) {
     const [menuItems, setMenuItems] = useState(initialMenuItems);
+    const [categories, setCategories] = useState(initialCategories);
+    const [activeTab, setActiveTab] = useState<"items" | "categories">("items");
     const [view, setView] = useState<"list" | "add" | "edit">("list");
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
@@ -17,7 +21,10 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
     const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
+    const [editingCategory, setEditingCategory] = useState<any>(null);
+    const [deleteCategoryModal, setDeleteCategoryModal] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: "" });
     const router = useRouter();
     const formRef = useRef<HTMLFormElement>(null);
 
@@ -26,7 +33,7 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
             const form = formRef.current;
             (form.elements.namedItem("name") as HTMLInputElement).value = editingItem.name;
             (form.elements.namedItem("price") as HTMLInputElement).value = editingItem.price;
-            (form.elements.namedItem("category") as HTMLInputElement).value = editingItem.category || "";
+            (form.elements.namedItem("category") as HTMLSelectElement).value = editingItem.category || "";
             (form.elements.namedItem("description") as HTMLTextAreaElement).value = editingItem.description || "";
         }
     }, [view, editingItem]);
@@ -222,25 +229,66 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
         setLoading(false);
     };
 
+    const handleDeleteCategory = async () => {
+        const id = deleteCategoryModal.id;
+        if (!id) return;
+
+        setLoading(true);
+        try {
+            const res = await deleteCategory(id);
+            if (res.success) {
+                setCategories(prev => prev.filter(c => c._id !== id));
+                setDeleteCategoryModal({ isOpen: false, id: "" });
+                router.refresh();
+            } else {
+                alert(res.error || "Delete failed");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("An error occurred during deletion");
+        }
+        setLoading(false);
+    };
+
     return (
         <div className="space-y-8 pb-12">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Menu Items</h1>
-                    <p className="text-gray-500 text-sm mt-1">Manage your standard inventory items and pricing.</p>
+                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                        {activeTab === "items" ? "Menu Items" : "Categories"}
+                    </h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        {activeTab === "items"
+                            ? "Manage your standard inventory items and pricing."
+                            : "Organize your menu into groups for easier management."}
+                    </p>
                 </div>
                 {view === "list" ? (
                     <div className="flex flex-wrap gap-3 w-full md:w-auto">
-                        <label className="flex-1 md:flex-none flex items-center justify-center gap-2 py-3 px-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl font-bold shadow-sm cursor-pointer">
-                            <FileUp size={18} className="text-orange-500" />
-                            Import CSV
-                            <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} disabled={loading} />
-                        </label>
+                        {activeTab === "items" && (
+                            <label className="flex-1 md:flex-none flex items-center justify-center gap-2 py-3 px-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl font-bold shadow-sm cursor-pointer">
+                                <FileUp size={18} className="text-orange-500" />
+                                Import CSV
+                                <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} disabled={loading} />
+                            </label>
+                        )}
                         <button
-                            onClick={() => { setEditingItem(null); setView("add"); }}
+                            onClick={() => {
+                                if (activeTab === "items") {
+                                    setEditingItem(null);
+                                    setView("add");
+                                } else {
+                                    setEditingCategory(null);
+                                    setIsCategoryModalOpen(true);
+                                }
+                            }}
                             className="flex-1 md:flex-none flex items-center justify-center gap-2 py-3 px-6 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold shadow-lg shadow-orange-100 transition-all active:scale-95"
                         >
-                            <PlusCircle size={18} /> Add Menu Item
+                            {activeTab === "items" ? (
+                                <><PlusCircle size={18} /> Add Menu Item</>
+                            ) : (
+                                <><PlusCircle size={18} /> Add Category</>
+                            )}
                         </button>
                     </div>
                 ) : (
@@ -252,6 +300,29 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                     </button>
                 )}
             </div>
+
+            {view === "list" && (
+                <div className="flex p-1 bg-gray-100/50 rounded-2xl w-fit">
+                    <button
+                        onClick={() => setActiveTab("items")}
+                        className={`px-6 py-2.5 rounded-xl transition-all font-black text-xs uppercase tracking-widest ${activeTab === "items"
+                            ? "bg-white text-orange-600 shadow-sm"
+                            : "text-gray-400 hover:text-gray-600"
+                            }`}
+                    >
+                        Menu Items
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("categories")}
+                        className={`px-6 py-2.5 rounded-xl transition-all font-black text-xs uppercase tracking-widest ${activeTab === "categories"
+                            ? "bg-white text-orange-600 shadow-sm"
+                            : "text-gray-400 hover:text-gray-600"
+                            }`}
+                    >
+                        Categories
+                    </button>
+                </div>
+            )}
 
             {view === "add" || view === "edit" ? (
                 <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -303,14 +374,27 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                             <div className="space-y-1.5">
                                 <label htmlFor="category" className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Category</label>
                                 <div className="relative">
-                                    <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                    <input
-                                        type="text"
-                                        id="category"
-                                        name="category"
-                                        placeholder="e.g. Desserts"
-                                        className="block w-full pl-12 pr-5 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all text-sm text-black"
-                                    />
+                                    <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={18} />
+                                    <div className="flex gap-2 relative">
+                                        <select
+                                            id="category"
+                                            name="category"
+                                            className="block w-full pl-12 pr-5 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all text-sm text-black appearance-none font-medium cursor-pointer"
+                                        >
+                                            <option value="">Uncategorized</option>
+                                            {categories.map((c: any) => (
+                                                <option key={c._id} value={c.name}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCategoryModalOpen(true)}
+                                            className="px-4 py-4 bg-orange-100 text-orange-600 rounded-2xl hover:bg-orange-200 font-bold transition-colors whitespace-nowrap flex items-center justify-center gap-1 shadow-sm active:scale-95"
+                                        >
+                                            <PlusCircle size={18} />
+                                            <span className="hidden sm:inline">New</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <div className="space-y-1.5">
@@ -341,102 +425,177 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="p-6 border-b border-gray-50 flex items-center justify-between">
                             <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
-                                <LayoutGrid className="text-orange-500" size={20} />
-                                Item Catalog
+                                {activeTab === "items" ? (
+                                    <><LayoutGrid className="text-orange-500" size={20} /> Item Catalog</>
+                                ) : (
+                                    <><Tag className="text-orange-500" size={20} /> Categories</>
+                                )}
                             </h2>
                             <span className="bg-orange-50 text-orange-600 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider">
-                                {menuItems.length} Products
+                                {activeTab === "items" ? `${menuItems.length} Products` : `${categories.length} Categories`}
                             </span>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-gray-50/50">
-                                    <tr>
-                                        <th className="px-6 py-4 w-12 text-center">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedIds.length === menuItems.length && menuItems.length > 0}
-                                                onChange={toggleSelectAll}
-                                                className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
-                                            />
-                                        </th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product Info</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Category</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Price</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right px-10">Manage</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {menuItems.map((item) => (
-                                        <tr key={item._id.toString()} className={`hover:bg-orange-50/20 transition-colors group ${selectedIds.includes(item._id.toString()) ? 'bg-orange-50/30' : ''}`}>
-                                            <td className="px-6 py-5 text-center">
+                            {activeTab === "items" ? (
+                                <table className="w-full text-left">
+                                    <thead className="bg-gray-50/50">
+                                        <tr>
+                                            <th className="px-6 py-4 w-12 text-center">
                                                 <input
                                                     type="checkbox"
-                                                    checked={selectedIds.includes(item._id.toString())}
-                                                    onChange={() => toggleSelectItem(item._id.toString())}
+                                                    checked={selectedIds.length === menuItems.length && menuItems.length > 0}
+                                                    onChange={toggleSelectAll}
                                                     className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
                                                 />
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="min-w-[40px] h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md">
-                                                        {item.name.charAt(0).toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-bold text-gray-900">{item.name}</p>
-                                                        {item.description && (
-                                                            <p className="text-[10px] text-gray-400 font-medium truncate max-w-[200px]">
-                                                                {item.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-5 text-center">
-                                                {item.category ? (
-                                                    <span className="px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-orange-100 text-orange-700">
-                                                        {item.category}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-300 text-[10px] italic">Universal</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-5 text-right font-black text-gray-900 text-sm">
-                                                ₹{parseFloat(item.price).toFixed(2)}
-                                            </td>
-                                            <td className="px-6 py-5 text-right px-10">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => { setEditingItem(item); setView("edit"); }}
-                                                        className="p-2.5 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all"
-                                                        title="Edit Item"
-                                                    >
-                                                        <Pencil size={18} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDeleteModal({ isOpen: true, id: item._id.toString() })}
-                                                        className="p-2.5 text-red-100 group-hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                                                        title="Delete Item"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                            </td>
+                                            </th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product Info</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Category</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Price</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right px-10">Manage</th>
                                         </tr>
-                                    ))}
-                                    {menuItems.length === 0 && (
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {menuItems.map((item) => (
+                                            <tr key={item._id.toString()} className={`hover:bg-orange-50/20 transition-colors group ${selectedIds.includes(item._id.toString()) ? 'bg-orange-50/30' : ''}`}>
+                                                <td className="px-6 py-5 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.includes(item._id.toString())}
+                                                        onChange={() => toggleSelectItem(item._id.toString())}
+                                                        className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="min-w-[40px] h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md">
+                                                            {item.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-gray-900">{item.name}</p>
+                                                            {item.description && (
+                                                                <p className="text-[10px] text-gray-400 font-medium truncate max-w-[200px]">
+                                                                    {item.description}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5 text-center">
+                                                    {item.category ? (
+                                                        <span className="px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-orange-100 text-orange-700">
+                                                            {item.category}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-300 text-[10px] italic">Universal</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-5 text-right font-black text-gray-900 text-sm">
+                                                    ₹{parseFloat(item.price).toFixed(2)}
+                                                </td>
+                                                <td className="px-6 py-5 text-right px-10">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => { setEditingItem(item); setView("edit"); }}
+                                                            className="p-2.5 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all"
+                                                            title="Edit Item"
+                                                        >
+                                                            <Pencil size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setDeleteModal({ isOpen: true, id: item._id.toString() })}
+                                                            className="p-2.5 text-red-100 group-hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                            title="Delete Item"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {menuItems.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="px-6 py-20 text-center">
+                                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <LayoutGrid className="text-gray-200" size={40} />
+                                                    </div>
+                                                    <p className="text-sm text-gray-500 font-bold">Your menu catalog is empty</p>
+                                                    <p className="text-xs text-gray-400 mt-1">Add items to start building invoices.</p>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <table className="w-full text-left">
+                                    <thead className="bg-gray-50/50">
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-20 text-center">
-                                                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                    <LayoutGrid className="text-gray-200" size={40} />
-                                                </div>
-                                                <p className="text-sm text-gray-500 font-bold">Your menu catalog is empty</p>
-                                                <p className="text-xs text-gray-400 mt-1">Add items to start building invoices.</p>
-                                            </td>
+                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest pl-12">Category Name</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Items</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right px-10">Manage</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {categories.map((cat) => {
+                                            const itemCount = menuItems.filter(item => item.category === cat.name).length;
+                                            return (
+                                                <tr key={cat._id.toString()} className="hover:bg-orange-50/20 transition-colors group">
+                                                    <td className="px-6 py-5 pl-12">
+                                                        <div className="flex items-center gap-4">
+                                                            <div
+                                                                className="w-3 h-3 rounded-full shadow-sm"
+                                                                style={{ backgroundColor: cat.color || '#f97316' }}
+                                                            />
+                                                            <div>
+                                                                <p className="text-sm font-bold text-gray-900">{cat.name}</p>
+                                                                {cat.description && (
+                                                                    <p className="text-[10px] text-gray-400 font-medium truncate max-w-[200px]">
+                                                                        {cat.description}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-5 text-center">
+                                                        <span className="px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg bg-orange-50 text-orange-600">
+                                                            {itemCount} Items
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-5 text-right px-10">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={() => { setEditingCategory(cat); setIsCategoryModalOpen(true); }}
+                                                                className="p-2.5 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all"
+                                                                title="Edit Category"
+                                                            >
+                                                                <Pencil size={18} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setDeleteCategoryModal({ isOpen: true, id: cat._id.toString() })}
+                                                                className="p-2.5 text-red-100 group-hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                                title="Delete Category"
+                                                                disabled={itemCount > 0}
+                                                            >
+                                                                <Trash2 size={18} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {categories.length === 0 && (
+                                            <tr>
+                                                <td colSpan={3} className="px-6 py-20 text-center">
+                                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <Tag className="text-gray-200" size={40} />
+                                                    </div>
+                                                    <p className="text-sm text-gray-500 font-bold">No categories yet</p>
+                                                    <p className="text-xs text-gray-400 mt-1">Create categories to organize your menu.</p>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -468,6 +627,38 @@ export default function MenuClient({ initialMenuItems }: { initialMenuItems: any
                 headers={csvData?.headers || []}
                 previewRows={csvData?.rows.slice(0, 3) || []}
                 onConfirm={handleMappingConfirm}
+            />
+
+            <ConfirmModal
+                isOpen={deleteCategoryModal.isOpen}
+                onClose={() => setDeleteCategoryModal({ isOpen: false, id: "" })}
+                onConfirm={handleDeleteCategory}
+                title="Delete Category?"
+                message="Are you sure you want to delete this category? This will not delete the items in this category, but they will become uncategorized."
+                confirmText="Yes, Delete Category"
+                isLoading={loading}
+            />
+
+            <CreateCategoryModal
+                isOpen={isCategoryModalOpen}
+                onClose={() => {
+                    setIsCategoryModalOpen(false);
+                    setEditingCategory(null);
+                }}
+                editingCategory={editingCategory}
+                onSuccess={(newCat) => {
+                    if (editingCategory) {
+                        setCategories(prev => prev.map(c => c._id === newCat._id ? newCat : c).sort((a, b) => a.name.localeCompare(b.name)));
+                    } else {
+                        setCategories(prev => [...prev, newCat].sort((a, b) => a.name.localeCompare(b.name)));
+                    }
+                    setTimeout(() => {
+                        if (formRef.current && activeTab === "items") {
+                            (formRef.current.elements.namedItem("category") as HTMLSelectElement).value = newCat.name;
+                        }
+                    }, 50);
+                    router.refresh();
+                }}
             />
 
             {selectedIds.length > 0 && (
