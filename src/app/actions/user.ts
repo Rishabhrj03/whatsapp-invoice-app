@@ -15,10 +15,13 @@ export async function updateBusinessProfile(formData: FormData) {
 
         const businessName = formData.get("businessName") as string;
         const logoUrl = formData.get("logoUrl") as string;
+        const whatsappTemplate = formData.get("whatsappTemplate") as string;
+
+        console.log("Action - Extracted whatsappTemplate:", whatsappTemplate);
 
         const updatedUser = await User.findByIdAndUpdate(
             session.user.id,
-            { businessName, logoUrl },
+            { businessName, logoUrl, whatsappTemplate },
             { new: true }
         );
 

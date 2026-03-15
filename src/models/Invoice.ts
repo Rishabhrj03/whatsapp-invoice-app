@@ -13,6 +13,10 @@ export interface IInvoice extends Document {
     customer: mongoose.Types.ObjectId | ICustomer;
     items: IInvoiceItem[];
     totalAmount: number;
+    discountAmount?: number;
+    couponCode?: string;
+    paymentType?: 'Cash' | 'Card' | 'UPI';
+    pdfUrl?: string;
     comment?: string;
     date: Date;
     status: 'Draft' | 'Sent' | 'Paid';
@@ -33,6 +37,10 @@ const InvoiceSchema = new Schema<IInvoice>(
         customer: { type: Schema.Types.ObjectId, ref: 'Customer', required: false },
         items: [InvoiceItemSchema],
         totalAmount: { type: Number, required: true },
+        discountAmount: { type: Number, default: 0 },
+        couponCode: { type: String, required: false },
+        paymentType: { type: String, enum: ['Cash', 'Card', 'UPI'], default: 'Cash' },
+        pdfUrl: { type: String, required: false },
         comment: { type: String, required: false },
         date: { type: Date, default: Date.now },
         status: { type: String, enum: ['Draft', 'Sent', 'Paid'], default: 'Draft' },

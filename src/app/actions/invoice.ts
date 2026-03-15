@@ -23,6 +23,9 @@ export async function createInvoice(data: any) {
             date: new Date(),
             status: "Sent",
             userId: effectiveUserId,
+            paymentType: data.paymentType,
+            discountAmount: data.discountAmount || 0,
+            couponCode: data.couponCode,
             createdBy: session.user.id,
         });
 
@@ -31,5 +34,53 @@ export async function createInvoice(data: any) {
     } catch (error: any) {
         console.error("Failed to create invoice:", error);
         return { success: false, error: error.message || "Failed to create invoice" };
+    }
+}
+
+export async function getUploadUrl(filename: string, contentType: string) {
+    try {
+        const { PutObjectCommand } = await import("@aws-sdk/client-s3");
+        const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+        const { r2Client } = await import("@/lib/r2");
+
+        const command = new PutObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: filename,
+            ContentType: contentType,
+        });
+
+        const url = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+        return { success: true, url };
+    } catch (error: any) {
+        console.error("R2 Presign Error:", error);
+        return { success: false, error: error.message || "Failed to get upload URL" };
+    }
+}
+
+export async function getLogoBase64(url: string) {
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch image: ${res.statusText}`);
+
+        const buffer = await res.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString("base64");
+        const contentType = res.headers.get("content-type") || "image/png";
+
+        return { success: true, base64: `data:${contentType};base64,${base64}` };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+}
+
+export async function updateInvoicePdfUrl(invoiceId: string, pdfUrl: string) {
+    try {
+        await dbConnect();
+        const updated = await Invoice.findByIdAndUpdate(invoiceId, { pdfUrl }, { new: true });
+        if (!updated) return { success: false, error: "Invoice not found" };
+        revalidatePath("/dashboard");
+        revalidatePath("/transactions");
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message || "Failed to update PDF URL" };
     }
 }

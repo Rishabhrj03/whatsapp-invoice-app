@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { createInvoice } from "@/app/actions/invoice";
+import { createInvoice, getUploadUrl, updateInvoicePdfUrl, getLogoBase64 } from "@/app/actions/invoice";
 import {
     Plus, Trash2, Send, FileDown, Eye, Edit2,
     CheckCircle, UserPlus, ShoppingBag, CreditCard,
-    ChevronRight, Calendar, Info, Tag
+    ChevronRight, Calendar, Info, Tag, Check, Printer, ArrowLeft
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -21,17 +21,24 @@ export default function CreateInvoiceForm({
     menuItems,
     categories: initialCategories = [],
     user: initialUser,
+    coupons = [],
 }: {
     customers: any[];
     menuItems: any[];
     categories?: any[];
     user?: any;
+    coupons?: any[];
 }) {
     const router = useRouter();
     const [customers, setCustomers] = useState(initialCustomers);
     const [categories, setCategories] = useState(initialCategories);
     const [customerId, setCustomerId] = useState("");
+    const [paymentType, setPaymentType] = useState<'Cash' | 'Card' | 'UPI'>('Cash');
+    const [couponCode, setCouponCode] = useState("");
+    const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+    const [isCouponDropdownOpen, setIsCouponDropdownOpen] = useState(false);
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState("");
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [items, setItems] = useState<{ categoryId: string; menuEntryId: string; name: string; price: number; quantity: number }[]>([]);
     const [comment, setComment] = useState("");
@@ -42,6 +49,22 @@ export default function CreateInvoiceForm({
     const [hasDownloaded, setHasDownloaded] = useState(false);
     const [canShare, setCanShare] = useState(false);
     const [currentDate, setCurrentDate] = useState("");
+    const [logoBase64, setLogoBase64] = useState<string>("");
+
+    // Pre-fetch logo for PDF because addImage requires synchronous data or base64
+    useEffect(() => {
+        if (initialUser?.logoUrl) {
+            getLogoBase64(initialUser.logoUrl)
+                .then(res => {
+                    if (res.success && res.base64) {
+                        setLogoBase64(res.base64);
+                    } else {
+                        console.error("Logo prefetch action failed:", res.error);
+                    }
+                })
+                .catch(e => console.error("Logo prefetch exc", e));
+        }
+    }, [initialUser?.logoUrl]);
 
     // Check share compatibility on mount
     useEffect(() => {
@@ -57,6 +80,39 @@ export default function CreateInvoiceForm({
     const totalAmount = items.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0
+    );
+
+    const getDiscountAmount = () => {
+        if (!appliedCoupon) return 0;
+        if (appliedCoupon.type === 'PERCENTAGE') {
+            if (appliedCoupon.applicableTo === 'SPECIFIC_ITEMS') {
+                const applicableTotal = items.reduce((sum, item) => {
+                    if (appliedCoupon.itemIds.includes(item.menuEntryId)) {
+                        return sum + (item.price * item.quantity);
+                    }
+                    return sum;
+                }, 0);
+                return (applicableTotal * appliedCoupon.value) / 100;
+            }
+            return (totalAmount * appliedCoupon.value) / 100;
+        } else {
+            return appliedCoupon.value; // Fixed
+        }
+    };
+
+    const discountAmount = getDiscountAmount();
+    const grandTotal = Math.max(0, totalAmount - discountAmount);
+
+    const handleApplyCoupon = () => {
+        if (!couponCode) return;
+        const coupon = coupons.find(c => c.code === couponCode.toUpperCase() && c.isActive);
+        if (!coupon) return alert("Invalid or inactive coupon code.");
+
+        setAppliedCoupon(coupon);
+    };
+
+    const filteredCoupons = coupons.filter(c =>
+        c.code.toLowerCase().includes(couponCode.toLowerCase()) && c.isActive
     );
 
     const selectedCustomer = customers.find((c) => c._id === customerId);
@@ -92,54 +148,62 @@ export default function CreateInvoiceForm({
         const customer = customers.find((c) => c._id === data.customerId);
 
         // Header
-        doc.setFontSize(20);
-        doc.setTextColor(40, 40, 40);
-        doc.text("INVOICE", 105, 20, { align: "center" });
-
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 105, 28, { align: "center" });
-
-        // Business Info
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text(initialUser?.businessName || "WA Invoice App", 14, 45);
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text("Premium Digital Billing", 14, 50);
-
-        // Add logo if URL is present
-        if (initialUser?.logoUrl) {
+        // Header / Branding
+        let textX = 14;
+        if (logoBase64) {
             try {
-                // jspdf's addImage takes a URL, base64, or image element
-                doc.addImage(initialUser.logoUrl, 'PNG', 160, 10, 30, 30);
+                const format = initialUser?.logoUrl?.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
+                doc.addImage(logoBase64, format, 14, 12, 16, 16);
+                textX = 34; // Shift text right
             } catch (e) {
-                console.error("Failed to add logo to PDF:", e);
+                console.error("Failed adding logo to PDF:", e);
             }
         }
 
-        // Customer Info
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Bill To:", 14, 65);
-        doc.setFontSize(11);
-        doc.text(customer?.name || "Customer", 14, 72);
+        doc.setFontSize(16);
+        doc.setTextColor(30, 41, 59); // Slate-800
+        doc.text(initialUser?.businessName || "WA Invoice App", textX, 19);
+
+        doc.setFontSize(9);
+        doc.setTextColor(148, 163, 184); // Slate-400
+        doc.text("PREMIUM DIGITAL BILLING", textX, 24);
+
+        // Header Divider
+        doc.setDrawColor(241, 245, 249); // Slate-100
+        doc.setLineWidth(0.5);
+        doc.line(14, 32, 196, 32);
+
+        // Customer Info & Date Alignment
         doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(customer?.phoneNumber || "", 14, 78);
-        doc.text(customer?.address || "", 14, 84);
+        doc.setTextColor(100, 116, 139); // Slate-500
+        doc.text("BILLING TO", 14, 42);
+
+        doc.text("INVOICE DATE", 196, 42, { align: "right" });
+
+        doc.setFontSize(12);
+        doc.setTextColor(15, 23, 42); // Slate-900
+        doc.text(customer?.name || "Customer", 14, 49);
+
+        doc.setFontSize(11);
+        doc.setTextColor(15, 23, 42);
+        doc.text(currentDate, 196, 49, { align: "right" });
+
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139);
+        doc.text(customer?.phoneNumber || "", 14, 55);
+        doc.text(customer?.address || "", 14, 61);
 
         // Table
         const tableData = data.items.map((item: any, index: number) => [
             index + 1,
             item.name,
-            `₹${item.price.toFixed(2)}`,
+            `Rs. ${item.price.toFixed(2)}`,
             item.quantity,
-            `₹${(item.price * item.quantity).toFixed(2)}`,
+            `Rs. ${(item.price * item.quantity).toFixed(2)}`,
         ]);
 
         autoTable(doc, {
-            startY: 95,
+            startY: 72,
             head: [["#", "Description", "Unit Price", "Quantity", "Total"]],
             body: tableData,
             theme: "striped",
@@ -147,13 +211,25 @@ export default function CreateInvoiceForm({
         });
 
         const finalY = (doc as any).lastAutoTable.finalY + 10;
+        const subtotal = data.items.reduce((acc: number, item: any) => acc + item.price * item.quantity, 0);
 
         // Totals
-        doc.setFontSize(12);
+        doc.setFontSize(11);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Subtotal: Rs. ${subtotal.toFixed(2)}`, 140, finalY);
+
+        let currentY = finalY;
+
+        if (data.discountAmount && data.discountAmount > 0) {
+            currentY += 6;
+            doc.setTextColor(220, 38, 38); // Red for discount
+            doc.text(`Discount: -Rs. ${data.discountAmount.toFixed(2)}`, 140, currentY);
+        }
+
+        currentY += 8;
+        doc.setFontSize(13);
         doc.setTextColor(0, 0, 0);
-        doc.text(`Subtotal: ₹${data.totalAmount.toFixed(2)}`, 140, finalY);
-        doc.setFontSize(14);
-        doc.text(`Total: ₹${data.totalAmount.toFixed(2)}`, 140, finalY + 8);
+        doc.text(`Total: Rs. ${data.totalAmount.toFixed(2)}`, 140, currentY);
 
         // Notes
         if (data.comment) {
@@ -183,16 +259,37 @@ export default function CreateInvoiceForm({
         setHasDownloaded(true);
     };
 
+    const printPDF = (data: any) => {
+        const file = getInvoiceFile(data);
+        const url = URL.createObjectURL(file);
+
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        iframe.src = url;
+        document.body.appendChild(iframe);
+
+        iframe.onload = () => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+                URL.revokeObjectURL(url);
+            }, 2000);
+        };
+        setHasDownloaded(true);
+    };
+
     const handleDirectShare = async () => {
         if (!successData) return;
 
         const file = getInvoiceFile(successData);
         const customer = customers.find((c) => c._id === successData.customerId);
 
+        const invoiceLink = pdfUrl || `${window.location.origin}/public/invoice/${invoiceId}`;
         const shareData = {
             files: [file],
             title: `Invoice for ${customer?.name}`,
-            text: `Professional invoice for ${customer?.name} - View online: ${window.location.origin}/public/invoice/${invoiceId}`,
+            text: `Professional invoice for ${customer?.name} - View online: ${invoiceLink}`,
         };
 
         if (navigator.canShare && navigator.canShare(shareData)) {
@@ -220,20 +317,35 @@ export default function CreateInvoiceForm({
         const customer = customers.find((c) => c._id === successData.customerId);
         if (!customer) return;
 
-        let text = `*Invoice from WA Invoice*\n`;
-        text += `Hello ${customer.name},\n\n`;
-        text += `*Details:*\n`;
+        const businessName = initialUser?.businessName || "WA Invoice";
+        const customerName = customer?.name || "Customer";
+        const totalAmount = `₹${successData.totalAmount.toFixed(2)}`;
+        const invoiceLink = pdfUrl || `${window.location.origin}/public/invoice/${invoiceId}`;
+
+        let itemDetailText = "";
         successData.items.forEach((item: any) => {
-            text += `- ${item.name} x${item.quantity} = ₹${(
-                item.price * item.quantity
-            ).toFixed(2)}\n`;
+            itemDetailText += `- ${item.name} x${item.quantity} = ₹${(item.price * item.quantity).toFixed(2)}\n`;
         });
-        text += `\n*Total Amount:* ₹${successData.totalAmount.toFixed(2)}\n`;
-        if (successData.comment) {
-            text += `\n*Note:* ${successData.comment}\n`;
+
+        let text = "";
+        if (initialUser?.whatsappTemplate) {
+            text = initialUser.whatsappTemplate
+                .replace(/{customer_name}/g, customerName)
+                .replace(/{total_amount}/g, totalAmount)
+                .replace(/{invoice_url}/g, invoiceLink)
+                .replace(/{business_name}/g, businessName)
+                .replace(/{item_list}/g, itemDetailText.trim());
+        } else {
+            text = `*Invoice from ${businessName}*\n`;
+            text += `Hello ${customerName},\n\n`;
+            text += `*Details:*\n${itemDetailText}`;
+            if (successData.comment) {
+                text += `\n*Note:* ${successData.comment}\n`;
+            }
+            text += `\n*Total Amount:* ${totalAmount}\n`;
+            text += `\n*View & Download Invoice:* ${invoiceLink}\n`;
+            text += `\nThank you for your business!`;
         }
-        text += `\n*View & Download Invoice:* ${window.location.origin}/public/invoice/${invoiceId}\n`;
-        text += `\nThank you for your business!`;
 
         const encodedText = encodeURIComponent(text);
         let phone = customer.phoneNumber.replace(/\D/g, "");
@@ -252,14 +364,45 @@ export default function CreateInvoiceForm({
         const invoiceData = {
             customerId,
             items,
-            totalAmount,
+            totalAmount: grandTotal,
+            discountAmount,
+            couponCode: appliedCoupon?.code,
             comment,
+            paymentType,
         };
 
         const res = await createInvoice(invoiceData);
         if (res.success) {
             setInvoiceId(res.invoiceId);
             setSuccessData(invoiceData);
+
+            // Upload PDF to R2
+            try {
+                const file = getInvoiceFile(invoiceData);
+                const uploadRes = await getUploadUrl(`invoices/${res.invoiceId}.pdf`, "application/pdf");
+
+                if (!uploadRes.success || !uploadRes.url) {
+                    return alert(`Presign URL Error: ${uploadRes.error || "Failed to get presigned URL"}`);
+                }
+
+                const uploadFetch = await fetch(uploadRes.url, {
+                    method: "PUT",
+                    body: file,
+                    headers: { "Content-Type": "application/pdf" }
+                });
+
+                if (!uploadFetch.ok) {
+                    return alert(`R2 Upload Failed: ${uploadFetch.statusText || "Fetch error"}. Check Cloudflare R2 CORS settings.`);
+                }
+
+                const publicUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL || ""}/invoices/${res.invoiceId}.pdf`;
+                await updateInvoicePdfUrl(res.invoiceId, publicUrl);
+                setPdfUrl(publicUrl);
+                alert("PDF backed up to R2 successfully!");
+            } catch (uploadErr: any) {
+                console.error("Auto R2 Upload failed:", uploadErr);
+                alert(`Upload Exception: ${uploadErr.message || "Network or CORS Error"}`);
+            }
         } else {
             alert(res.error);
         }
@@ -267,8 +410,24 @@ export default function CreateInvoiceForm({
     };
 
     if (successData) {
+        const customer = customers.find((c) => c._id === successData.customerId);
+        const isGuest = !successData.customerId || customer?.name?.toLowerCase() === "guest";
+
         return (
-            <div className="bg-white p-6 md:p-12 rounded-3xl shadow-xl border border-green-100 text-center space-y-8 max-w-2xl mx-auto animate-in fade-in zoom-in duration-300">
+            <div className="bg-white p-6 md:p-12 rounded-3xl shadow-xl border border-green-100 text-center space-y-8 max-w-2xl mx-auto animate-in fade-in zoom-in duration-300 relative">
+                <button
+                    onClick={() => {
+                        setSuccessData(null);
+                        setIsPreview(false);
+                        setItems([]);
+                        setCustomerId("");
+                        setComment("");
+                        setHasDownloaded(false);
+                    }}
+                    className="absolute top-6 left-6 text-gray-400 hover:text-gray-800 text-xs font-bold flex items-center gap-1 transition-colors"
+                >
+                    <ArrowLeft size={14} /> Go back
+                </button>
                 <div className="w-20 h-20 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
                     <CheckCircle size={40} />
                 </div>
@@ -280,7 +439,7 @@ export default function CreateInvoiceForm({
 
                 <div className="grid grid-cols-1 gap-4 text-left">
                     {/* Share Directly (Preferred for Mobile) */}
-                    {canShare && (
+                    {canShare && !isGuest && (
                         <div className="p-5 rounded-2xl border-2 border-blue-600 bg-blue-50/50 relative overflow-hidden group">
                             <div className="absolute top-2 right-4 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Recommended</div>
                             <div className="flex items-start gap-4">
@@ -310,21 +469,32 @@ export default function CreateInvoiceForm({
                                 <h4 className="font-bold text-gray-800">Manual Flow (Best for Desktop)</h4>
                                 <p className="text-xs text-gray-500 mt-1">WhatsApp links cannot attach local files directly. Please use this two-step process:</p>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-                                    <button
-                                        onClick={() => generatePDF(successData)}
-                                        className="flex items-center justify-center gap-2 py-4 px-4 bg-white border-2 border-gray-200 hover:border-blue-500 text-gray-700 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm"
-                                    >
-                                        <FileDown size={18} className="text-blue-500" />
-                                        1. Download PDF
-                                    </button>
-                                    <button
-                                        onClick={handleWhatsAppSend}
-                                        className="flex items-center justify-center gap-2 py-4 px-4 bg-[#25D366] hover:bg-[#22c35e] text-white rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg shadow-green-100"
-                                    >
-                                        <Send size={18} />
-                                        2. Open & Attach
-                                    </button>
+                                <div className="mt-4">
+                                    {isGuest ? (
+                                        <button
+                                            onClick={() => printPDF(successData)}
+                                            className="w-full flex items-center justify-center gap-2 py-4 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-200 transition-all active:scale-95"
+                                        >
+                                            <Printer size={18} /> Print Invoice
+                                        </button>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <button
+                                                onClick={() => generatePDF(successData)}
+                                                className="flex items-center justify-center gap-2 py-4 px-4 bg-white border-2 border-gray-200 hover:border-blue-500 text-gray-700 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm"
+                                            >
+                                                <FileDown size={18} className="text-blue-500" />
+                                                1. Download PDF
+                                            </button>
+                                            <button
+                                                onClick={handleWhatsAppSend}
+                                                className="flex items-center justify-center gap-2 py-4 px-4 bg-[#25D366] hover:bg-[#22c35e] text-white rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg shadow-green-100"
+                                            >
+                                                <Send size={18} />
+                                                2. Open & Attach
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                                 <p className="text-[10px] text-gray-400 mt-3 text-center italic">Tip: Click 'WhatsApp' above to open the chat, then attach the downloaded file manually.</p>
                             </div>
@@ -342,7 +512,7 @@ export default function CreateInvoiceForm({
                             setComment("");
                             setHasDownloaded(false);
                         }}
-                        className="text-gray-400 hover:text-blue-600 text-sm font-bold flex items-center justify-center gap-2 mx-auto transition-colors"
+                        className="text-blue-600 hover:text-blue-700 text-sm font-bold flex items-center justify-center gap-2 mx-auto transition-colors"
                     >
                         <Plus size={16} /> Create Another Invoice
                     </button>
@@ -364,6 +534,27 @@ export default function CreateInvoiceForm({
                     >
                         <Edit2 size={16} /> Edit Details
                     </button>
+                </div>
+
+                {/* Invoice Header Branding */}
+                <div className="flex justify-between items-start py-6 border-b border-gray-50">
+                    <div className="flex items-center gap-4">
+                        {initialUser?.logoUrl ? (
+                            <img
+                                src={initialUser.logoUrl}
+                                alt="Business Logo"
+                                className="w-16 h-16 object-contain rounded-xl bg-gray-50 p-2 shadow-sm border border-gray-100"
+                            />
+                        ) : (
+                            <div className="w-16 h-16 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 font-black text-xl border border-blue-100 shadow-sm">
+                                {initialUser?.businessName?.[0] || "W"}
+                            </div>
+                        )}
+                        <div>
+                            <h3 className="text-2xl font-black text-gray-900 tracking-tight">{initialUser?.businessName || "WA Invoice App"}</h3>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">Premium Digital Billing</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
@@ -505,6 +696,22 @@ export default function CreateInvoiceForm({
                                 <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Current</span>
                             </div>
                         </div>
+
+                        <div className="relative">
+                            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+                                <CreditCard size={14} className="text-gray-400" />
+                                Payment Mode
+                            </label>
+                            <select
+                                value={paymentType}
+                                onChange={(e) => setPaymentType(e.target.value as any)}
+                                className="block w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-bold text-gray-900 shadow-sm outline-none"
+                            >
+                                <option value="Cash">Cash</option>
+                                <option value="Card">Card</option>
+                                <option value="UPI">UPI</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -598,8 +805,10 @@ export default function CreateInvoiceForm({
                                                     <input
                                                         type="number"
                                                         value={item.price}
-                                                        disabled
-                                                        className="block w-full pl-8 pr-4 py-3 bg-gray-100 border border-transparent rounded-xl text-sm text-gray-500 font-black cursor-not-allowed"
+                                                        onChange={(e) =>
+                                                            handleItemChange(index, "price", parseFloat(e.target.value) || 0)
+                                                        }
+                                                        className="block w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-black text-gray-900 bg-white"
                                                     />
                                                 </div>
                                             </div>
@@ -653,6 +862,71 @@ export default function CreateInvoiceForm({
                             className="block w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl shadow-inner focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm text-gray-800 placeholder:text-gray-300 outline-none"
                             placeholder="Add thank you note, payment details, or special instructions..."
                         ></textarea>
+
+                        <div className="border-t pt-4 space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Tag size={14} className="text-gray-400" />
+                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Apply Discount Coupon</h4>
+                            </div>
+                            <div className="flex gap-2 relative">
+                                <div className="flex-1 relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search or Enter Code..."
+                                        value={couponCode}
+                                        onChange={(e) => {
+                                            setCouponCode(e.target.value);
+                                            setIsCouponDropdownOpen(true);
+                                        }}
+                                        onFocus={() => setIsCouponDropdownOpen(true)}
+                                        onBlur={() => setTimeout(() => setIsCouponDropdownOpen(false), 200)}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold uppercase placeholder:text-gray-300 outline-none focus:ring-2 focus:ring-blue-100 text-gray-900"
+                                    />
+                                    {isCouponDropdownOpen && (
+                                        <div className="absolute z-50 bottom-full mb-2 left-0 right-0 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-40 overflow-y-auto divide-y divide-gray-50 animate-in slide-in-from-bottom-2 duration-200">
+                                            {filteredCoupons.length > 0 ? (
+                                                filteredCoupons.map(c => (
+                                                    <button
+                                                        key={c._id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCouponCode(c.code);
+                                                            setAppliedCoupon(c);
+                                                            setIsCouponDropdownOpen(false);
+                                                        }}
+                                                        className="w-full text-left p-3 hover:bg-gray-50 flex items-center justify-between text-sm font-bold"
+                                                    >
+                                                        <div>
+                                                            <span className="text-blue-600 font-extrabold">{c.code}</span>
+                                                            <span className="text-gray-400 text-xs ml-2">({c.type === 'PERCENTAGE' ? `${c.value}%` : `₹${c.value}`})</span>
+                                                        </div>
+                                                        <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-black">
+                                                            {c.applicableTo === 'ALL' ? 'ALL ITEMS' : 'SPECIFIC'}
+                                                        </span>
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="p-4 text-center text-xs font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
+                                                    No coupons found
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleApplyCoupon}
+                                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all"
+                                >
+                                    Apply
+                                </button>
+                            </div>
+                            {appliedCoupon && (
+                                <p className="text-xs text-green-600 font-bold flex items-center gap-1">
+                                    <Check size={14} className="text-green-600" /> Coupon {appliedCoupon.code} Applied! Saved {appliedCoupon.type === 'PERCENTAGE' ? `${appliedCoupon.value}%` : `₹${appliedCoupon.value}`}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     <div className="lg:col-span-2 bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden flex flex-col justify-between group">
@@ -669,10 +943,12 @@ export default function CreateInvoiceForm({
                                     <span>Subtotal</span>
                                     <span>₹{totalAmount.toFixed(2)}</span>
                                 </div>
-                                <div className="flex justify-between text-gray-400 text-sm font-medium">
-                                    <span>Discount / Tax</span>
-                                    <span className="italic text-[10px] uppercase">Calculated in Summary</span>
-                                </div>
+                                {discountAmount > 0 && (
+                                    <div className="flex justify-between text-emerald-400 text-sm font-black">
+                                        <span>Discount ({appliedCoupon?.code})</span>
+                                        <span>- ₹{discountAmount.toFixed(2)}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -680,7 +956,7 @@ export default function CreateInvoiceForm({
                             <div className="flex justify-between items-end">
                                 <div>
                                     <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Grand Total</p>
-                                    <p className="text-4xl font-black text-white tracking-tighter">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                    <p className="text-4xl font-black text-white tracking-tighter">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                 </div>
                                 <div className="bg-white/10 px-3 py-1 rounded-full backdrop-blur-md border border-white/10">
                                     <span className="text-[10px] font-bold text-white uppercase tracking-tighter">INR (₹)</span>

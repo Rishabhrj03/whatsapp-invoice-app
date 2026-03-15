@@ -13,6 +13,8 @@ import {
     LogOut,
     X,
     Menu,
+    Tag,
+    Download
 } from "lucide-react";
 
 interface DashboardLayoutClientProps {
@@ -22,6 +24,8 @@ interface DashboardLayoutClientProps {
         name?: string | null;
         email?: string | null;
         role?: string | null;
+        businessName?: string | null;
+        logoUrl?: string | null;
     };
 }
 
@@ -36,8 +40,10 @@ export default function DashboardLayoutClient({
         { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
         { href: "/customers", icon: Users, label: "Customers" },
         { href: "/menu", icon: MenuIcon, label: "Menu Items" },
+        { href: "/coupons", icon: Tag, label: "Coupons" },
         { href: "/transactions", icon: MessageSquareShare, label: "Transactions" },
         { href: "/invoice/create", icon: FileText, label: "Create Invoice" },
+        { href: "/export", icon: Download, label: "Export" },
         { href: "/settings", icon: MenuIcon, label: "Settings" },
         ...(user.role === 'OWNER' ? [{ href: "/team", icon: Users, label: "Team" }] : []),
     ];
@@ -46,8 +52,8 @@ export default function DashboardLayoutClient({
         <>
             <div className="p-4 border-b flex items-center justify-between lg:block">
                 <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    <img src="/icons/icon-192x192.png" alt="Logo" className="w-8 h-8" />
-                    <h1 className="text-xl font-bold text-gray-800">WA Invoice</h1>
+                    <img src={user.logoUrl || "/icons/icon-192x192.png"} alt="Logo" className="w-8 h-8 object-contain" />
+                    <h1 className="text-xl font-bold text-gray-800">{user.businessName || "WA Invoice"}</h1>
                 </Link>
                 <button
                     onClick={() => setIsSidebarOpen(false)}
@@ -125,8 +131,8 @@ export default function DashboardLayoutClient({
                 {/* Mobile Header */}
                 <header className="lg:hidden bg-white border-b p-4 flex items-center justify-between">
                     <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                        <img src="/icons/icon-192x192.png" alt="Logo" className="w-8 h-8" />
-                        <h1 className="text-lg font-bold text-gray-800">WA Invoice</h1>
+                        <img src={user.logoUrl || "/icons/icon-192x192.png"} alt="Logo" className="w-8 h-8 object-contain" />
+                        <h1 className="text-lg font-bold text-gray-800">{user.businessName || "WA Invoice"}</h1>
                     </Link>
                     <button
                         onClick={() => setIsSidebarOpen(true)}

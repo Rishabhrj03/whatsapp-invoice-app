@@ -2,16 +2,63 @@
 
 import { useState } from "react";
 import { updateBusinessProfile } from "@/app/actions/user";
-import { Building2, Image as ImageIcon, CheckCircle2, Loader2, Save } from "lucide-react";
+import { Building2, Image as ImageIcon, CheckCircle2, Loader2, Save, Upload } from "lucide-react";
+import { getUploadUrl } from "@/app/actions/invoice";
 
 export default function SettingsClient({ initialUser }: { initialUser: any }) {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [logoUrl, setLogoUrl] = useState(initialUser.logoUrl || "");
+    const [uploading, setUploading] = useState(false);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const uploadRes = await getUploadUrl(`logos/${initialUser._id}-${file.name}`, file.type);
+            if (!uploadRes.success || !uploadRes.url) {
+                return alert(`Failed to get upload URL: ${uploadRes.error}`);
+            }
+
+            const uploadFetch = await fetch(uploadRes.url, {
+                method: "PUT",
+                body: file,
+                headers: { "Content-Type": file.type }
+            });
+
+            if (!uploadFetch.ok) {
+                return alert("Upload failed. Configure R2 CORS settings!");
+            }
+
+            const publicUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL || ""}/logos/${initialUser._id}-${file.name}`;
+            setLogoUrl(publicUrl);
+            alert("Logo uploaded to R2 successfully!");
+        } catch (err: any) {
+            alert(`Upload Exception: ${err.message}`);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const defaultTemplate = `*Invoice from {business_name}*
+Hello {customer_name},
+
+*Details:*
+{item_list}
+
+*Total Amount:* {total_amount}
+
+*View & Download Invoice:* {invoice_url}
+
+Thank you for your business!`;
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         const formData = new FormData(e.currentTarget);
+        formData.set("logoUrl", logoUrl); // Use uploaded/updated state URL
 
         const res = await updateBusinessProfile(formData);
         if (res.success) {
@@ -61,34 +108,71 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
                     </div>
 
                     <div className="space-y-1.5">
-                        <label htmlFor="logoUrl" className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Logo URL</label>
-                        <div className="relative">
-                            <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input
-                                type="text"
-                                id="logoUrl"
-                                name="logoUrl"
-                                defaultValue={initialUser.logoUrl || ""}
-                                placeholder="https://example.com/logo.png"
-                                className="block w-full pl-12 pr-5 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm text-black"
-                            />
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Logo</label>
+
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <label className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl p-6 bg-gray-50/50 hover:bg-gray-50 hover:border-blue-400 transition-all cursor-pointer relative">
+                                {uploading ? (
+                                    <Loader2 className="animate-spin text-blue-500 mb-2" size={24} />
+                                ) : (
+                                    <Upload className="text-gray-400 mb-2" size={24} />
+                                )}
+                                <span className="text-sm font-bold text-gray-700">{uploading ? "Uploading to Cloud..." : "Upload File"}</span>
+                                <span className="text-[10px] text-gray-400 mt-1">PNG, JPG, WEBP</span>
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    disabled={uploading}
+                                />
+                            </label>
+
+                            <div className="flex-1 space-y-2">
+                                <span className="text-[11px] font-bold text-gray-500">Or enter image URL:</span>
+                                <div className="relative">
+                                    <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                    <input
+                                        type="text"
+                                        id="logoUrl"
+                                        name="logoUrl"
+                                        value={logoUrl}
+                                        onChange={(e) => setLogoUrl(e.target.value)}
+                                        placeholder="https://example.com/logo.png"
+                                        className="block w-full pl-12 pr-5 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm text-black font-medium"
+                                    />
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2 px-1">
-                            Tip: For best results, use a square image (PNG/JPG) with a transparent background.
-                        </p>
                     </div>
 
-                    {initialUser.logoUrl && (
+                    {logoUrl && (
                         <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center gap-4">
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Logo Preview</p>
                             <img
-                                src={initialUser.logoUrl}
+                                src={logoUrl}
                                 alt="Business Logo"
                                 className="h-20 w-auto object-contain drop-shadow-md"
                                 onError={(e) => (e.currentTarget.style.display = 'none')}
                             />
                         </div>
                     )}
+
+                    <div className="space-y-1.5">
+                        <label htmlFor="whatsappTemplate" className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">WhatsApp Message Template</label>
+                        <textarea
+                            key={initialUser.whatsappTemplate || "default"}
+                            id="whatsappTemplate"
+                            name="whatsappTemplate"
+                            defaultValue={initialUser.whatsappTemplate || defaultTemplate}
+                            placeholder={"Hello {customer_name},\n\nHere is your invoice for {total_amount}.\n\nView invoice: {invoice_url}\n\nThank you for shopping at {business_name}!"}
+                            rows={6}
+                            className="block w-full px-5 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm text-black font-medium leading-relaxed"
+                        />
+                        <p className="text-[10px] text-gray-400 px-1 mt-1 leading-normal">
+                            Available Variables: <span className="text-blue-600 font-bold">{`{customer_name}`}</span>, <span className="text-blue-600 font-bold">{`{total_amount}`}</span>, <span className="text-blue-600 font-bold">{`{invoice_url}`}</span>, <span className="text-blue-600 font-bold">{`{business_name}`}</span>, <span className="text-blue-600 font-bold">{`{item_list}`}</span>
+                        </p>
+                    </div>
 
                     <button
                         type="submit"

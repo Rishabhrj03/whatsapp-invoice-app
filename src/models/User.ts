@@ -6,6 +6,7 @@ export interface IUser extends Document {
     password?: string;
     businessName?: string;
     logoUrl?: string;
+    whatsappTemplate?: string;
     role: 'OWNER' | 'STAFF';
     ownerId?: mongoose.Types.ObjectId; // If STAFF, points to OWNER
     emailVerified?: Date;
@@ -21,6 +22,7 @@ const UserSchema = new Schema<IUser>(
         password: { type: String, required: false },
         businessName: { type: String, required: false },
         logoUrl: { type: String, required: false },
+        whatsappTemplate: { type: String, required: false },
         role: { type: String, enum: ['OWNER', 'STAFF'], default: 'OWNER' },
         ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
         emailVerified: { type: Date, required: false },
@@ -29,5 +31,9 @@ const UserSchema = new Schema<IUser>(
     },
     { timestamps: true }
 );
+
+if (mongoose.models && mongoose.models.User) {
+    delete (mongoose.models as any).User;
+}
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

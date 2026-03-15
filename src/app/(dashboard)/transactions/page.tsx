@@ -2,16 +2,16 @@ import dbConnect from "@/lib/mongoose";
 import Invoice from "@/models/Invoice";
 import TransactionsClient from "@/components/TransactionsClient";
 import { auth } from "@/auth";
+import { getEffectiveUserId } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function TransactionsPage() {
     await dbConnect();
-    const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) return null;
+    const effectiveUserId = await getEffectiveUserId();
+    if (!effectiveUserId) return null;
 
-    const invoices = await Invoice.find({ userId })
+    const invoices = await Invoice.find({ userId: effectiveUserId })
         .populate("customer")
         .sort({ createdAt: -1 })
         .lean();

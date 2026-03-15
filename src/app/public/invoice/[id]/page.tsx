@@ -1,6 +1,7 @@
 import dbConnect from "@/lib/mongoose";
 import Invoice from "@/models/Invoice";
 import Customer from "@/models/Customer";
+import User from "@/models/User";
 import { notFound } from "next/navigation";
 import { Eye, FileDown, ArrowLeft, Printer } from "lucide-react";
 import Link from "next/link";
@@ -14,14 +15,16 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     if (!invoice) return { title: 'Invoice Not Found' };
 
     const customer = (invoice.customer as any);
+    const user = await User.findById(invoice.userId).lean();
+
     return {
         title: `Invoice for ${customer?.name || 'Customer'}`,
         description: `View and download your professional digital bill for ₹${invoice.totalAmount.toLocaleString('en-IN')}.`,
         openGraph: {
             title: `Digital Invoice - ${customer?.name}`,
-            description: `Total: ₹${invoice.totalAmount.toLocaleString('en-IN')} | Professional Bill from WA Invoice App`,
+            description: `Total: ₹${invoice.totalAmount.toLocaleString('en-IN')} | Professional Bill from ${(user as any)?.businessName || 'WA Invoice App'}`,
             type: 'website',
-            images: ["/icons/icon-512x512.png"],
+            images: (user as any)?.logoUrl ? [(user as any).logoUrl] : ["/icons/icon-512x512.png"],
         }
     };
 }
@@ -35,6 +38,8 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
     if (!invoice) {
         notFound();
     }
+
+    const user = await User.findById((invoice as any).userId).lean();
 
     // Serialize for Client Component
     const serializedInvoice = JSON.parse(JSON.stringify(invoice));
@@ -54,7 +59,10 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
                     </div>
                 </div>
 
-                <PublicInvoiceClient invoice={serializedInvoice} />
+                <PublicInvoiceClient
+                    invoice={serializedInvoice}
+                    user={user ? JSON.parse(JSON.stringify(user)) : null}
+                />
 
                 <div className="mt-8 text-center">
                     <p className="text-gray-400 text-sm font-medium">

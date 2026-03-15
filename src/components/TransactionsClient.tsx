@@ -7,7 +7,8 @@ import {
     FileText,
     UserPlus,
     Calendar,
-    ArrowRight
+    ArrowRight,
+    FileDown
 } from "lucide-react";
 import Link from "next/link";
 import AddCustomerModal from "./AddCustomerModal";
@@ -61,6 +62,7 @@ export default function TransactionsClient({ initialInvoices }: { initialInvoice
                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Items</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Payment</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Amount</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
                                 </tr>
@@ -103,19 +105,39 @@ export default function TransactionsClient({ initialInvoices }: { initialInvoice
                                                 {inv.items.length}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold ${inv.paymentType === 'Cash' ? 'bg-green-50 text-green-700' :
+                                                inv.paymentType === 'Card' ? 'bg-blue-50 text-blue-700' :
+                                                    'bg-purple-50 text-purple-700'
+                                                }`}>
+                                                {inv.paymentType || 'Cash'}
+                                            </span>
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <p className="text-sm font-black text-gray-900">
                                                 ₹{inv.totalAmount.toLocaleString()}
                                             </p>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <Link
-                                                href={`/public/invoice/${inv._id}`}
-                                                target="_blank"
-                                                className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
-                                            >
-                                                View Online <ArrowRight size={14} />
-                                            </Link>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <Link
+                                                    href={`/public/invoice/${inv._id}`}
+                                                    target="_blank"
+                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                                                >
+                                                    View Page <ArrowRight size={14} />
+                                                </Link>
+                                                {inv.pdfUrl && (
+                                                    <a
+                                                        href={inv.pdfUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-800 transition-colors"
+                                                    >
+                                                        <FileDown size={12} /> PDF Backup
+                                                    </a>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

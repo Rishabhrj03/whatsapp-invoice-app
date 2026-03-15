@@ -4,7 +4,23 @@ import { Eye, FileDown, Printer } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default function PublicInvoiceClient({ invoice }: { invoice: any }) {
+import { useState, useEffect } from "react";
+
+export default function PublicInvoiceClient({ invoice, user }: { invoice: any; user?: any }) {
+    const [logoBase64, setLogoBase64] = useState<string>("");
+
+    useEffect(() => {
+        if (user?.logoUrl) {
+            fetch(user.logoUrl)
+                .then(r => r.blob())
+                .then(blob => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setLogoBase64(reader.result as string);
+                    reader.readAsDataURL(blob);
+                })
+                .catch(e => console.error("Logo fetch err", e));
+        }
+    }, [user?.logoUrl]);
     const generatePDF = () => {
         const doc = new jsPDF();
         const customer = invoice.customer;
@@ -20,12 +36,21 @@ export default function PublicInvoiceClient({ invoice }: { invoice: any }) {
         doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, 105, 35, { align: "center" });
 
         // Business Info
+        if (logoBase64) {
+            try {
+                const format = user?.logoUrl?.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
+                doc.addImage(logoBase64, format, 160, 10, 30, 30);
+            } catch (e) {
+                console.error("Failed to add logo to PDF:", e);
+            }
+        }
+
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
-        doc.text("WA Invoice App", 14, 50);
+        doc.text(user?.businessName || "WA Invoice App", 14, 50);
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text("Professional Digital Billing", 14, 55);
+        doc.text("Premium Digital Billing", 14, 55);
 
         // Customer Info
         doc.setFontSize(12);
@@ -59,15 +84,16 @@ export default function PublicInvoiceClient({ invoice }: { invoice: any }) {
         const finalY = (doc as any).lastAutoTable.finalY + 15;
 
         // Totals
+        const rupeeSymbol = "Rs. "; // Fix glyph
         doc.setFontSize(12);
         doc.setTextColor(100, 100, 100);
         doc.text(`Subtotal:`, 140, finalY);
-        doc.text(`₹${invoice.totalAmount.toFixed(2)}`, 180, finalY, { align: "right" });
+        doc.text(`${rupeeSymbol}${invoice.totalAmount.toFixed(2)}`, 180, finalY, { align: "right" });
 
         doc.setFontSize(16);
         doc.setTextColor(37, 99, 235);
         doc.text(`Grand Total:`, 140, finalY + 10);
-        doc.text(`₹${invoice.totalAmount.toFixed(2)}`, 180, finalY + 10, { align: "right" });
+        doc.text(`${rupeeSymbol}${invoice.totalAmount.toFixed(2)}`, 180, finalY + 10, { align: "right" });
 
         // Notes
         if (invoice.comment) {
@@ -87,6 +113,25 @@ export default function PublicInvoiceClient({ invoice }: { invoice: any }) {
             <div className="bg-white p-6 md:p-12 rounded-[40px] shadow-2xl border border-gray-100 relative overflow-hidden">
                 {/* Accent Decor */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-bl-[100px] pointer-events-none"></div>
+
+                {/* HTML Header Branding */}
+                <div className="flex items-center gap-4 border-b border-gray-100 pb-8 mb-8">
+                    {user?.logoUrl ? (
+                        <img
+                            src={user.logoUrl}
+                            alt="Logo"
+                            className="w-16 h-16 object-contain rounded-2xl bg-gray-50 border p-2"
+                        />
+                    ) : (
+                        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 font-black text-xl border">
+                            {user?.businessName?.[0] || "W"}
+                        </div>
+                    )}
+                    <div>
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">{user?.businessName || "WA Invoice App"}</h2>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">Premium Digital Billing</p>
+                    </div>
+                </div>
 
                 <div className="flex flex-col md:flex-row justify-between gap-8 py-4 border-b border-gray-100 pb-10">
                     <div className="space-y-2">

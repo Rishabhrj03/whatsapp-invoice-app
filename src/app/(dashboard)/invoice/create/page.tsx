@@ -8,6 +8,8 @@ import User from "@/models/User";
 import { auth } from "@/auth";
 import { getEffectiveUserId } from "@/lib/auth-utils";
 
+import { getCoupons } from "@/app/actions/coupon";
+
 export const dynamic = "force-dynamic";
 
 export default async function CreateInvoicePage() {
@@ -18,10 +20,11 @@ export default async function CreateInvoicePage() {
 
     if (!effectiveUserId) return null;
 
-    const [customers, menuItems, categories] = await Promise.all([
+    const [customers, menuItems, categories, couponsRes] = await Promise.all([
         Customer.find({ userId: effectiveUserId }).sort({ name: 1 }),
         MenuEntry.find({ userId: effectiveUserId }).sort({ name: 1 }),
-        Category.find({ userId: effectiveUserId }).sort({ name: 1 })
+        Category.find({ userId: effectiveUserId }).sort({ name: 1 }),
+        getCoupons()
     ]);
 
     // Convert mongoose documents to plain JSON to be passed to Client Component
@@ -42,6 +45,7 @@ export default async function CreateInvoicePage() {
                 menuItems={menuItemsData}
                 categories={categoriesData}
                 user={user ? JSON.parse(JSON.stringify(user)) : null}
+                coupons={couponsRes.success ? couponsRes.coupons : []}
             />
         </div>
     );
