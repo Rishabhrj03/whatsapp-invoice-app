@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { updateBusinessProfile } from "@/app/actions/user";
-import { Building2, Image as ImageIcon, CheckCircle2, Loader2, Save, Upload } from "lucide-react";
+import { Building2, Image as ImageIcon, CheckCircle2, Loader2, Save, Upload, AlertCircle } from "lucide-react";
 import { getUploadUrl } from "@/app/actions/invoice";
 
 export default function SettingsClient({ initialUser }: { initialUser: any }) {
@@ -173,6 +173,44 @@ Thank you for your business!`;
                             Available Variables: <span className="text-blue-600 font-bold">{`{customer_name}`}</span>, <span className="text-blue-600 font-bold">{`{total_amount}`}</span>, <span className="text-blue-600 font-bold">{`{invoice_url}`}</span>, <span className="text-blue-600 font-bold">{`{business_name}`}</span>, <span className="text-blue-600 font-bold">{`{item_list}`}</span>
                         </p>
                     </div>
+
+                    <hr className="border-gray-100" />
+
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-gray-800">
+                            <AlertCircle size={18} className="text-amber-500" />
+                            <h3 className="text-sm font-black uppercase tracking-wider">Booking Alert Settings</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label htmlFor="bookingAlertHoursBefore" className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Notify Before (Hours)</label>
+                                <input
+                                    type="number"
+                                    id="bookingAlertHoursBefore"
+                                    name="bookingAlertHoursBefore"
+                                    defaultValue={initialUser.bookingAlertHoursBefore ?? 4}
+                                    min={1}
+                                    className="block w-full px-5 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm text-black font-bold"
+                                />
+                                <p className="text-[10px] text-gray-400 px-1">Alerts if not Prepared X hours before delivery.</p>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label htmlFor="bookingAlertFrequencyMins" className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Snooze Frequency (Mins)</label>
+                                <input
+                                    type="number"
+                                    id="bookingAlertFrequencyMins"
+                                    name="bookingAlertFrequencyMins"
+                                    defaultValue={initialUser.bookingAlertFrequencyMins ?? 30}
+                                    min={5}
+                                    className="block w-full px-5 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm text-black font-bold"
+                                />
+                                <p className="text-[10px] text-gray-400 px-1">Repeat notification interval after dismiss.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <hr className="border-gray-100" />
 
                     <button
                         type="submit"

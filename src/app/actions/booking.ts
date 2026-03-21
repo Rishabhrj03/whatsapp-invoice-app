@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import dbConnect from "@/lib/mongoose";
 import AdvanceBooking from "@/models/AdvanceBooking";
+import User from "@/models/User";
 import { revalidatePath } from "next/cache";
 
 export async function createAdvanceBooking(formData: any) {
@@ -53,6 +54,8 @@ export async function getAdvanceBookings() {
             .sort({ deliveryDate: 1, deliveryTime: 1 })
             .lean();
 
+        const user = await User.findById(session.user.id).lean();
+
         // Convert _id ObjectIds to strings
         const serialized = bookings.map((b: any) => ({
             ...b,
@@ -64,7 +67,14 @@ export async function getAdvanceBookings() {
             alertTime: b.alertTime ? b.alertTime.toISOString() : undefined,
         }));
 
-        return { success: true, bookings: serialized };
+        return {
+            success: true,
+            bookings: serialized,
+            settings: {
+                hoursBefore: user?.bookingAlertHoursBefore ?? 4,
+                frequencyMins: user?.bookingAlertFrequencyMins ?? 30
+            }
+        };
     } catch (error: any) {
         console.error("Get Bookings Error:", error);
         return { success: false, error: "Failed to load bookings" };

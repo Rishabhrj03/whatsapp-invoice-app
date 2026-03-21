@@ -7,9 +7,13 @@ import { getUploadUrl } from "@/app/actions/invoice";
 
 interface BookingsClientProps {
     initialBookings: any[];
+    settings: {
+        hoursBefore: number;
+        frequencyMins: number;
+    };
 }
 
-export default function BookingsClient({ initialBookings }: BookingsClientProps) {
+export default function BookingsClient({ initialBookings, settings }: BookingsClientProps) {
     const [bookings, setBookings] = useState(initialBookings);
     const [searchTerm, setSearchTerm] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -38,7 +42,7 @@ export default function BookingsClient({ initialBookings }: BookingsClientProps)
 
     const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
     const [activeAlert, setActiveAlert] = useState<any | null>(null);
-    const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
+    const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, number>>({});
 
     const playAlertSound = () => {
         try {
@@ -66,9 +70,30 @@ export default function BookingsClient({ initialBookings }: BookingsClientProps)
         const checkAlerts = () => {
             const now = new Date();
             const due = bookings.find(b => {
-                if (!b.alertTime || b.status === "Delivered") return false;
-                const alertDate = new Date(b.alertTime);
-                return alertDate <= now && !dismissedAlerts.includes(b._id);
+                const dismissedAt = (dismissedAlerts as any)[b._id];
+                const snoozeDuration = (settings?.frequencyMins || 30) * 60 * 1000;
+
+                if (dismissedAt && now.getTime() - dismissedAt < snoozeDuration) return false;
+
+                if (b.alertTime && b.status !== "Delivered") {
+                    const alertDate = new Date(b.alertTime);
+                    if (alertDate <= now) return true;
+                }
+
+                if (b.deliveryDate && b.status !== "Prepared" && b.status !== "Delivered") {
+                    const [hour, min] = (b.deliveryTime || "00:00").split(":");
+                    const deliveryAt = new Date(b.deliveryDate);
+                    deliveryAt.setHours(parseInt(hour), parseInt(min), 0, 0);
+
+                    const bufferHours = settings?.hoursBefore || 4;
+                    const cutoffTime = deliveryAt.getTime() - (bufferHours * 60 * 60 * 1000);
+
+                    if (now.getTime() >= cutoffTime) {
+                        b.isDeadlineAlert = true;
+                        return true;
+                    }
+                }
+                return false;
             });
 
             if (due) {
@@ -89,7 +114,7 @@ export default function BookingsClient({ initialBookings }: BookingsClientProps)
 
     const handleDismissAlert = () => {
         if (!activeAlert) return;
-        const updated = [...dismissedAlerts, activeAlert._id];
+        const updated = { ...dismissedAlerts, [activeAlert._id]: Date.now() };
         setDismissedAlerts(updated);
         localStorage.setItem("dismissedAlerts", JSON.stringify(updated));
         setActiveAlert(null);
@@ -447,9 +472,15 @@ export default function BookingsClient({ initialBookings }: BookingsClientProps)
                 <div className="fixed bottom-4 right-4 max-w-sm bg-amber-500 text-white rounded-2xl p-4 shadow-2xl flex items-start gap-3 z-[1500] animate-in slide-in-from-right-4 duration-300">
                     <AlertCircle size={24} className="flex-shrink-0 mt-0.5 text-white animate-bounce" />
                     <div className="flex-1">
-                        <h4 className="font-extrabold text-sm uppercase">Booking Alert!</h4>
-                        <p className="text-xs font-bold">{activeAlert.customerName}'s order requires attention.</p>
-                        {activeAlert.description && <p className="text-[10px] opacity-80 italic mt-1 bg-amber-600/50 p-1.5 rounded-lg">"{activeAlert.description}"</p>}
+                        <h4 className="font-extrabold text-sm uppercase">{activeAlert.isDeadlineAlert ? "🚨 Deadline Alert!" : "Booking Alert!"}</h4>
+                        <p className="text-xs font-bold">
+                            {activeAlert.isDeadlineAlert
+                                ? `${activeAlert.customerName}'s order is not prepared yet! (${settings?.hoursBefore || 4}h remaining)`
+                                : `${activeAlert.customerName}'s order requires attention.`}
+                        </p>
+                        {activeAlert.description && !activeAlert.isDeadlineAlert && (
+                            <p className="text-[10px] opacity-80 italic mt-1 bg-amber-600/50 p-1.5 rounded-lg">"{activeAlert.description}"</p>
+                        )}
                         <div className="flex gap-2 mt-3">
                             <button onClick={() => { setActiveAlert(null); openEditModal(activeAlert); }} className="px-3 py-1.5 bg-white text-amber-600 rounded-xl text-xs font-black shadow-sm">View</button>
                             <button onClick={handleDismissAlert} className="px-3 py-1.5 bg-amber-600 text-white border border-amber-400 rounded-xl text-xs font-bold">Dismiss</button>

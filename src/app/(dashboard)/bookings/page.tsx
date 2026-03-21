@@ -3,5 +3,8 @@ import BookingsClient from "@/components/BookingsClient";
 
 export default async function BookingsPage() {
     const response = await getAdvanceBookings();
-    return <BookingsClient initialBookings={response.success ? response.bookings : []} />;
+    return <BookingsClient
+        initialBookings={response.success ? response.bookings : []}
+        settings={response.success ? (response as any).settings : { hoursBefore: 4, frequencyMins: 30 }}
+    />;
 }

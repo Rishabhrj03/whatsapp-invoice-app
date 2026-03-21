@@ -12,6 +12,8 @@ export interface IUser extends Document {
     emailVerified?: Date;
     resetToken?: string;
     resetTokenExpiry?: Date;
+    bookingAlertHoursBefore?: number;
+    bookingAlertFrequencyMins?: number;
     createdAt: Date;
 }
 
@@ -28,6 +30,8 @@ const UserSchema = new Schema<IUser>(
         emailVerified: { type: Date, required: false },
         resetToken: { type: String, required: false },
         resetTokenExpiry: { type: Date, required: false },
+        bookingAlertHoursBefore: { type: Number, default: 4 },
+        bookingAlertFrequencyMins: { type: Number, default: 30 },
     },
     { timestamps: true }
 );
