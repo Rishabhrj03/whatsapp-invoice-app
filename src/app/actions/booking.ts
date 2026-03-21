@@ -21,10 +21,12 @@ export async function createAdvanceBooking(formData: any) {
             address: formData.address,
             deliveryDate: new Date(formData.deliveryDate),
             deliveryTime: formData.deliveryTime,
-            type: formData.type, // "Pickup" | "Delivery"
+            type: formData.type,
             photos: formData.photos || [],
             description: formData.description,
             weight: formData.weight,
+            totalAmount: formData.totalAmount ? Number(formData.totalAmount) : 0,
+            advanceAmount: formData.advanceAmount ? Number(formData.advanceAmount) : 0,
             alertTime: formData.alertTime ? new Date(formData.alertTime) : undefined,
             status: "Received"
         });
@@ -87,6 +89,8 @@ export async function updateAdvanceBookingDetails(bookingId: string, formData: a
             type: formData.type,
             description: formData.description,
             weight: formData.weight,
+            totalAmount: formData.totalAmount ? Number(formData.totalAmount) : 0,
+            advanceAmount: formData.advanceAmount ? Number(formData.advanceAmount) : 0,
         };
 
         if (formData.alertTime) payload.alertTime = new Date(formData.alertTime);

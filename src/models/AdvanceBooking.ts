@@ -11,6 +11,8 @@ export interface IAdvanceBooking extends Document {
     photos?: string[];
     description?: string;
     weight?: string;
+    totalAmount?: number;
+    advanceAmount?: number;
     status: 'Received' | 'Preparing' | 'Prepared' | 'Delivered';
     alertTime?: Date;
     createdAt: Date;
@@ -29,6 +31,8 @@ const AdvanceBookingSchema = new Schema<IAdvanceBooking>(
         photos: { type: [String], default: [] },
         description: { type: String },
         weight: { type: String },
+        totalAmount: { type: Number, default: 0 },
+        advanceAmount: { type: Number, default: 0 },
         status: { type: String, enum: ["Received", "Preparing", "Prepared", "Delivered"], default: "Received" },
         alertTime: { type: Date },
     },

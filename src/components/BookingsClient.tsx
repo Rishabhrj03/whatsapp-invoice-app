@@ -28,6 +28,8 @@ export default function BookingsClient({ initialBookings }: BookingsClientProps)
         type: "Pickup" as "Pickup" | "Delivery",
         description: "",
         weight: "",
+        totalAmount: "" as string | number,
+        advanceAmount: "" as string | number,
         alertTime: "",
         photos: [] as string[]
     };
@@ -127,6 +129,8 @@ export default function BookingsClient({ initialBookings }: BookingsClientProps)
             type: b.type || "Pickup",
             description: b.description || "",
             weight: b.weight || "",
+            totalAmount: b.totalAmount || "",
+            advanceAmount: b.advanceAmount || "",
             alertTime: b.alertTime ? new Date(b.alertTime).toISOString().slice(0, 16) : "",
             photos: b.photos || []
         });
@@ -232,6 +236,21 @@ export default function BookingsClient({ initialBookings }: BookingsClientProps)
                             <p className="text-gray-500 text-xs italic bg-gray-50 p-3 rounded-xl border border-gray-100">{b.description}</p>
                         )}
 
+                        <div className="pt-2 border-t border-gray-50 flex flex-col gap-1 text-[11px] font-bold text-gray-700">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Total Amount:</span>
+                                <span className="text-gray-900 font-black">₹{b.totalAmount || 0}</span>
+                            </div>
+                            <div className="flex justify-between text-green-600">
+                                <span>Advance Paid:</span>
+                                <span>₹{b.advanceAmount || 0}</span>
+                            </div>
+                            <div className="flex justify-between border-t border-dashed pt-1 font-black text-blue-600">
+                                <span>Pending Amt:</span>
+                                <span>₹{(b.totalAmount || 0) - (b.advanceAmount || 0)}</span>
+                            </div>
+                        </div>
+
                         {b.photos && b.photos.length > 0 && (
                             <div className="flex gap-2 overflow-x-auto py-1 custom-scrollbar">
                                 {b.photos.map((src: string, index: number) => (
@@ -315,6 +334,18 @@ export default function BookingsClient({ initialBookings }: BookingsClientProps)
                                     <textarea value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} rows={2} className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none" />
                                 </div>
                             )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-black text-gray-500 uppercase">Total Amount</label>
+                                    <input type="number" placeholder="0" value={formData.totalAmount} onChange={e => setFormData({ ...formData, totalAmount: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-black text-gray-500 uppercase">Advance Amount</label>
+                                    <input type="number" placeholder="0" value={formData.advanceAmount} onChange={e => setFormData({ ...formData, advanceAmount: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 bg-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-xs font-black text-gray-500 uppercase">Weight <span className="text-gray-300 font-normal">(Opt)</span></label>
