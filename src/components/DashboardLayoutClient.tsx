@@ -14,7 +14,8 @@ import {
     X,
     Menu,
     Tag,
-    Download
+    Download,
+    Calendar
 } from "lucide-react";
 
 interface DashboardLayoutClientProps {
@@ -43,6 +44,7 @@ export default function DashboardLayoutClient({
         { href: "/coupons", icon: Tag, label: "Coupons" },
         { href: "/transactions", icon: MessageSquareShare, label: "Transactions" },
         { href: "/invoice/create", icon: FileText, label: "Create Invoice" },
+        { href: "/bookings", icon: Calendar, label: "Advance Booking" },
         { href: "/export", icon: Download, label: "Export" },
         { href: "/settings", icon: MenuIcon, label: "Settings" },
         ...(user.role === 'OWNER' ? [{ href: "/team", icon: Users, label: "Team" }] : []),
