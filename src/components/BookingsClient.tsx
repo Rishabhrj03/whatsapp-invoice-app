@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus, Search, Calendar, Clock, MapPin, Truck, AlertCircle, CheckCircle2, Package, TrendingUp, X, Edit2 } from "lucide-react";
-import { createAdvanceBooking, updateBookingStatus, updateAdvanceBookingDetails } from "@/app/actions/booking";
+import { createAdvanceBooking, updateBookingStatus, updateAdvanceBookingDetails, completeAdvanceBooking } from "@/app/actions/booking";
 import { getUploadUrl } from "@/app/actions/invoice";
 
 interface BookingsClientProps {
@@ -43,6 +43,8 @@ export default function BookingsClient({ initialBookings, settings }: BookingsCl
     const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
     const [activeAlert, setActiveAlert] = useState<any | null>(null);
     const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, number>>({});
+    const [paymentModalBooking, setPaymentModalBooking] = useState<any | null>(null);
+    const [paymentType, setPaymentType] = useState<'Cash' | 'Card' | 'UPI'>("Cash");
 
     const playAlertSound = () => {
         try {
@@ -201,6 +203,19 @@ export default function BookingsClient({ initialBookings, settings }: BookingsCl
         }
     };
 
+    const handleCompletePaid = async () => {
+        if (!paymentModalBooking) return;
+        setLoading(true);
+        const res = await completeAdvanceBooking(paymentModalBooking._id, paymentType);
+        setLoading(false);
+        if (res.success) {
+            setBookings(bookings.map(book => book._id === paymentModalBooking._id ? { ...book, status: "Delivered" } : book));
+            setPaymentModalBooking(null);
+        } else {
+            alert("Failed to create Invoice/Transaction: " + res.error);
+        }
+    };
+
     const openEditModal = (b: any) => {
         setFormData({
             customerName: b.customerName || "",
@@ -347,7 +362,13 @@ export default function BookingsClient({ initialBookings, settings }: BookingsCl
                                 {["Preparing", "Prepared", "Delivered"].map(s => (
                                     <button
                                         key={s}
-                                        onClick={() => handleStatusUpdate(b._id, s)}
+                                        onClick={() => {
+                                            if (s === "Delivered") {
+                                                setPaymentModalBooking(b);
+                                            } else {
+                                                handleStatusUpdate(b._id, s);
+                                            }
+                                        }}
                                         disabled={b.status === s}
                                         className={`px-3 py-2 text-[10px] font-black rounded-xl border transition-all ${b.status === s ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-100 hover:border-gray-300'}`}
                                     >
@@ -487,6 +508,40 @@ export default function BookingsClient({ initialBookings, settings }: BookingsCl
                         </div>
                     </div>
                     <button onClick={() => setActiveAlert(null)} className="p-1 hover:bg-white/10 rounded-full"><X size={16} /></button>
+                </div>
+            )}
+            {/* Payment Type Selector Modal for Completed Booking */}
+            {paymentModalBooking && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1500] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-6 space-y-4 animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="flex justify-between items-center border-b pb-3">
+                            <h3 className="text-lg font-black text-gray-900">Mark Completed & Paid</h3>
+                            <button onClick={() => setPaymentModalBooking(null)} className="p-1 hover:bg-gray-100 rounded-full"><X size={20} /></button>
+                        </div>
+                        <p className="text-sm text-gray-600">Select payment method for <b>{paymentModalBooking.customerName}'s</b> order (₹{paymentModalBooking.totalAmount || 0}):</p>
+
+                        <div className="flex flex-col gap-2">
+                            {['Cash', 'Card', 'UPI'].map((type) => (
+                                <button
+                                    key={type}
+                                    onClick={() => setPaymentType(type as any)}
+                                    className={`py-4 border rounded-2xl font-black text-sm transition-all flex justify-between px-5 items-center ${paymentType === type ? 'bg-blue-50 border-blue-500 text-blue-600' : 'bg-gray-50 border-gray-100 text-gray-700 hover:bg-gray-100'}`}
+                                >
+                                    <span>{type}</span>
+                                    {paymentType === type && <div className="w-2 h-2 rounded-full bg-blue-600" />}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={handleCompletePaid}
+                            disabled={loading}
+                            className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-black rounded-2xl shadow-xl shadow-green-100 transition-all disabled:opacity-50 mt-2 flex items-center justify-center gap-2"
+                        >
+                            {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                            {loading ? "Generating Invoice..." : "Create Invoice & Complete"}
+                        </button>
+                    </div>
                 </div>
             )}
         </div>

@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import dbConnect from "@/lib/mongoose";
 import AdvanceBooking from "@/models/AdvanceBooking";
 import User from "@/models/User";
+import Customer from "@/models/Customer";
+import Invoice from "@/models/Invoice";
 import { revalidatePath } from "next/cache";
 
 export async function createAdvanceBooking(formData: any) {
@@ -14,6 +16,17 @@ export async function createAdvanceBooking(formData: any) {
 
     try {
         await dbConnect();
+
+        const existingCustomer = await Customer.findOne({ phoneNumber: formData.phoneNumber, userId: session.user.id });
+        if (!existingCustomer) {
+            const customer = new Customer({
+                name: formData.customerName,
+                phoneNumber: formData.phoneNumber,
+                address: formData.address,
+                userId: session.user.id
+            });
+            await customer.save();
+        }
 
         const booking = new AdvanceBooking({
             userId: session.user.id,
@@ -147,5 +160,63 @@ export async function updateBookingStatus(bookingId: string, status: string) {
     } catch (error: any) {
         console.error("Update Booking Error:", error);
         return { success: false, error: "Failed to update booking status" };
+    }
+}
+
+export async function completeAdvanceBooking(bookingId: string, paymentType: string) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    try {
+        await dbConnect();
+
+        const booking = await AdvanceBooking.findOneAndUpdate(
+            { _id: bookingId, userId: session.user.id },
+            { status: "Delivered" },
+            { new: true }
+        );
+
+        if (!booking) {
+            return { success: false, error: "Booking not found" };
+        }
+
+        // 1. Find or Create Customer
+        let customer = await Customer.findOne({ phoneNumber: booking.phoneNumber, userId: session.user.id });
+        if (!customer) {
+            customer = new Customer({
+                name: booking.customerName,
+                phoneNumber: booking.phoneNumber,
+                address: booking.address,
+                userId: session.user.id
+            });
+            await customer.save();
+        }
+
+        // 2. Create Invoice
+        const invoice = new Invoice({
+            customer: customer._id,
+            items: [{
+                name: `Advance Booking: ${booking.description || "Order"}`,
+                price: booking.totalAmount || 0,
+                quantity: 1
+            }],
+            totalAmount: booking.totalAmount || 0,
+            discountAmount: 0,
+            paymentType: paymentType as 'Cash' | 'Card' | 'UPI',
+            date: new Date(),
+            status: "Paid",
+            userId: session.user.id
+        });
+
+        await invoice.save();
+        revalidatePath("/bookings");
+        revalidatePath("/transactions");
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("Complete Booking Error:", error);
+        return { success: false, error: "Failed to complete booking" };
     }
 }
