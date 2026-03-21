@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Search, Calendar, Clock, MapPin, Truck, AlertCircle, CheckCircle2, Package, TrendingUp, X, Edit2 } from "lucide-react";
 import { createAdvanceBooking, updateBookingStatus, updateAdvanceBookingDetails } from "@/app/actions/booking";
 import { getUploadUrl } from "@/app/actions/invoice";
@@ -37,6 +37,63 @@ export default function BookingsClient({ initialBookings }: BookingsClientProps)
     const [formData, setFormData] = useState(initialFormState);
 
     const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+    const [activeAlert, setActiveAlert] = useState<any | null>(null);
+    const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
+
+    const playAlertSound = () => {
+        try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
+            osc.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.5);
+        } catch (err) {
+            console.error("Sound play failed:", err);
+        }
+    };
+
+    useEffect(() => {
+        const saved = localStorage.getItem("dismissedAlerts");
+        if (saved) setDismissedAlerts(JSON.parse(saved));
+    }, []);
+
+    useEffect(() => {
+        const checkAlerts = () => {
+            const now = new Date();
+            const due = bookings.find(b => {
+                if (!b.alertTime || b.status === "Delivered") return false;
+                const alertDate = new Date(b.alertTime);
+                return alertDate <= now && !dismissedAlerts.includes(b._id);
+            });
+
+            if (due) {
+                setActiveAlert((prev: any) => {
+                    if (!prev || prev._id !== due._id) {
+                        playAlertSound();
+                    }
+                    return due;
+                });
+            }
+        };
+
+        const interval = setInterval(checkAlerts, 10000);
+        checkAlerts();
+
+        return () => clearInterval(interval);
+    }, [bookings, dismissedAlerts]);
+
+    const handleDismissAlert = () => {
+        if (!activeAlert) return;
+        const updated = [...dismissedAlerts, activeAlert._id];
+        setDismissedAlerts(updated);
+        localStorage.setItem("dismissedAlerts", JSON.stringify(updated));
+        setActiveAlert(null);
+    };
 
     const formatDate = (dateString: string) => {
         if (!dateString) return "";
@@ -383,6 +440,22 @@ export default function BookingsClient({ initialBookings }: BookingsClientProps)
                     <button onClick={() => setZoomedImage(null)} className="absolute top-4 right-4 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
                         <X size={24} />
                     </button>
+                </div>
+            )}
+            {/* Active Alert Overlay */}
+            {activeAlert && (
+                <div className="fixed bottom-4 right-4 max-w-sm bg-amber-500 text-white rounded-2xl p-4 shadow-2xl flex items-start gap-3 z-[1500] animate-in slide-in-from-right-4 duration-300">
+                    <AlertCircle size={24} className="flex-shrink-0 mt-0.5 text-white animate-bounce" />
+                    <div className="flex-1">
+                        <h4 className="font-extrabold text-sm uppercase">Booking Alert!</h4>
+                        <p className="text-xs font-bold">{activeAlert.customerName}'s order requires attention.</p>
+                        {activeAlert.description && <p className="text-[10px] opacity-80 italic mt-1 bg-amber-600/50 p-1.5 rounded-lg">"{activeAlert.description}"</p>}
+                        <div className="flex gap-2 mt-3">
+                            <button onClick={() => { setActiveAlert(null); openEditModal(activeAlert); }} className="px-3 py-1.5 bg-white text-amber-600 rounded-xl text-xs font-black shadow-sm">View</button>
+                            <button onClick={handleDismissAlert} className="px-3 py-1.5 bg-amber-600 text-white border border-amber-400 rounded-xl text-xs font-bold">Dismiss</button>
+                        </div>
+                    </div>
+                    <button onClick={() => setActiveAlert(null)} className="p-1 hover:bg-white/10 rounded-full"><X size={16} /></button>
                 </div>
             )}
         </div>
