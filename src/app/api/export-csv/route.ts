@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongoose";
 import Invoice from "@/models/Invoice";
 import Customer from "@/models/Customer";
-import { format } from "date-fns"; // We don't have date-fns, I'll use native Date string
+// We don't have date-fns, using native Date string
 // Wait, I didn't install papaparse for the server side but I installed it generally.
 import Papa from "papaparse";
 

@@ -2,15 +2,23 @@
 
 import { useState } from "react";
 import { Plus, Tag, Trash2, Percent, DollarSign, Check } from "lucide-react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { createCoupon, deleteCoupon } from "@/app/actions/coupon";
+import Pagination from "./Pagination";
 
 interface CouponsClientProps {
     initialCoupons: any[];
     menuItems: any[];
+    currentPage: number;
+    totalPages: number;
 }
 
-export default function CouponsClient({ initialCoupons, menuItems }: CouponsClientProps) {
+export default function CouponsClient({ initialCoupons, menuItems, currentPage, totalPages }: CouponsClientProps) {
     const [coupons, setCoupons] = useState(initialCoupons);
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -20,6 +28,12 @@ export default function CouponsClient({ initialCoupons, menuItems }: CouponsClie
     const [value, setValue] = useState<number>(0);
     const [applicableTo, setApplicableTo] = useState<'ALL' | 'SPECIFIC_ITEMS'>('ALL');
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+    const handlePageChange = (newPage: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("page", newPage.toString());
+        router.push(`${pathname}?${params.toString()}`);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -189,6 +203,14 @@ export default function CouponsClient({ initialCoupons, menuItems }: CouponsClie
                     <div className="p-10 text-center text-gray-400 font-bold">No coupons found. Create one.</div>
                 )}
             </div>
+
+            {totalPages > 1 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                />
+            )}
         </div>
     );
 }

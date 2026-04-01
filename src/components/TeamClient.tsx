@@ -3,19 +3,41 @@
 import { useState } from "react";
 import { addStaffMember, removeStaffMember } from "@/app/actions/team";
 import { Users, UserPlus, Trash2, Mail, Shield, Plus, X, Loader2, CheckCircle2 } from "lucide-react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import Pagination from "./Pagination";
 
-export default function TeamClient({ staff, owner }: { staff: any[]; owner: any }) {
+interface TeamClientProps {
+    staff: any[];
+    owner: any;
+    currentPage: number;
+    totalPages: number;
+}
+
+export default function TeamClient({ staff: initialStaff, owner, currentPage, totalPages }: TeamClientProps) {
+    const [staff, setStaff] = useState(initialStaff);
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [removingId, setRemovingId] = useState<string | null>(null);
+
+    const handlePageChange = (newPage: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("page", newPage.toString());
+        router.push(`${pathname}?${params.toString()}`);
+    };
 
     const handleAddStaff = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         const formData = new FormData(e.currentTarget);
         const res = await addStaffMember(formData);
-        if (res.success) {
+        if (res.success && res.staff) {
+            setStaff((prev: any) => [res.staff, ...prev]);
             setIsModalOpen(false);
+            router.refresh();
         } else {
             alert(res.error || "Failed to add staff member.");
         }
@@ -27,6 +49,10 @@ export default function TeamClient({ staff, owner }: { staff: any[]; owner: any 
         setRemovingId(id);
         const res = await removeStaffMember(id);
         if (!res.success) alert(res.error || "Failed to remove staff.");
+        else {
+            setStaff((prev) => prev.filter((m) => m._id !== id));
+            router.refresh();
+        }
         setRemovingId(null);
     };
 
@@ -73,7 +99,7 @@ export default function TeamClient({ staff, owner }: { staff: any[]; owner: any 
                 </div>
 
                 {/* Staff Cards */}
-                {staff.map((member) => (
+                {staff.map((member: any) => (
                     <div key={member._id} className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 hover:border-blue-200 transition-all group">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
@@ -112,6 +138,14 @@ export default function TeamClient({ staff, owner }: { staff: any[]; owner: any 
                     </div>
                 )}
             </div>
+
+            {totalPages > 1 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                />
+            )}
 
             {/* Add Staff Modal */}
             {isModalOpen && (

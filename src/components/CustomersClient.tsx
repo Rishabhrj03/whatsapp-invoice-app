@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { createCustomer, deleteCustomer } from "@/app/actions/customer";
 import { Trash2, UserPlus, Phone, MapPin, Calendar, Users as UsersIcon, CheckCircle2, ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import ConfirmModal from "./ConfirmModal";
+import Pagination from "./Pagination";
 
 interface CustomerData {
     _id: string;
@@ -15,13 +16,27 @@ interface CustomerData {
     address?: string;
 }
 
-export default function CustomersClient({ initialCustomers }: { initialCustomers: any[] }) {
+interface CustomersClientProps {
+    initialCustomers: any[];
+    currentPage: number;
+    totalPages: number;
+}
+
+export default function CustomersClient({ initialCustomers, currentPage, totalPages }: CustomersClientProps) {
     const [customers, setCustomers] = useState(initialCustomers);
     const [view, setView] = useState<"list" | "add">("list");
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: "" });
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    const handlePageChange = (newPage: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("page", newPage.toString());
+        router.push(`${pathname}?${params.toString()}`);
+    };
 
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value.replace(/\D/g, ""); // Only digits
@@ -266,6 +281,13 @@ export default function CustomersClient({ initialCustomers }: { initialCustomers
                             </table>
                         </div>
                     </div>
+                    {totalPages > 1 && (
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                        />
+                    )}
                 </div>
             )}
 

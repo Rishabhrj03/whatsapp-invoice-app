@@ -55,7 +55,7 @@ export async function createAdvanceBooking(formData: any) {
     }
 }
 
-export async function getAdvanceBookings() {
+export async function getAdvanceBookings({ page = 1, limit = 10, search = "", status = "All" } = {}) {
     const session = await auth();
     if (!session?.user) {
         return { success: false, error: "Unauthorized" };
@@ -63,11 +63,29 @@ export async function getAdvanceBookings() {
 
     try {
         await dbConnect();
-        const bookings = await AdvanceBooking.find({ userId: session.user.id })
-            .sort({ deliveryDate: 1, deliveryTime: 1 })
-            .lean();
 
-        const user = await User.findById(session.user.id).lean();
+        const query: any = { userId: session.user.id };
+        if (search) {
+            query.$or = [
+                { customerName: { $regex: search, $options: "i" } },
+                { phoneNumber: { $regex: search, $options: "i" } }
+            ];
+        }
+        if (status && status !== "All") {
+            query.status = status;
+        }
+
+        const skip = (page - 1) * limit;
+
+        const [bookings, total, user] = await Promise.all([
+            AdvanceBooking.find(query)
+                .sort({ deliveryDate: 1, deliveryTime: 1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            AdvanceBooking.countDocuments(query),
+            User.findById(session.user.id).lean()
+        ]);
 
         // Convert _id ObjectIds to strings
         const serialized = bookings.map((b: any) => ({
@@ -83,9 +101,12 @@ export async function getAdvanceBookings() {
         return {
             success: true,
             bookings: serialized,
+            total,
+            totalPages: Math.ceil(total / limit),
             settings: {
                 hoursBefore: user?.bookingAlertHoursBefore ?? 4,
-                frequencyMins: user?.bookingAlertFrequencyMins ?? 30
+                frequencyMins: user?.bookingAlertFrequencyMins ?? 30,
+                dispatchAlertHoursBefore: user?.dispatchAlertHoursBefore ?? 1
             }
         };
     } catch (error: any) {

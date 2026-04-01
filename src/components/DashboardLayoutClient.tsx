@@ -43,7 +43,7 @@ export default function DashboardLayoutClient({
         { href: "/menu", icon: MenuIcon, label: "Menu Items" },
         { href: "/coupons", icon: Tag, label: "Coupons" },
         { href: "/transactions", icon: MessageSquareShare, label: "Transactions" },
-        { href: "/invoice/create", icon: FileText, label: "Create Invoice" },
+        { href: "/invoice/create", icon: FileText, label: "Generate Bill" },
         { href: "/bookings", icon: Calendar, label: "Advance Booking" },
         { href: "/export", icon: Download, label: "Export" },
         { href: "/settings", icon: MenuIcon, label: "Settings" },

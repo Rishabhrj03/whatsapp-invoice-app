@@ -13,7 +13,7 @@ export interface IAdvanceBooking extends Document {
     weight?: string;
     totalAmount?: number;
     advanceAmount?: number;
-    status: 'Received' | 'Preparing' | 'Prepared' | 'Delivered';
+    status: 'Received' | 'Preparing' | 'Ready' | 'Dispatched' | 'Delivered';
     alertTime?: Date;
     createdAt: Date;
     updatedAt: Date;
@@ -33,7 +33,7 @@ const AdvanceBookingSchema = new Schema<IAdvanceBooking>(
         weight: { type: String },
         totalAmount: { type: Number, default: 0 },
         advanceAmount: { type: Number, default: 0 },
-        status: { type: String, enum: ["Received", "Preparing", "Prepared", "Delivered"], default: "Received" },
+        status: { type: String, enum: ["Received", "Preparing", "Ready", "Dispatched", "Delivered"], default: "Received" },
         alertTime: { type: Date },
     },
     { timestamps: true }

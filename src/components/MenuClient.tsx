@@ -4,15 +4,25 @@ import { useState, useRef, useEffect } from "react";
 import { createMenuEntry, deleteMenuEntry, importMenuItemsFromCSV, deleteMultipleMenuEntries, updateMenuEntry } from "@/app/actions/menu";
 import { deleteCategory, updateCategory } from "@/app/actions/category";
 import { Trash2, PlusCircle, Tag, IndianRupee, FileText, LayoutGrid, CheckCircle2, ArrowLeft, Upload, FileUp, Loader2, Pencil } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import ConfirmModal from "./ConfirmModal";
 import CSVMappingModal from "./CSVMappingModal";
 import CreateCategoryModal from "./CreateCategoryModal";
+import Pagination from "./Pagination";
 
-export default function MenuClient({ initialMenuItems, initialCategories = [] }: { initialMenuItems: any[], initialCategories?: any[] }) {
+interface MenuClientProps {
+    initialMenuItems: any[];
+    initialCategories?: any[];
+    initialTab: "items" | "categories";
+    currentPage: number;
+    totalItemPages: number;
+    totalCategoryPages: number;
+}
+
+export default function MenuClient({ initialMenuItems, initialCategories = [], initialTab, currentPage, totalItemPages, totalCategoryPages }: MenuClientProps) {
     const [menuItems, setMenuItems] = useState(initialMenuItems);
     const [categories, setCategories] = useState(initialCategories);
-    const [activeTab, setActiveTab] = useState<"items" | "categories">("items");
+    const [activeTab, setActiveTab] = useState<"items" | "categories">(initialTab);
     const [view, setView] = useState<"list" | "add" | "edit">("list");
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
@@ -26,7 +36,24 @@ export default function MenuClient({ initialMenuItems, initialCategories = [] }:
     const [editingCategory, setEditingCategory] = useState<any>(null);
     const [deleteCategoryModal, setDeleteCategoryModal] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: "" });
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const formRef = useRef<HTMLFormElement>(null);
+
+    const handleTabChange = (newTab: "items" | "categories") => {
+        setActiveTab(newTab);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("tab", newTab);
+        params.set("page", "1");
+        router.push(`${pathname}?${params.toString()}`);
+    };
+
+    const handlePageChange = (newPage: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("tab", activeTab);
+        params.set("page", newPage.toString());
+        router.push(`${pathname}?${params.toString()}`);
+    };
 
     useEffect(() => {
         if (view === "edit" && editingItem && formRef.current) {
@@ -304,7 +331,7 @@ export default function MenuClient({ initialMenuItems, initialCategories = [] }:
             {view === "list" && (
                 <div className="flex p-1 bg-gray-100/50 rounded-2xl w-fit">
                     <button
-                        onClick={() => setActiveTab("items")}
+                        onClick={() => handleTabChange("items")}
                         className={`px-6 py-2.5 rounded-xl transition-all font-black text-xs uppercase tracking-widest ${activeTab === "items"
                             ? "bg-white text-orange-600 shadow-sm"
                             : "text-gray-400 hover:text-gray-600"
@@ -313,7 +340,7 @@ export default function MenuClient({ initialMenuItems, initialCategories = [] }:
                         Menu Items
                     </button>
                     <button
-                        onClick={() => setActiveTab("categories")}
+                        onClick={() => handleTabChange("categories")}
                         className={`px-6 py-2.5 rounded-xl transition-all font-black text-xs uppercase tracking-widest ${activeTab === "categories"
                             ? "bg-white text-orange-600 shadow-sm"
                             : "text-gray-400 hover:text-gray-600"
@@ -597,6 +624,20 @@ export default function MenuClient({ initialMenuItems, initialCategories = [] }:
                                 </table>
                             )}
                         </div>
+                        {activeTab === "items" && totalItemPages > 1 && (
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalItemPages}
+                                onPageChange={handlePageChange}
+                            />
+                        )}
+                        {activeTab === "categories" && totalCategoryPages > 1 && (
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalCategoryPages}
+                                onPageChange={handlePageChange}
+                            />
+                        )}
                     </div>
                 </div>
             )}

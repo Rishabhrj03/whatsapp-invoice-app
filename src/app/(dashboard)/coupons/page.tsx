@@ -1,19 +1,26 @@
 import dbConnect from "@/lib/mongoose";
 import MenuEntry from "@/models/MenuEntry";
+import Coupon from "@/models/Coupon";
 import CouponsClient from "@/components/CouponsClient";
-import { getEffectiveUserId } from "@/lib/auth-utils";
-import { getCoupons } from "@/app/actions/coupon";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function CouponsPage() {
+export default async function CouponsPage({ searchParams }: { searchParams: { page?: string } }) {
     await dbConnect();
-    const effectiveUserId = await getEffectiveUserId();
-    if (!effectiveUserId) return null;
+    const session = await auth();
+    if (!session?.user?.id) return null;
 
-    const [couponsRes, menuItems] = await Promise.all([
-        getCoupons(),
-        MenuEntry.find({ userId: effectiveUserId }).sort({ name: 1 }).lean()
+    const page = parseInt(searchParams.page || "1", 10);
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const query = { userId: session.user.id };
+
+    const [coupons, total, menuItems] = await Promise.all([
+        Coupon.find(query).lean().sort({ createdAt: -1 }).skip(skip).limit(limit),
+        Coupon.countDocuments(query),
+        MenuEntry.find({ userId: session.user.id }).sort({ name: 1 }).lean()
     ]);
 
     return (
@@ -28,8 +35,10 @@ export default async function CouponsPage() {
             </div>
 
             <CouponsClient
-                initialCoupons={couponsRes.success ? couponsRes.coupons : []}
+                initialCoupons={JSON.parse(JSON.stringify(coupons))}
                 menuItems={JSON.parse(JSON.stringify(menuItems))}
+                currentPage={page}
+                totalPages={Math.ceil(total / limit) || 1}
             />
         </div>
     );

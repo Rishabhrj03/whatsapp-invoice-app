@@ -34,7 +34,7 @@ export async function addStaffMember(formData: FormData) {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        await User.create({
+        const newUser = await User.create({
             name,
             email,
             password: hashedPassword,
@@ -43,7 +43,7 @@ export async function addStaffMember(formData: FormData) {
         });
 
         revalidatePath("/team");
-        return { success: true };
+        return { success: true, staff: JSON.parse(JSON.stringify(newUser)) };
     } catch (error: any) {
         console.error("Failed to add staff:", error);
         return { success: false, error: error.message || "Failed to add staff member" };

@@ -14,6 +14,7 @@ export interface IUser extends Document {
     resetTokenExpiry?: Date;
     bookingAlertHoursBefore?: number;
     bookingAlertFrequencyMins?: number;
+    dispatchAlertHoursBefore?: number;
     createdAt: Date;
 }
 
@@ -32,6 +33,7 @@ const UserSchema = new Schema<IUser>(
         resetTokenExpiry: { type: Date, required: false },
         bookingAlertHoursBefore: { type: Number, default: 4 },
         bookingAlertFrequencyMins: { type: Number, default: 30 },
+        dispatchAlertHoursBefore: { type: Number, default: 1 },
     },
     { timestamps: true }
 );

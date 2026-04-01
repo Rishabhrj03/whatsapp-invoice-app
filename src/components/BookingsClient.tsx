@@ -1,27 +1,79 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Search, Calendar, Clock, MapPin, Truck, AlertCircle, CheckCircle2, Package, TrendingUp, X, Edit2 } from "lucide-react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { Plus, Search, Calendar, Clock, MapPin, Truck, AlertCircle, CheckCircle2, Package, TrendingUp, X, Edit2, ChevronDown, ChevronUp } from "lucide-react";
 import { createAdvanceBooking, updateBookingStatus, updateAdvanceBookingDetails, completeAdvanceBooking } from "@/app/actions/booking";
 import { getUploadUrl } from "@/app/actions/invoice";
+import Pagination from "./Pagination";
 
 interface BookingsClientProps {
     initialBookings: any[];
     settings: {
         hoursBefore: number;
         frequencyMins: number;
+        dispatchAlertHoursBefore?: number;
     };
+    currentPage: number;
+    totalPages: number;
+    initialSearch: string;
+    initialStatus: string;
 }
 
-export default function BookingsClient({ initialBookings, settings }: BookingsClientProps) {
+export default function BookingsClient({ initialBookings, settings, currentPage, totalPages, initialSearch, initialStatus }: BookingsClientProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
     const [bookings, setBookings] = useState(initialBookings);
-    const [searchTerm, setSearchTerm] = useState("");
+
+    useEffect(() => {
+        setBookings(initialBookings);
+    }, [initialBookings]);
+
+    const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [statusFilter, setStatusFilter] = useState<string>("All");
+    const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
 
     const [zoomedImage, setZoomedImage] = useState<string | null>(null);
     const [editingBooking, setEditingBooking] = useState<any | null>(null);
+    const [expandedIds, setExpandedIds] = useState<string[]>([]);
+
+    const toggleExpand = (id: string) => setExpandedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+
+    // Debounce search and filter changes to update URL
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            const params = new URLSearchParams(searchParams.toString());
+            let changed = false;
+
+            if (searchTerm !== initialSearch) {
+                if (searchTerm) params.set("search", searchTerm);
+                else params.delete("search");
+                params.set("page", "1");
+                changed = true;
+            }
+
+            if (statusFilter !== initialStatus) {
+                if (statusFilter !== "All") params.set("status", statusFilter);
+                else params.delete("status");
+                params.set("page", "1");
+                changed = true;
+            }
+
+            if (changed) {
+                router.push(`${pathname}?${params.toString()}`);
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [searchTerm, statusFilter, initialSearch, initialStatus, pathname, router, searchParams]);
+
+    const handlePageChange = (newPage: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("page", newPage.toString());
+        router.push(`${pathname}?${params.toString()}`);
+    };
 
     const initialFormState = {
         customerName: "",
@@ -82,7 +134,7 @@ export default function BookingsClient({ initialBookings, settings }: BookingsCl
                     if (alertDate <= now) return true;
                 }
 
-                if (b.deliveryDate && b.status !== "Prepared" && b.status !== "Delivered") {
+                if (b.deliveryDate && b.status !== "Ready" && b.status !== "Dispatched" && b.status !== "Delivered") {
                     const [hour, min] = (b.deliveryTime || "00:00").split(":");
                     const deliveryAt = new Date(b.deliveryDate);
                     deliveryAt.setHours(parseInt(hour), parseInt(min), 0, 0);
@@ -92,6 +144,20 @@ export default function BookingsClient({ initialBookings, settings }: BookingsCl
 
                     if (now.getTime() >= cutoffTime) {
                         b.isDeadlineAlert = true;
+                        return true;
+                    }
+                }
+
+                if (b.type === "Delivery" && b.deliveryDate && b.status !== "Dispatched" && b.status !== "Delivered") {
+                    const [hour, min] = (b.deliveryTime || "00:00").split(":");
+                    const deliveryAt = new Date(b.deliveryDate);
+                    deliveryAt.setHours(parseInt(hour), parseInt(min), 0, 0);
+
+                    const dispatchBuffer = settings?.dispatchAlertHoursBefore || 1;
+                    const dispatchCutoff = deliveryAt.getTime() - (dispatchBuffer * 60 * 60 * 1000);
+
+                    if (now.getTime() >= dispatchCutoff) {
+                        b.isDispatchAlert = true;
                         return true;
                     }
                 }
@@ -185,7 +251,15 @@ export default function BookingsClient({ initialBookings, settings }: BookingsCl
             }
 
             if (response.success) {
-                window.location.reload();
+                if (!editingBooking) {
+                    const text = `*New Advance Booking Received*\n\nHello ${payload.customerName},\nYour booking for ${payload.type} on ${payload.deliveryDate} at ${payload.deliveryTime} has been confirmed.\n\n*Total Amount:* ₹${payload.totalAmount}\n*Advance Paid:* ₹${payload.advanceAmount}\n\nThank you!`;
+                    const encodedText = encodeURIComponent(text);
+                    let phone = payload.phoneNumber.replace(/\D/g, "");
+                    if (phone.length === 10) phone = `91${phone}`;
+
+                    window.open(`https://wa.me/${phone}?text=${encodedText}`, "_blank");
+                }
+                setTimeout(() => window.location.reload(), 500);
             } else {
                 alert(response.error);
             }
@@ -242,17 +316,12 @@ export default function BookingsClient({ initialBookings, settings }: BookingsCl
         setIsModalOpen(false);
     };
 
-    const filteredBookings = bookings.filter(b => {
-        const matchesSearch = b.customerName.toLowerCase().includes(searchTerm.toLowerCase()) || b.phoneNumber.includes(searchTerm);
-        const matchesStatus = statusFilter === "All" || b.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
-
-    const statusColors: any = {
-        Received: "bg-blue-50 text-blue-700 border-blue-100",
-        Preparing: "bg-amber-50 text-amber-700 border-amber-100",
-        Prepared: "bg-purple-50 text-purple-700 border-purple-100",
-        Delivered: "bg-green-50 text-green-700 border-green-100"
+    const cardBgColors: any = {
+        Received: "bg-slate-50 border-slate-300 shadow-md",
+        Preparing: "bg-orange-100 border-orange-400 shadow-md",
+        Ready: "bg-blue-100 border-blue-400 shadow-md",
+        Dispatched: "bg-purple-100 border-purple-400 shadow-md",
+        Delivered: "bg-emerald-100 border-emerald-400 shadow-md"
     };
 
     return (
@@ -283,7 +352,7 @@ export default function BookingsClient({ initialBookings, settings }: BookingsCl
                     />
                 </div>
                 <div className="flex flex-wrap gap-2 bg-gray-50 p-1 rounded-2xl">
-                    {["All", "Received", "Preparing", "Prepared", "Delivered"].map(status => (
+                    {["Received", "Preparing", "Ready", "Dispatched", "Delivered", "All"].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
@@ -297,89 +366,114 @@ export default function BookingsClient({ initialBookings, settings }: BookingsCl
 
             {/* Grid List */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {filteredBookings.map((b: any) => (
-                    <div key={b._id} className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm hover:shadow-xl hover:border-gray-200 transition-all space-y-4">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h3 className="text-lg font-black text-gray-900">{b.customerName}</h3>
-                                <p className="text-xs text-gray-400 font-bold">{b.phoneNumber}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={() => openEditModal(b)} className="p-1.5 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-gray-600 border border-gray-100 transition-colors">
-                                    <Edit2 size={14} />
-                                </button>
-                                <span className={`px-3 py-1 rounded-full text-[10px] font-black border ${statusColors[b.status] || ''}`}>
-                                    {b.status}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2 text-sm text-gray-600">
-                            <div className="flex items-center gap-2">
-                                <Calendar size={14} className="text-gray-400" />
-                                <span>{formatDate(b.deliveryDate)}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Clock size={14} className="text-gray-400" />
-                                <span>{b.deliveryTime}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {b.type === "Pickup" ? <Package size={14} className="text-gray-400" /> : <Truck size={14} className="text-gray-400" />}
-                                <span>{b.type}</span>
-                            </div>
-                        </div>
-
-                        {b.description && (
-                            <p className="text-gray-500 text-xs italic bg-gray-50 p-3 rounded-xl border border-gray-100">{b.description}</p>
-                        )}
-
-                        <div className="pt-2 border-t border-gray-50 flex flex-col gap-1 text-[11px] font-bold text-gray-700">
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Total Amount:</span>
-                                <span className="text-gray-900 font-black">₹{b.totalAmount || 0}</span>
-                            </div>
-                            <div className="flex justify-between text-green-600">
-                                <span>Advance Paid:</span>
-                                <span>₹{b.advanceAmount || 0}</span>
-                            </div>
-                            <div className="flex justify-between border-t border-dashed pt-1 font-black text-blue-600">
-                                <span>Pending Amt:</span>
-                                <span>₹{(b.totalAmount || 0) - (b.advanceAmount || 0)}</span>
-                            </div>
-                        </div>
-
-                        {b.photos && b.photos.length > 0 && (
-                            <div className="flex gap-2 overflow-x-auto py-1 custom-scrollbar">
-                                {b.photos.map((src: string, index: number) => (
-                                    <img key={index} src={src} onClick={() => setZoomedImage(src)} alt="Booking" className="w-14 h-14 object-cover rounded-xl border border-gray-100 flex-shrink-0 cursor-zoom-in hover:opacity-90 transition-opacity" />
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="flex flex-col gap-2 pt-2 border-t border-gray-50">
-                            <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Update Status:</p>
-                            <div className="grid grid-cols-2 gap-2">
-                                {["Preparing", "Prepared", "Delivered"].map(s => (
-                                    <button
-                                        key={s}
-                                        onClick={() => {
-                                            if (s === "Delivered") {
-                                                setPaymentModalBooking(b);
-                                            } else {
-                                                handleStatusUpdate(b._id, s);
-                                            }
-                                        }}
-                                        disabled={b.status === s}
-                                        className={`px-3 py-2 text-[10px] font-black rounded-xl border transition-all ${b.status === s ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-100 hover:border-gray-300'}`}
-                                    >
-                                        {s}
+                {bookings.map((b: any) => {
+                    const isExpanded = expandedIds.includes(b._id);
+                    return (
+                        <div key={b._id} className={`border-2 rounded-3xl p-5 sm:p-6 hover:shadow-xl transition-all space-y-4 ${cardBgColors[b.status] || "bg-white border-gray-200 shadow-sm"}`}>
+                            <div className="flex justify-between items-start cursor-pointer group" onClick={() => toggleExpand(b._id)}>
+                                <div>
+                                    <h3 className="text-lg font-black text-gray-900 drop-shadow-sm">{b.customerName}</h3>
+                                    <p className="text-xs text-gray-700 font-bold">{b.phoneNumber}</p>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black border bg-white/80 backdrop-blur-sm shadow-sm text-gray-800`}>
+                                        {b.status}
+                                    </span>
+                                    <button className="p-1.5 bg-black/5 hover:bg-black/10 rounded-lg text-gray-600 transition-colors">
+                                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                     </button>
-                                ))}
+                                </div>
                             </div>
+
+                            <div className="space-y-2 text-sm text-gray-700 font-medium">
+                                <div className="flex items-center gap-2">
+                                    <Calendar size={14} className="text-gray-400" />
+                                    <span>{formatDate(b.deliveryDate)}</span>
+                                    <Clock size={14} className="text-gray-400 ml-2" />
+                                    <span>{b.deliveryTime}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        {b.type === "Pickup" ? <Package size={14} className="text-gray-400" /> : <Truck size={14} className="text-gray-400" />}
+                                        <span>{b.type}</span>
+                                    </div>
+                                    <span className="text-gray-900 font-black text-base">₹{b.totalAmount || 0}</span>
+                                </div>
+                            </div>
+
+                            {/* Collapsible Content */}
+                            {isExpanded && (
+                                <div className="space-y-4 pt-4 border-t border-black/5 animate-in slide-in-from-top-2 duration-200">
+                                    {b.description && (
+                                        <p className="text-gray-600 text-xs italic bg-white/60 p-3 rounded-xl border border-black/5">{b.description}</p>
+                                    )}
+
+                                    {b.type === "Delivery" && b.address && (
+                                        <div className="flex items-start gap-2 text-xs text-gray-600 bg-white/60 p-3 rounded-xl border border-black/5">
+                                            <MapPin size={14} className="text-gray-400 shrink-0 mt-0.5" />
+                                            <span>{b.address}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="flex flex-col gap-1 text-[11px] font-bold text-gray-700 bg-white/60 p-3 rounded-xl border border-black/5">
+                                        <div className="flex justify-between text-green-700">
+                                            <span>Advance Paid:</span>
+                                            <span>₹{b.advanceAmount || 0}</span>
+                                        </div>
+                                        <div className="flex justify-between border-t border-dashed border-black/10 pt-1 font-black text-blue-700 mt-1">
+                                            <span>Pending Amt:</span>
+                                            <span>₹{(b.totalAmount || 0) - (b.advanceAmount || 0)}</span>
+                                        </div>
+                                    </div>
+
+                                    {b.photos && b.photos.length > 0 && (
+                                        <div className="flex gap-2 overflow-x-auto py-1 custom-scrollbar">
+                                            {b.photos.map((src: string, index: number) => (
+                                                <img key={index} src={src} onClick={() => setZoomedImage(src)} alt="Booking" className="w-14 h-14 object-cover rounded-xl border border-black/5 flex-shrink-0 cursor-zoom-in hover:opacity-90 transition-opacity" />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="flex flex-col gap-2 pt-2">
+                                        <div className="flex justify-between items-center">
+                                            <p className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Update Status:</p>
+                                            <button onClick={() => openEditModal(b)} className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-lg">
+                                                <Edit2 size={10} /> Edit
+                                            </button>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {["Preparing", "Ready", ...(b.type === "Delivery" ? ["Dispatched"] : []), "Delivered"].map(s => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => {
+                                                        if (s === "Delivered") {
+                                                            setPaymentModalBooking(b);
+                                                        } else {
+                                                            handleStatusUpdate(b._id, s);
+                                                        }
+                                                    }}
+                                                    disabled={b.status === s}
+                                                    className={`flex-1 min-w-[30%] px-3 py-2 text-[10px] font-black rounded-xl border transition-all ${b.status === s ? 'bg-black/5 text-gray-500 border-transparent shadow-inner' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300 shadow-sm text-center'}`}
+                                                >
+                                                    {s}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    </div>
-                ))}
+                    )
+                })}
             </div>
+
+            {totalPages > 1 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                />
+            )}
 
             {/* Modal for Creating Booking */}
             {isModalOpen && (

@@ -5,12 +5,21 @@ import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function CustomersPage() {
+export default async function CustomersPage({ searchParams }: { searchParams: { page?: string } }) {
     await dbConnect();
     const session = await auth();
     if (!session?.user?.id) return null;
 
-    const customers = await Customer.find({ userId: session.user.id }).lean().sort({ createdAt: -1 });
+    const page = parseInt(searchParams.page || "1", 10);
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const query = { userId: session.user.id };
+
+    const [customers, total] = await Promise.all([
+        Customer.find(query).lean().sort({ createdAt: -1 }).skip(skip).limit(limit),
+        Customer.countDocuments(query)
+    ]);
 
     // Serialize MongoDB objects
     const serializedCustomers = customers.map(c => ({
@@ -20,5 +29,9 @@ export default async function CustomersPage() {
         anniversaryDate: (c.anniversaryDate instanceof Date) ? c.anniversaryDate.toISOString() : undefined,
     }));
 
-    return <CustomersClient initialCustomers={serializedCustomers} />;
+    return <CustomersClient
+        initialCustomers={serializedCustomers}
+        currentPage={page}
+        totalPages={Math.ceil(total / limit) || 1}
+    />;
 }

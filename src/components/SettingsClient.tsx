@@ -208,6 +208,19 @@ Thank you for your business!`;
                                 />
                                 <p className="text-[10px] text-gray-400 px-1">Repeat notification interval after dismiss.</p>
                             </div>
+
+                            <div className="space-y-1.5 sm:col-span-2">
+                                <label htmlFor="dispatchAlertHoursBefore" className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Delivery Dispatch Alert (Hours Before)</label>
+                                <input
+                                    type="number"
+                                    id="dispatchAlertHoursBefore"
+                                    name="dispatchAlertHoursBefore"
+                                    defaultValue={initialUser.dispatchAlertHoursBefore ?? 1}
+                                    min={1}
+                                    className="block w-full px-5 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm text-black font-bold"
+                                />
+                                <p className="text-[10px] text-gray-400 px-1">Alert if order is not Dispatched within X hours of delivery.</p>
+                            </div>
                         </div>
                     </div>
                     <hr className="border-gray-100" />

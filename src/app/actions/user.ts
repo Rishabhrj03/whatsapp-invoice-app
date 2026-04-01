@@ -23,12 +23,16 @@ export async function updateBusinessProfile(formData: FormData) {
         const bookingAlertFrequencyMins = formData.get("bookingAlertFrequencyMins")
             ? Number(formData.get("bookingAlertFrequencyMins"))
             : undefined;
+        const dispatchAlertHoursBefore = formData.get("dispatchAlertHoursBefore")
+            ? Number(formData.get("dispatchAlertHoursBefore"))
+            : undefined;
 
         console.log("Action - Extracted whatsappTemplate:", whatsappTemplate);
 
         const updatePayload: any = { businessName, logoUrl, whatsappTemplate };
         if (bookingAlertHoursBefore !== undefined) updatePayload.bookingAlertHoursBefore = bookingAlertHoursBefore;
         if (bookingAlertFrequencyMins !== undefined) updatePayload.bookingAlertFrequencyMins = bookingAlertFrequencyMins;
+        if (dispatchAlertHoursBefore !== undefined) updatePayload.dispatchAlertHoursBefore = dispatchAlertHoursBefore;
 
         const updatedUser = await User.findByIdAndUpdate(
             session.user.id,

@@ -11,16 +11,52 @@ import {
     FileDown
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import AddCustomerModal from "./AddCustomerModal";
+import Pagination from "./Pagination";
 
-export default function TransactionsClient({ initialInvoices }: { initialInvoices: any[] }) {
-    const [searchQuery, setSearchQuery] = useState("");
+interface TransactionsClientProps {
+    initialInvoices: any[];
+    currentPage: number;
+    totalPages: number;
+    initialSearch: string;
+}
+
+export default function TransactionsClient({ initialInvoices, currentPage, totalPages, initialSearch }: TransactionsClientProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    const [searchQuery, setSearchQuery] = useState(initialSearch);
     const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
 
-    const filteredInvoices = initialInvoices.filter((inv) => {
-        const customerName = inv.customer?.name?.toLowerCase() || "guest";
-        return customerName.includes(searchQuery.toLowerCase());
-    });
+    const invoices = initialInvoices;
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            const params = new URLSearchParams(searchParams.toString());
+            let changed = false;
+
+            if (searchQuery !== initialSearch) {
+                if (searchQuery) params.set("search", searchQuery);
+                else params.delete("search");
+                params.set("page", "1");
+                changed = true;
+            }
+
+            if (changed) {
+                router.push(`${pathname}?${params.toString()}`);
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [searchQuery, initialSearch, pathname, router, searchParams]);
+
+    const handlePageChange = (newPage: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("page", newPage.toString());
+        router.push(`${pathname}?${params.toString()}`);
+    };
 
     return (
         <div className="space-y-6">
@@ -54,7 +90,7 @@ export default function TransactionsClient({ initialInvoices }: { initialInvoice
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {filteredInvoices.length > 0 ? (
+                {invoices.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -68,7 +104,7 @@ export default function TransactionsClient({ initialInvoices }: { initialInvoice
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filteredInvoices.map((inv) => (
+                                {invoices.map((inv) => (
                                     <tr key={inv._id} className="hover:bg-blue-50/30 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -156,6 +192,14 @@ export default function TransactionsClient({ initialInvoices }: { initialInvoice
                     </div>
                 )}
             </div>
+
+            {totalPages > 1 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                />
+            )}
 
             <AddCustomerModal
                 isOpen={isAddCustomerOpen}
