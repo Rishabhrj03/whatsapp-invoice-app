@@ -37,7 +37,7 @@ export default async function CreateInvoicePage() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800">Create New Invoice</h1>
+                <h1 className="text-2xl font-bold text-gray-800">Generate Bill</h1>
             </div>
 
             <CreateInvoiceForm

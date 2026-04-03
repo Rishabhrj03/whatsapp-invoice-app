@@ -205,7 +205,7 @@ export default async function DashboardPage() {
                         <div className="bg-white/20 w-fit p-3 rounded-2xl backdrop-blur-md">
                             <IndianRupee size={24} />
                         </div>
-                        <h3 className="text-xl font-bold">Quick Invoice</h3>
+                        <h3 className="text-xl font-bold">Generate Bill</h3>
                         <p className="text-blue-100 text-sm leading-relaxed">
                             Need to send a bill quickly? Start a new transaction now and send it via WhatsApp in seconds.
                         </p>
