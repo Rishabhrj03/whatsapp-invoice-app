@@ -27,10 +27,14 @@ export default async function DashboardPage() {
         Customer.countDocuments({ userId }),
         Invoice.countDocuments({ userId }),
         MenuEntry.countDocuments({ userId }),
-        Invoice.find({ userId }).sort({ date: -1 }).limit(10), // Get last 10
+        Invoice.find({ userId }).sort({ date: -1 }).limit(30), // Increased for scrolling
         Invoice.aggregate([
             { $match: { userId: new (mongoose.Types.ObjectId as any)(userId) } },
             { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+        ]),
+        Invoice.aggregate([
+            { $match: { userId: new (mongoose.Types.ObjectId as any)(userId) } },
+            { $group: { _id: "$paymentType", total: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
         ])
     ]);
 
@@ -140,8 +144,8 @@ export default async function DashboardPage() {
                         </Link>
                     </div>
                     {invoices.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                        <div className="overflow-x-auto max-h-[450px] overflow-y-auto custom-scrollbar">
+                            <table className="w-full text-left sticky-header">
                                 <thead className="bg-gray-50/50">
                                     <tr>
                                         <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
