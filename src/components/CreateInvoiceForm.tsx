@@ -376,7 +376,7 @@ export default function CreateInvoiceForm({
             setInvoiceId(res.invoiceId);
             setSuccessData(invoiceData);
 
-            // Upload PDF to R2
+            // Upload PDF to S3
             try {
                 const file = getInvoiceFile(invoiceData);
                 const uploadRes = await getUploadUrl(`invoices/${res.invoiceId}.pdf`, "application/pdf");
@@ -392,15 +392,15 @@ export default function CreateInvoiceForm({
                 });
 
                 if (!uploadFetch.ok) {
-                    return alert(`R2 Upload Failed: ${uploadFetch.statusText || "Fetch error"}. Check Cloudflare R2 CORS settings.`);
+                    return alert(`S3 Upload Failed: ${uploadFetch.statusText || "Fetch error"}. Check Amazon S3 CORS settings.`);
                 }
 
-                const publicUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL || ""}/invoices/${res.invoiceId}.pdf`;
+                const publicUrl = `${process.env.NEXT_PUBLIC_S3_PUBLIC_URL || ""}/invoices/${res.invoiceId}.pdf`;
                 await updateInvoicePdfUrl(res.invoiceId, publicUrl);
                 setPdfUrl(publicUrl);
-                alert("PDF backed up to R2 successfully!");
+                alert("PDF backed up to S3 successfully!");
             } catch (uploadErr: any) {
-                console.error("Auto R2 Upload failed:", uploadErr);
+                console.error("Auto S3 Upload failed:", uploadErr);
                 alert(`Upload Exception: ${uploadErr.message || "Network or CORS Error"}`);
             }
         } else {

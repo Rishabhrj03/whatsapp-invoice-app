@@ -41,18 +41,18 @@ export async function getUploadUrl(filename: string, contentType: string) {
     try {
         const { PutObjectCommand } = await import("@aws-sdk/client-s3");
         const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
-        const { r2Client } = await import("@/lib/r2");
+        const { s3Client } = await import("@/lib/s3");
 
         const command = new PutObjectCommand({
-            Bucket: process.env.R2_BUCKET_NAME,
+            Bucket: process.env.AWS_S3_BUCKET_NAME,
             Key: filename,
             ContentType: contentType,
         });
 
-        const url = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+        const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
         return { success: true, url };
     } catch (error: any) {
-        console.error("R2 Presign Error:", error);
+        console.error("S3 Presign Error:", error);
         return { success: false, error: error.message || "Failed to get upload URL" };
     }
 }

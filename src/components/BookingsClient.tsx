@@ -205,7 +205,7 @@ export default function BookingsClient({ initialBookings, settings, currentPage,
 
     const uploadPhotos = async () => {
         const urls: string[] = [];
-        const publicPrefix = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || "";
+        const publicPrefix = process.env.NEXT_PUBLIC_S3_PUBLIC_URL || "";
 
         for (const file of filesToUpload) {
             try {

@@ -29,12 +29,12 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
             });
 
             if (!uploadFetch.ok) {
-                return alert("Upload failed. Configure R2 CORS settings!");
+                return alert("Upload failed. Configure S3 CORS settings!");
             }
 
-            const publicUrl = `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL || ""}/logos/${initialUser._id}-${file.name}`;
+            const publicUrl = `${process.env.NEXT_PUBLIC_S3_PUBLIC_URL || ""}/logos/${initialUser._id}-${file.name}`;
             setLogoUrl(publicUrl);
-            alert("Logo uploaded to R2 successfully!");
+            alert("Logo uploaded to S3 successfully!");
         } catch (err: any) {
             alert(`Upload Exception: ${err.message}`);
         } finally {
