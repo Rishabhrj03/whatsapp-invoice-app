@@ -103,7 +103,7 @@ export default async function DashboardPage() {
                         className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-100 transition-all active:scale-95"
                     >
                         <Plus size={18} />
-                        New Invoice
+                        Generate Bill
                     </Link>
                 </div>
             </div>
