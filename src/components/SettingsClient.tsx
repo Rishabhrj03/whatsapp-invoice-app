@@ -32,7 +32,7 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
                 return alert("Upload failed. Configure S3 CORS settings!");
             }
 
-            const publicUrl = `${process.env.NEXT_PUBLIC_S3_PUBLIC_URL || ""}/logos/${initialUser._id}-${file.name}`;
+            const publicUrl = `${process.env.NEXT_PUBLIC_S3_PUBLIC_URL || ""}/${uploadRes.objectKey}`;
             setLogoUrl(publicUrl);
             alert("Logo uploaded to S3 successfully!");
         } catch (err: any) {

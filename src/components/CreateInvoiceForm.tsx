@@ -395,7 +395,7 @@ export default function CreateInvoiceForm({
                     return alert(`S3 Upload Failed: ${uploadFetch.statusText || "Fetch error"}. Check Amazon S3 CORS settings.`);
                 }
 
-                const publicUrl = `${process.env.NEXT_PUBLIC_S3_PUBLIC_URL || ""}/invoices/${res.invoiceId}.pdf`;
+                const publicUrl = `${process.env.NEXT_PUBLIC_S3_PUBLIC_URL || ""}/${uploadRes.objectKey}`;
                 await updateInvoicePdfUrl(res.invoiceId, publicUrl);
                 setPdfUrl(publicUrl);
                 alert("PDF backed up to S3 successfully!");

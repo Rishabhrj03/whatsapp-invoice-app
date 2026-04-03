@@ -220,7 +220,7 @@ export default function BookingsClient({ initialBookings, settings, currentPage,
 
                     if (uploadFetch.ok) {
                         const cleanPrefix = publicPrefix.endsWith('/') ? publicPrefix.slice(0, -1) : publicPrefix;
-                        urls.push(`${cleanPrefix}/${uniqueKey}`);
+                        urls.push(`${cleanPrefix}/${response.objectKey}`);
                     } else {
                         console.error("Upload failed for:", file.name);
                     }

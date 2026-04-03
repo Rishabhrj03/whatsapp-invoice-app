@@ -39,18 +39,28 @@ export async function createInvoice(data: any) {
 
 export async function getUploadUrl(filename: string, contentType: string) {
     try {
+        const { auth } = await import("@/auth");
+        const session = await auth();
+        
+        if (!session?.user?.email) {
+            return { success: false, error: "Unauthorized" };
+        }
+
+        const userEmail = session.user.email;
+        const objectKey = `${userEmail}/${filename}`;
+
         const { PutObjectCommand } = await import("@aws-sdk/client-s3");
         const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
         const { s3Client } = await import("@/lib/s3");
 
         const command = new PutObjectCommand({
             Bucket: process.env.AWS_S3_BUCKET_NAME,
-            Key: filename,
+            Key: objectKey,
             ContentType: contentType,
         });
 
         const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-        return { success: true, url };
+        return { success: true, url, objectKey };
     } catch (error: any) {
         console.error("S3 Presign Error:", error);
         return { success: false, error: error.message || "Failed to get upload URL" };
