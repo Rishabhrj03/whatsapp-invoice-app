@@ -14,6 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://bakingbros.anewway.in"),
   title: "WA Invoice App",
   description: "Premium Digital WhatsApp Invoicing App",
   manifest: "/manifest.json",
