@@ -32,7 +32,7 @@ export default async function CreateInvoicePage() {
     const menuItemsData = JSON.parse(JSON.stringify(menuItems));
     const categoriesData = JSON.parse(JSON.stringify(categories));
 
-    const user = await User.findById(userId);
+    const user = await User.findById(effectiveUserId);
 
     return (
         <div className="space-y-6">

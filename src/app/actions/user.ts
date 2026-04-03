@@ -9,7 +9,10 @@ export async function updateBusinessProfile(formData: FormData) {
     try {
         await dbConnect();
         const session = await auth();
-        if (!session?.user?.id) {
+        const { getEffectiveUserId } = await import("@/lib/auth-utils");
+        const effectiveUserId = await getEffectiveUserId();
+        
+        if (!effectiveUserId) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -35,7 +38,7 @@ export async function updateBusinessProfile(formData: FormData) {
         if (dispatchAlertHoursBefore !== undefined) updatePayload.dispatchAlertHoursBefore = dispatchAlertHoursBefore;
 
         const updatedUser = await User.findByIdAndUpdate(
-            session.user.id,
+            effectiveUserId,
             updatePayload,
             { new: true }
         );

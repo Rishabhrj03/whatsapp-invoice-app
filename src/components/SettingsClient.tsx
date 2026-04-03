@@ -5,18 +5,65 @@ import { updateBusinessProfile } from "@/app/actions/user";
 import { Building2, Image as ImageIcon, CheckCircle2, Loader2, Save, Upload, AlertCircle } from "lucide-react";
 import { getUploadUrl } from "@/app/actions/invoice";
 
+const compressImageForWhatsApp = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 512;
+            const MAX_HEIGHT = 512;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > MAX_WIDTH) {
+                    height = Math.round(height * MAX_WIDTH / width);
+                    width = MAX_WIDTH;
+                }
+            } else {
+                if (height > MAX_HEIGHT) {
+                    width = Math.round(width * MAX_HEIGHT / height);
+                    height = MAX_HEIGHT;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg' }));
+                    } else {
+                        resolve(file);
+                    }
+                }, 'image/jpeg', 0.85);
+            } else {
+                resolve(file);
+            }
+        };
+        img.onerror = () => resolve(file);
+    });
+};
+
 export default function SettingsClient({ initialUser }: { initialUser: any }) {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [logoUrl, setLogoUrl] = useState(initialUser.logoUrl || "");
     const [uploading, setUploading] = useState(false);
+    const [compressionMsg, setCompressionMsg] = useState("");
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const rawFile = e.target.files?.[0];
+        if (!rawFile) return;
 
         setUploading(true);
+        setCompressionMsg("Compressing...");
         try {
+            const file = await compressImageForWhatsApp(rawFile);
+            setCompressionMsg("");
             const uploadRes = await getUploadUrl(`logos/${initialUser._id}-${file.name}`, file.type);
             if (!uploadRes.success || !uploadRes.url) {
                 return alert(`Failed to get upload URL: ${uploadRes.error}`);
@@ -117,7 +164,7 @@ Thank you for your business!`;
                                 ) : (
                                     <Upload className="text-gray-400 mb-2" size={24} />
                                 )}
-                                <span className="text-sm font-bold text-gray-700">{uploading ? "Uploading to Cloud..." : "Upload File"}</span>
+                                <span className="text-sm font-bold text-gray-700">{uploading ? (compressionMsg || "Uploading to Cloud...") : "Upload File"}</span>
                                 <span className="text-[10px] text-gray-400 mt-1">PNG, JPG, WEBP</span>
                                 <input
                                     type="file"

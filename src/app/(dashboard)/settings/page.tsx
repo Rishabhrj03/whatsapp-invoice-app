@@ -11,7 +11,14 @@ export default async function SettingsPage() {
     }
 
     await dbConnect();
-    const user = await User.findById(session.user.id);
+    const { getEffectiveUserId } = await import("@/lib/auth-utils");
+    const effectiveUserId = await getEffectiveUserId();
+
+    if (!effectiveUserId) {
+        redirect("/login");
+    }
+
+    const user = await User.findById(effectiveUserId);
 
     if (!user) {
         redirect("/login");
