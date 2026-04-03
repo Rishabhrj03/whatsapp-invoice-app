@@ -1,4 +1,5 @@
 import dbConnect from "@/lib/mongoose";
+import mongoose from "mongoose";
 import Customer from "@/models/Customer";
 import Invoice from "@/models/Invoice";
 import MenuEntry from "@/models/MenuEntry";
@@ -22,15 +23,18 @@ export default async function DashboardPage() {
     const userId = session?.user?.id;
     if (!userId) return null;
 
-    const [customerCount, invoiceCount, menuCount, invoices] = await Promise.all([
+    const [customerCount, invoiceCount, menuCount, invoices, revenueResult] = await Promise.all([
         Customer.countDocuments({ userId }),
         Invoice.countDocuments({ userId }),
         MenuEntry.countDocuments({ userId }),
         Invoice.find({ userId }).sort({ date: -1 }).limit(10), // Get last 10
+        Invoice.aggregate([
+            { $match: { userId: new (mongoose.Types.ObjectId as any)(userId) } },
+            { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+        ])
     ]);
 
-    const allInvoices = await Invoice.find({ userId });
-    const totalAmount = allInvoices.reduce((acc, curr) => acc + curr.totalAmount, 0);
+    const totalAmount = revenueResult[0]?.total || 0;
 
     const stats = [
         {

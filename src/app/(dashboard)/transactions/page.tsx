@@ -21,7 +21,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     if (search) {
         const matchingCustomers = await Customer.find({
             userId: effectiveUserId,
-            name: { $regex: search, $options: "i" }
+            name: { $regex: `^${search}`, $options: "i" }
         }).select("_id").lean();
         const customerIds = matchingCustomers.map(c => c._id);
 

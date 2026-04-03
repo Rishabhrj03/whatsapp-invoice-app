@@ -7,8 +7,7 @@ import {
     CheckCircle, UserPlus, ShoppingBag, CreditCard,
     ChevronRight, Calendar, Info, Tag, Check, Printer, ArrowLeft
 } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+// jspdf and jspdf-autotable removed for dynamic import optimization
 import CustomerSelector from "./CustomerSelector";
 import MenuSelector from "./MenuSelector";
 import AddCustomerModal from "./AddCustomerModal";
@@ -50,21 +49,6 @@ export default function CreateInvoiceForm({
     const [canShare, setCanShare] = useState(false);
     const [currentDate, setCurrentDate] = useState("");
     const [logoBase64, setLogoBase64] = useState<string>("");
-
-    // Pre-fetch logo for PDF because addImage requires synchronous data or base64
-    useEffect(() => {
-        if (initialUser?.logoUrl) {
-            getLogoBase64(initialUser.logoUrl)
-                .then(res => {
-                    if (res.success && res.base64) {
-                        setLogoBase64(res.base64);
-                    } else {
-                        console.error("Logo prefetch action failed:", res.error);
-                    }
-                })
-                .catch(e => console.error("Logo prefetch exc", e));
-        }
-    }, [initialUser?.logoUrl]);
 
     // Check share compatibility on mount
     useEffect(() => {
@@ -143,17 +127,29 @@ export default function CreateInvoiceForm({
         setItems(newItems);
     };
 
-    const getInvoiceFile = (data: any): File => {
+    const getInvoiceFile = async (data: any): Promise<File> => {
+        const { default: jsPDF } = await import("jspdf");
+        const { default: autoTable } = await import("jspdf-autotable");
+
         const doc = new jsPDF();
         const customer = customers.find((c) => c._id === data.customerId);
 
-        // Header
+        // Fetch logo on demand if not already base64 (to avoid blocking mount)
+        let currentLogoBase64 = logoBase64;
+        if (!currentLogoBase64 && initialUser?.logoUrl) {
+            const res = await getLogoBase64(initialUser.logoUrl);
+            if (res.success && res.base64) {
+                currentLogoBase64 = res.base64;
+                setLogoBase64(res.base64);
+            }
+        }
+
         // Header / Branding
         let textX = 14;
-        if (logoBase64) {
+        if (currentLogoBase64) {
             try {
                 const format = initialUser?.logoUrl?.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
-                doc.addImage(logoBase64, format, 14, 12, 16, 16);
+                doc.addImage(currentLogoBase64, format, 14, 12, 16, 16);
                 textX = 34; // Shift text right
             } catch (e) {
                 console.error("Failed adding logo to PDF:", e);
@@ -249,8 +245,8 @@ export default function CreateInvoiceForm({
         return new File([blob], filename, { type: "application/pdf" });
     };
 
-    const generatePDF = (data: any) => {
-        const file = getInvoiceFile(data);
+    const generatePDF = async (data: any) => {
+        const file = await getInvoiceFile(data);
         const url = URL.createObjectURL(file);
         const link = document.createElement("a");
         link.href = url;
@@ -259,8 +255,8 @@ export default function CreateInvoiceForm({
         setHasDownloaded(true);
     };
 
-    const printPDF = (data: any) => {
-        const file = getInvoiceFile(data);
+    const printPDF = async (data: any) => {
+        const file = await getInvoiceFile(data);
         const url = URL.createObjectURL(file);
 
         const iframe = document.createElement("iframe");
@@ -282,7 +278,7 @@ export default function CreateInvoiceForm({
     const handleDirectShare = async () => {
         if (!successData) return;
 
-        const file = getInvoiceFile(successData);
+        const file = await getInvoiceFile(successData);
         const customer = customers.find((c) => c._id === successData.customerId);
 
         const invoiceLink = pdfUrl || `${window.location.origin}/public/invoice/${invoiceId}`;
@@ -378,7 +374,7 @@ export default function CreateInvoiceForm({
 
             // Upload PDF to S3
             try {
-                const file = getInvoiceFile(invoiceData);
+                const file = await getInvoiceFile(invoiceData);
                 const uploadRes = await getUploadUrl(`invoices/${res.invoiceId}.pdf`, "application/pdf");
 
                 if (!uploadRes.success || !uploadRes.url) {
