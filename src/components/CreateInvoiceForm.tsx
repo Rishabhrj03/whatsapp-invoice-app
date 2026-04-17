@@ -435,7 +435,7 @@ export default function CreateInvoiceForm({
 
                 <div className="grid grid-cols-1 gap-4 text-left">
                     {/* Share Directly (Preferred for Mobile) */}
-                    {canShare && !isGuest && (
+                    {/* {canShare && !isGuest && (
                         <div className="p-5 rounded-2xl border-2 border-blue-600 bg-blue-50/50 relative overflow-hidden group">
                             <div className="absolute top-2 right-4 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Recommended</div>
                             <div className="flex items-start gap-4">
@@ -452,15 +452,15 @@ export default function CreateInvoiceForm({
                                 </div>
                             </div>
                         </div>
-                    )}
+                    )} */}
 
                     {/* Step-by-Step (Backup/Desktop) */}
                     <div className={`p-5 rounded-2xl border ${!canShare ? 'border-2 border-green-600 bg-green-50/50' : 'border-gray-100 bg-white'} relative`}>
                         {!canShare && <div className="absolute top-2 right-4 bg-green-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Standard Method</div>}
                         <div className="flex items-start gap-4">
-                            <span className={`w-8 h-8 rounded-full ${!canShare ? 'bg-green-600' : 'bg-gray-300'} text-white flex items-center justify-center font-bold text-sm`}>
+                            {/* <span className={`w-8 h-8 rounded-full ${!canShare ? 'bg-green-600' : 'bg-gray-300'} text-white flex items-center justify-center font-bold text-sm`}>
                                 {canShare ? '2' : '1'}
-                            </span>
+                            </span> */}
                             <div className="flex-1">
                                 <h4 className="font-bold text-gray-800">Manual Flow (Best for Desktop)</h4>
                                 <p className="text-xs text-gray-500 mt-1">WhatsApp links cannot attach local files directly. Please use this two-step process:</p>
@@ -861,7 +861,7 @@ export default function CreateInvoiceForm({
                                         <div className="hidden md:flex flex-col justify-end space-y-1.5 min-w-[100px] border-l border-gray-50 pl-6">
                                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 text-right">Line Total</p>
                                             <div className="h-[46px] flex items-center justify-end">
-                                                <p className="text-lg font-black text-blue-600 tracking-tight">₹{((Number(item.price)||0) * (Number(item.quantity)||0)).toFixed(2)}</p>
+                                                <p className="text-lg font-black text-blue-600 tracking-tight">₹{((Number(item.price) || 0) * (Number(item.quantity) || 0)).toFixed(2)}</p>
                                             </div>
                                         </div>
 

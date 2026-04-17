@@ -14,14 +14,14 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://bakingbros.anewway.in"),
-  title: "BakingBros",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://thecakeshop.anewway.in"),
+  title: "The Cake Shop",
   description: "Premium Digital WhatsApp Invoicing App",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "BakingBros",
+    title: "The Cake Shop",
   },
   formatDetection: {
     telephone: false,
