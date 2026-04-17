@@ -40,7 +40,7 @@ export default function CategorySelector({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-white border border-gray-200 rounded-xl hover:bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-left shadow-sm group"
+                className="w-full h-[46px] flex items-center justify-between px-4 bg-white border border-gray-200 rounded-xl hover:bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-left shadow-sm group"
             >
                 <div className="flex items-center gap-3">
                     <div className={`p-1.5 rounded-lg ${selectedId ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>

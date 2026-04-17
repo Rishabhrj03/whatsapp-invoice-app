@@ -5,7 +5,7 @@ import { createInvoice, getUploadUrl, updateInvoicePdfUrl, getLogoBase64 } from 
 import {
     Plus, Trash2, Send, FileDown, Eye, Edit2,
     CheckCircle, UserPlus, ShoppingBag, CreditCard,
-    ChevronRight, Calendar, Info, Tag, Check, Printer, ArrowLeft
+    ChevronRight, Calendar, Info, Tag, Check, Printer, ArrowLeft, Minus
 } from "lucide-react";
 // jspdf and jspdf-autotable removed for dynamic import optimization
 import CustomerSelector from "./CustomerSelector";
@@ -39,7 +39,7 @@ export default function CreateInvoiceForm({
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     const [pdfUrl, setPdfUrl] = useState("");
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-    const [items, setItems] = useState<{ categoryId: string; menuEntryId: string; name: string; price: number; quantity: number }[]>([]);
+    const [items, setItems] = useState<{ categoryId: string; menuEntryId: string; name: string; price: number; quantity: number; _menuOpenTrigger?: number }[]>([]);
     const [comment, setComment] = useState("");
     const [loading, setLoading] = useState(false);
     const [successData, setSuccessData] = useState<any>(null);
@@ -102,7 +102,7 @@ export default function CreateInvoiceForm({
     const selectedCustomer = customers.find((c) => c._id === customerId);
 
     const handleAddItem = () => {
-        setItems([...items, { categoryId: "", menuEntryId: "", name: "", price: 0, quantity: 1 }]);
+        setItems([...items, { categoryId: "", menuEntryId: "", name: "", price: 0, quantity: 1, _menuOpenTrigger: 0 }]);
     };
 
     const handleRemoveItem = (index: number) => {
@@ -748,7 +748,7 @@ export default function CreateInvoiceForm({
                                 {items.map((item, index) => (
                                     <div
                                         key={index}
-                                        className="group relative flex flex-col md:flex-row gap-6 p-6 border border-gray-100 rounded-2xl bg-white hover:border-blue-200 hover:shadow-md hover:shadow-blue-50/50 transition-all animate-in fade-in slide-in-from-left-4 duration-300"
+                                        className="group relative flex flex-col md:flex-row gap-4 sm:gap-6 p-4 sm:p-6 border border-gray-100 rounded-2xl bg-white hover:border-blue-200 hover:shadow-md hover:shadow-blue-50/50 transition-all animate-in fade-in slide-in-from-left-4 duration-300"
                                         style={{ zIndex: items.length - index }}
                                     >
                                         <div className="flex-1 space-y-1.5 min-w-[150px]">
@@ -768,7 +768,7 @@ export default function CreateInvoiceForm({
                                                     selectedId={item.categoryId || ""}
                                                     onSelect={(name) => {
                                                         const newItems = [...items];
-                                                        newItems[index] = { ...newItems[index], categoryId: name, menuEntryId: "", name: "", price: 0 };
+                                                        newItems[index] = { ...newItems[index], categoryId: name, menuEntryId: "", name: "", price: 0, _menuOpenTrigger: Date.now() };
                                                         setItems(newItems);
                                                     }}
                                                 />
@@ -790,53 +790,94 @@ export default function CreateInvoiceForm({
                                                     };
                                                     setItems(newItems);
                                                 }}
+                                                forceOpenTrigger={item._menuOpenTrigger}
                                             />
                                         </div>
 
-                                        <div className="flex gap-4">
-                                            <div className="w-full md:w-32 space-y-1.5">
+                                        <div className="flex gap-2 md:gap-4 items-end w-full md:w-auto">
+                                            <div className="flex-1 min-w-[80px] md:w-32 md:flex-none space-y-1.5">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Unit Price</label>
                                                 <div className="relative">
-                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
+                                                    <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
                                                     <input
                                                         type="number"
-                                                        value={item.price}
-                                                        onChange={(e) =>
-                                                            handleItemChange(index, "price", parseFloat(e.target.value) || 0)
-                                                        }
-                                                        className="block w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-black text-gray-900 bg-white"
+                                                        value={item.price === 0 ? "" : item.price}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            handleItemChange(index, "price", val === "" ? 0 : parseFloat(val));
+                                                        }}
+                                                        onFocus={(e) => e.target.select()}
+                                                        className="block w-full pl-6 sm:pl-8 pr-2 sm:pr-4 h-[46px] border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-black text-gray-900 bg-white outline-none transition-shadow"
                                                     />
                                                 </div>
                                             </div>
 
-                                            <div className="w-full md:w-28 space-y-1.5">
+                                            <div className="w-[100px] sm:w-[120px] md:w-32 shrink-0 space-y-1.5">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Quantity</label>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    value={item.quantity}
-                                                    onChange={(e) =>
-                                                        handleItemChange(index, "quantity", parseInt(e.target.value) || 1)
-                                                    }
-                                                    required
-                                                    className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-black text-gray-900 bg-white"
-                                                />
+                                                <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all shadow-sm">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleItemChange(index, "quantity", Math.max(1, item.quantity - 1))}
+                                                        className="w-8 sm:w-10 h-[46px] flex justify-center items-center bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors border-r border-gray-200 shrink-0"
+                                                    >
+                                                        <Minus size={14} strokeWidth={3} />
+                                                    </button>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={item.quantity === 0 ? "" : item.quantity}
+                                                        onChange={(e) => {
+                                                            const val = parseInt(e.target.value);
+                                                            handleItemChange(index, "quantity", isNaN(val) ? 0 : val);
+                                                        }}
+                                                        onBlur={(e) => {
+                                                            if (!e.target.value || parseInt(e.target.value) < 1) handleItemChange(index, "quantity", 1);
+                                                        }}
+                                                        onFocus={(e) => e.target.select()}
+                                                        required
+                                                        className="w-full text-center h-[46px] text-sm font-black text-gray-900 bg-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-0 px-0"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleItemChange(index, "quantity", item.quantity + 1)}
+                                                        className="w-8 sm:w-10 h-[46px] flex justify-center items-center bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors border-l border-gray-200 shrink-0"
+                                                    >
+                                                        <Plus size={14} strokeWidth={3} />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Mobile Delete Button Inline */}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveItem(index)}
+                                                className="md:hidden shrink-0 h-[46px] w-[46px] flex justify-center items-center text-red-400 hover:text-red-600 bg-red-50/50 hover:bg-red-100 rounded-xl transition-all border border-red-100 focus:ring-2 focus:ring-red-500"
+                                                title="Remove Item"
+                                            >
+                                                <Trash2 size={18} strokeWidth={2.5} />
+                                            </button>
+                                        </div>
+
+                                        <div className="hidden md:flex flex-col justify-end space-y-1.5 min-w-[100px] border-l border-gray-50 pl-6">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 text-right">Line Total</p>
+                                            <div className="h-[46px] flex items-center justify-end">
+                                                <p className="text-lg font-black text-blue-600 tracking-tight">₹{((Number(item.price)||0) * (Number(item.quantity)||0)).toFixed(2)}</p>
                                             </div>
                                         </div>
 
-                                        <div className="hidden md:flex flex-col justify-center items-end min-w-[100px] border-l border-gray-50 pl-6">
-                                            <p className="text-[10px] font-black text-gray-300 uppercase tracking-tighter">Line Total</p>
-                                            <p className="text-md font-black text-blue-600 tracking-tight">₹{(item.price * item.quantity).toFixed(2)}</p>
+                                        {/* Desktop View Delete Button */}
+                                        <div className="hidden md:flex flex-col justify-end space-y-1.5">
+                                            {/* Spacer to match the labels above inputs */}
+                                            <div className="text-[10px] px-1 opacity-0">&nbsp;</div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveItem(index)}
+                                                className="h-[46px] w-[46px] flex justify-center items-center text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shrink-0"
+                                                title="Remove Item"
+                                            >
+                                                <Trash2 size={20} strokeWidth={2.5} />
+                                            </button>
                                         </div>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemoveItem(index)}
-                                            className="md:self-center p-3 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-gray-50 md:border-transparent"
-                                            title="Remove Item"
-                                        >
-                                            <Trash2 size={20} />
-                                        </button>
                                     </div>
                                 ))}
                             </div>
