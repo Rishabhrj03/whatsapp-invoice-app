@@ -72,6 +72,13 @@ export const UpdateBusinessProfileSchema = z.object({
     dispatchAlertHoursBefore: z.number().int().min(0).max(24).optional(),
 });
 
+// ─── Authentication / Signup ─────────────────────────────────────────────────
+export const SignupSchema = z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters').max(100).trim(),
+    email: z.string().email('Please enter a valid email address').max(200).toLowerCase().trim(),
+    password: z.string().min(6, 'Password must be at least 6 characters').max(100),
+});
+
 // Inferred types from schemas
 export type CreateInvoiceInput = z.infer<typeof CreateInvoiceSchema>;
 export type UpdateInvoiceInput = z.infer<typeof UpdateInvoiceSchema>;
@@ -79,3 +86,4 @@ export type CreateCustomerInput = z.infer<typeof CreateCustomerSchema>;
 export type CreateMenuItemInput = z.infer<typeof CreateMenuItemSchema>;
 export type CreateCategoryInput = z.infer<typeof CreateCategorySchema>;
 export type UpdateBusinessProfileInput = z.infer<typeof UpdateBusinessProfileSchema>;
+export type SignupInput = z.infer<typeof SignupSchema>;

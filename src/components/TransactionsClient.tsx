@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Search,
     Plus,
@@ -11,10 +11,14 @@ import {
     FileDown,
     Edit3,
     MessageCircle,
-    MessageSquare
+    MessageSquare,
+    IndianRupee,
+    CreditCard,
+    ShoppingBag,
+    Phone,
+    Shield
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import AddCustomerModal from "./AddCustomerModal";
 import EditInvoiceModal from "./EditInvoiceModal";
@@ -28,7 +32,13 @@ interface TransactionsClientProps {
     userRole?: string;
 }
 
-export default function TransactionsClient({ initialInvoices, currentPage, totalPages, initialSearch, userRole }: TransactionsClientProps) {
+export default function TransactionsClient({
+    initialInvoices,
+    currentPage,
+    totalPages,
+    initialSearch,
+    userRole,
+}: TransactionsClientProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -55,7 +65,7 @@ export default function TransactionsClient({ initialInvoices, currentPage, total
             if (changed) {
                 router.push(`${pathname}?${params.toString()}`);
             }
-        }, 500);
+        }, 400);
         return () => clearTimeout(timeout);
     }, [searchQuery, initialSearch, pathname, router, searchParams]);
 
@@ -65,170 +75,272 @@ export default function TransactionsClient({ initialInvoices, currentPage, total
         router.push(`${pathname}?${params.toString()}`);
     };
 
+    const getPaymentBadge = (paymentType: string) => {
+        switch (paymentType) {
+            case 'Cash':
+                return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'Card':
+                return 'bg-blue-50 text-blue-700 border-blue-200';
+            case 'UPI':
+                return 'bg-purple-50 text-purple-700 border-purple-200';
+            default:
+                return 'bg-slate-100 text-slate-700 border-slate-200';
+        }
+    };
+
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-                <div className="relative w-full md:w-96">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            {/* Top Toolbar */}
+            <div className="flex flex-col sm:flex-row gap-3.5 justify-between items-stretch sm:items-center">
+                <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
                         type="text"
-                        placeholder="Search by customer name..."
+                        placeholder="Search by customer name or phone..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm font-medium shadow-sm outline-none"
                     />
                 </div>
-                <div className="flex gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-2.5">
                     <button
                         onClick={() => setIsAddCustomerOpen(true)}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-bold rounded-xl transition-all shadow-sm"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs md:text-sm font-bold rounded-xl transition-all shadow-sm active:scale-95"
                     >
-                        <UserPlus size={18} className="text-blue-500" />
-                        New Customer
+                        <UserPlus size={16} className="text-blue-500" />
+                        <span>Add Customer</span>
                     </button>
                     <Link
                         href="/invoice/create"
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-100"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-bold rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-95"
                     >
-                        <Plus size={18} />
-                        Generate Bill
+                        <Plus size={16} />
+                        <span>Create Bill</span>
                     </Link>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Invoices List: Responsive Card on Mobile / Full Table on Desktop & Tablet */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
                 {invoices.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50/50">
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Items</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Payment</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Amount</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {invoices.map((inv) => (
-                                    <tr key={inv._id} className="hover:bg-blue-50/30 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-gray-100 rounded-lg group-hover:bg-blue-100 transition-colors">
-                                                    <Calendar size={16} className="text-gray-500 group-hover:text-blue-600" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-800">
-                                                        {new Date(inv.date).toLocaleDateString(undefined, {
-                                                            day: 'numeric',
-                                                            month: 'short',
-                                                            year: 'numeric'
-                                                        })}
-                                                    </p>
-                                                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">
-                                                        {new Date(inv.date).toLocaleTimeString(undefined, {
-                                                            hour: '2-digit',
-                                                            minute: '2-digit'
-                                                        })}
-                                                    </p>
-                                                </div>
+                    <>
+                        {/* 1. Mobile Cards View (< 768px) */}
+                        <div className="md:hidden divide-y divide-slate-100">
+                            {invoices.map((inv) => (
+                                <div key={inv._id} className="p-4 space-y-3 hover:bg-slate-50/60 transition-colors">
+                                    {/* Card Header */}
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center font-black text-sm flex-shrink-0 shadow-sm">
+                                                {inv.customer?.name ? inv.customer.name.charAt(0).toUpperCase() : "G"}
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <p className="text-sm font-bold text-gray-800">
-                                                {inv.customer?.name || <span className="text-gray-400 italic font-medium">Guest</span>}
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-slate-900 truncate">
+                                                    {inv.customer?.name || <span className="text-slate-400 italic">Guest Customer</span>}
+                                                </p>
+                                                <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                                    <Calendar size={12} className="text-slate-400" />
+                                                    {new Date(inv.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right flex-shrink-0">
+                                            <p className="text-base font-black text-slate-900">
+                                                ₹{inv.totalAmount.toLocaleString("en-IN")}
                                             </p>
-                                            <p className="text-xs text-gray-500 truncate max-w-[150px]">
-                                                {inv.customer?.phoneNumber || "No contact info"}
-                                            </p>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-700 text-xs font-bold">
-                                                {inv.items.length}
+                                            <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border mt-0.5 ${getPaymentBadge(inv.paymentType || "Cash")}`}>
+                                                {inv.paymentType || "Cash"}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold ${inv.paymentType === 'Cash' ? 'bg-green-50 text-green-700' :
-                                                inv.paymentType === 'Card' ? 'bg-blue-50 text-blue-700' :
-                                                    'bg-purple-50 text-purple-700'
-                                                }`}>
-                                                {inv.paymentType || 'Cash'}
+                                        </div>
+                                    </div>
+
+                                    {/* Line items snippet */}
+                                    <div className="bg-slate-50 rounded-xl p-2.5 text-xs text-slate-600 flex items-center justify-between">
+                                        <span className="flex items-center gap-1.5 font-medium">
+                                            <ShoppingBag size={14} className="text-slate-400" />
+                                            {inv.items.length} {inv.items.length === 1 ? "item" : "items"}
+                                        </span>
+                                        {inv.discountAmount > 0 && (
+                                            <span className="text-emerald-600 font-bold">
+                                                Discount: ₹{inv.discountAmount}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <p className="text-sm font-black text-gray-900">
-                                                ₹{inv.totalAmount.toLocaleString()}
-                                            </p>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex flex-col items-end gap-1.5">
-                                                <Link
-                                                    href={`/public/invoice/${inv._id}`}
+                                        )}
+                                    </div>
+
+                                    {/* Touch-Friendly Action Bar */}
+                                    <div className="flex items-center gap-2 pt-1">
+                                        <Link
+                                            href={`/public/invoice/${inv._id}`}
+                                            target="_blank"
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors min-h-[40px]"
+                                        >
+                                            <span>View Bill</span>
+                                            <ArrowRight size={14} />
+                                        </Link>
+
+                                        {inv.customer?.phoneNumber && (
+                                            <>
+                                                <a
+                                                    href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}${inv.pdfUrl ? '\nView PDF: ' + inv.pdfUrl : ''}`)}`}
                                                     target="_blank"
-                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center justify-center gap-1.5 py-2 px-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] rounded-xl text-xs font-bold transition-colors min-h-[40px]"
+                                                    title="Send over WhatsApp"
                                                 >
-                                                    View Page <ArrowRight size={14} />
-                                                </Link>
-                                                {inv.pdfUrl && (
-                                                    <a
-                                                        href={inv.pdfUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-800 transition-colors"
-                                                    >
-                                                        <FileDown size={12} /> PDF Backup
-                                                    </a>
-                                                )}
-                                                {/* WhatsApp share */}
-                                                {inv.customer?.phoneNumber && (
-                                                    <a
-                                                        href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}${inv.pdfUrl ? '\nView PDF: ' + inv.pdfUrl : ''}`)}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-[#128C7E] hover:text-[#075E54] transition-colors"
-                                                    >
-                                                        <MessageCircle size={12} /> WhatsApp
-                                                    </a>
-                                                )}
-                                                {/* SMS / Text message share */}
-                                                {inv.customer?.phoneNumber && (
-                                                    <a
-                                                        href={`sms:${inv.customer.phoneNumber.replace(/\D/g,'')}?body=${encodeURIComponent(`Dear ${inv.customer.name || 'Customer'}, your bill of Rs. ${inv.totalAmount} dated ${new Date(inv.date).toLocaleDateString('en-IN')} is ready. View invoice: https://wa-invoice.app/public/invoice/${inv._id}`)}`}
-                                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-600 hover:text-sky-800 transition-colors"
-                                                    >
-                                                        <MessageSquare size={12} /> Text Message
-                                                    </a>
-                                                )}
-                                                {/* Edit — OWNER only */}
-                                                {isOwner && (
-                                                    <button
-                                                        onClick={() => setEditingInvoice(inv)}
-                                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-500 hover:text-orange-700 transition-colors"
-                                                    >
-                                                        <Edit3 size={12} /> Edit Bill
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
+                                                    <MessageCircle size={16} />
+                                                    <span className="hidden xs:inline">WhatsApp</span>
+                                                </a>
+                                                <a
+                                                    href={`sms:${inv.customer.phoneNumber.replace(/\D/g,'')}?body=${encodeURIComponent(`Dear ${inv.customer.name || 'Customer'}, your bill of Rs. ${inv.totalAmount} dated ${new Date(inv.date).toLocaleDateString('en-IN')} is ready.`)}`}
+                                                    className="flex items-center justify-center gap-1.5 py-2 px-3 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl text-xs font-bold transition-colors min-h-[40px]"
+                                                    title="Send over SMS"
+                                                >
+                                                    <MessageSquare size={16} />
+                                                    <span className="hidden xs:inline">SMS</span>
+                                                </a>
+                                            </>
+                                        )}
+
+                                        {isOwner && (
+                                            <button
+                                                onClick={() => setEditingInvoice(inv)}
+                                                className="flex items-center justify-center gap-1 py-2 px-3 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl text-xs font-bold transition-colors min-h-[40px]"
+                                                title="Edit Bill (Owner only)"
+                                            >
+                                                <Edit3 size={15} />
+                                                <span className="hidden xs:inline">Edit</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* 2. Desktop & Tablet Table View (>= 768px) */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/80 border-b border-slate-100">
+                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider">Date & Time</th>
+                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider">Customer</th>
+                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Items</th>
+                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Payment</th>
+                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-right">Amount</th>
+                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-right">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {invoices.map((inv) => (
+                                        <tr key={inv._id} className="hover:bg-blue-50/30 transition-colors group">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-blue-100 text-slate-600 group-hover:text-blue-600 transition-colors">
+                                                        <Calendar size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-900">
+                                                            {new Date(inv.date).toLocaleDateString("en-IN", {
+                                                                day: 'numeric',
+                                                                month: 'short',
+                                                                year: 'numeric'
+                                                            })}
+                                                        </p>
+                                                        <p className="text-[11px] text-slate-400 font-medium">
+                                                            {new Date(inv.date).toLocaleTimeString("en-IN", {
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <p className="text-sm font-bold text-slate-900 truncate max-w-[180px]">
+                                                    {inv.customer?.name || <span className="text-slate-400 italic">Guest</span>}
+                                                </p>
+                                                <p className="text-xs text-slate-500 truncate max-w-[150px]">
+                                                    {inv.customer?.phoneNumber || "No phone"}
+                                                </p>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                                                    {inv.items.length}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold border ${getPaymentBadge(inv.paymentType || "Cash")}`}>
+                                                    {inv.paymentType || 'Cash'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <p className="text-sm font-black text-slate-900">
+                                                    ₹{inv.totalAmount.toLocaleString("en-IN")}
+                                                </p>
+                                            </td>
+                                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <Link
+                                                        href={`/public/invoice/${inv._id}`}
+                                                        target="_blank"
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-lg text-xs font-bold transition-colors"
+                                                        title="View Digital Invoice"
+                                                    >
+                                                        <span>View</span>
+                                                        <ArrowRight size={13} />
+                                                    </Link>
+
+                                                    {inv.customer?.phoneNumber && (
+                                                        <>
+                                                            <a
+                                                                href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}${inv.pdfUrl ? '\nView PDF: ' + inv.pdfUrl : ''}`)}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors"
+                                                                title="Send WhatsApp"
+                                                            >
+                                                                <MessageCircle size={14} /> WhatsApp
+                                                            </a>
+                                                            <a
+                                                                href={`sms:${inv.customer.phoneNumber.replace(/\D/g,'')}?body=${encodeURIComponent(`Dear ${inv.customer.name || 'Customer'}, your bill of Rs. ${inv.totalAmount} dated ${new Date(inv.date).toLocaleDateString('en-IN')} is ready.`)}`}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-bold transition-colors"
+                                                                title="Send Text Message"
+                                                            >
+                                                                <MessageSquare size={14} /> SMS
+                                                            </a>
+                                                        </>
+                                                    )}
+
+                                                    {isOwner && (
+                                                        <button
+                                                            onClick={() => setEditingInvoice(inv)}
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg text-xs font-bold transition-colors"
+                                                            title="Edit Bill (Owner only)"
+                                                        >
+                                                            <Edit3 size={14} /> Edit
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 ) : (
-                    <div className="p-20 text-center space-y-4">
-                        <div className="w-16 h-16 bg-gray-50 text-gray-200 rounded-full flex items-center justify-center mx-auto">
+                    <div className="p-16 text-center space-y-4">
+                        <div className="w-16 h-16 bg-slate-100 text-slate-300 rounded-full flex items-center justify-center mx-auto">
                             <FileText size={32} />
                         </div>
                         <div>
-                            <p className="text-gray-900 font-extrabold">No transactions found</p>
-                            <p className="text-sm text-gray-500">Try searching for a different customer or create a new invoice.</p>
+                            <p className="text-slate-900 font-extrabold text-base">No transactions found</p>
+                            <p className="text-sm text-slate-500 mt-0.5">Try searching for a different customer or create a new invoice.</p>
                         </div>
                     </div>
                 )}
             </div>
 
+            {/* Pagination Controls */}
             {totalPages > 1 && (
                 <Pagination
                     currentPage={currentPage}

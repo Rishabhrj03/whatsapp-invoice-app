@@ -188,115 +188,211 @@ export default function CustomerReportClient({ customer, invoices, totalSpend }:
                         </div>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50/50">
-                                <tr>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">#</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Items</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Payment</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Amount</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {invoices.map((inv, idx) => (
-                                    <>
-                                        <tr
-                                            key={inv._id}
-                                            className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
-                                            onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
+                    <>
+                        {/* Mobile Touch Cards (< 768px) */}
+                        <div className="md:hidden divide-y divide-gray-100">
+                            {invoices.map((inv, idx) => {
+                                const isExpanded = expandedIdx === idx;
+                                return (
+                                    <div key={inv._id} className="p-4 space-y-3 bg-white">
+                                        <div
+                                            className="flex items-start justify-between cursor-pointer"
+                                            onClick={() => setExpandedIdx(isExpanded ? null : idx)}
                                         >
-                                            <td className="px-6 py-4">
-                                                <span className="w-7 h-7 bg-gray-100 group-hover:bg-blue-100 rounded-lg flex items-center justify-center text-xs font-black text-gray-600 group-hover:text-blue-700 transition-colors">
-                                                    {invoices.length - idx}
+                                            <div className="flex items-center gap-3">
+                                                <span className="w-8 h-8 bg-blue-50 text-blue-700 rounded-xl flex items-center justify-center text-xs font-black">
+                                                    #{invoices.length - idx}
                                                 </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <p className="text-sm font-bold text-gray-800">
-                                                    {new Date(inv.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                                                </p>
-                                                <p className="text-[10px] text-gray-400 font-medium">
-                                                    {new Date(inv.date).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                                                </p>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-700 text-xs font-bold">
-                                                    {inv.items.length}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border ${PAYMENT_COLORS[inv.paymentType || "Cash"]}`}>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">
+                                                        {new Date(inv.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-400 font-medium">
+                                                        {new Date(inv.date).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-base font-black text-gray-900">₹{inv.totalAmount.toLocaleString("en-IN")}</p>
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border mt-0.5 ${PAYMENT_COLORS[inv.paymentType || "Cash"]}`}>
                                                     {inv.paymentType || "Cash"}
                                                 </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <p className="text-sm font-black text-gray-900">₹{inv.totalAmount.toLocaleString("en-IN")}</p>
-                                                {inv.discountAmount > 0 && (
-                                                    <p className="text-[10px] text-red-400 font-bold">−₹{inv.discountAmount} disc.</p>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <Link
-                                                        href={`/public/invoice/${inv._id}`}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setExpandedIdx(isExpanded ? null : idx)}
+                                                className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                            >
+                                                {inv.items.length} item{inv.items.length !== 1 ? "s" : ""} {isExpanded ? "▲ Hide" : "▼ Breakdown"}
+                                            </button>
+
+                                            <div className="flex items-center gap-2">
+                                                <Link
+                                                    href={`/public/invoice/${inv._id}`}
+                                                    target="_blank"
+                                                    className="inline-flex items-center justify-center min-h-[38px] px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl transition-all"
+                                                >
+                                                    View Bill
+                                                </Link>
+                                                {inv.pdfUrl && (
+                                                    <a
+                                                        href={inv.pdfUrl}
                                                         target="_blank"
-                                                        onClick={e => e.stopPropagation()}
-                                                        className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                                                        className="inline-flex items-center justify-center min-h-[38px] px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl gap-1 transition-all"
                                                     >
-                                                        View →
-                                                    </Link>
-                                                    {inv.pdfUrl && (
-                                                        <a
-                                                            href={inv.pdfUrl}
-                                                            target="_blank"
-                                                            onClick={e => e.stopPropagation()}
-                                                            className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
-                                                        >
-                                                            <Download size={10} /> PDF
-                                                        </a>
+                                                        <Download size={12} /> PDF
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {isExpanded && (
+                                            <div className="pt-2 animate-in fade-in duration-200">
+                                                <div className="rounded-xl border border-blue-100 overflow-hidden bg-blue-50/30">
+                                                    <div className="p-2 space-y-1.5">
+                                                        {inv.items.map((item: any, i: number) => (
+                                                            <div key={i} className="flex justify-between items-center text-xs py-1 px-2 bg-white rounded-lg border border-blue-50">
+                                                                <div>
+                                                                    <p className="font-bold text-gray-800">{item.name}</p>
+                                                                    <p className="text-[10px] text-gray-400">₹{item.price} × {item.quantity}</p>
+                                                                </div>
+                                                                <p className="font-black text-gray-900">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {inv.discountAmount > 0 && (
+                                                        <div className="px-3 py-1.5 bg-red-50 text-red-600 text-xs font-bold flex justify-between">
+                                                            <span>Discount</span>
+                                                            <span>−₹{inv.discountAmount}</span>
+                                                        </div>
+                                                    )}
+                                                    {inv.comment && (
+                                                        <p className="p-2 text-xs text-gray-500 italic bg-white/60 border-t border-blue-100">
+                                                            📝 {inv.comment}
+                                                        </p>
                                                     )}
                                                 </div>
-                                            </td>
-                                        </tr>
-                                        {/* Expanded row */}
-                                        {expandedIdx === idx && (
-                                            <tr key={`${inv._id}-expanded`}>
-                                                <td colSpan={6} className="px-6 pb-5 bg-blue-50/40">
-                                                    <div className="mt-2 rounded-xl border border-blue-100 overflow-hidden">
-                                                        <table className="w-full text-left text-xs">
-                                                            <thead className="bg-blue-100/60">
-                                                                <tr>
-                                                                    <th className="px-4 py-2.5 font-black text-blue-700 uppercase tracking-wider">Item</th>
-                                                                    <th className="px-4 py-2.5 font-black text-blue-700 uppercase tracking-wider text-right">Price</th>
-                                                                    <th className="px-4 py-2.5 font-black text-blue-700 uppercase tracking-wider text-right">Qty</th>
-                                                                    <th className="px-4 py-2.5 font-black text-blue-700 uppercase tracking-wider text-right">Total</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-blue-100/50">
-                                                                {inv.items.map((item: any, i: number) => (
-                                                                    <tr key={i} className="bg-white/60">
-                                                                        <td className="px-4 py-2.5 font-semibold text-gray-800">{item.name}</td>
-                                                                        <td className="px-4 py-2.5 text-gray-600 text-right">₹{item.price}</td>
-                                                                        <td className="px-4 py-2.5 text-gray-600 text-right">×{item.quantity}</td>
-                                                                        <td className="px-4 py-2.5 font-bold text-gray-900 text-right">₹{(item.price * item.quantity).toLocaleString("en-IN")}</td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                    {inv.comment && (
-                                                        <p className="mt-2 text-xs text-gray-500 italic px-1">📝 {inv.comment}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Tablet & Desktop Table (>= 768px) */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-50/50">
+                                    <tr>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">#</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Items</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Payment</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Amount</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {invoices.map((inv, idx) => (
+                                        <>
+                                            <tr
+                                                key={inv._id}
+                                                className="hover:bg-blue-50/30 transition-colors cursor-pointer group"
+                                                onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <span className="w-7 h-7 bg-gray-100 group-hover:bg-blue-100 rounded-lg flex items-center justify-center text-xs font-black text-gray-600 group-hover:text-blue-700 transition-colors">
+                                                        {invoices.length - idx}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <p className="text-sm font-bold text-gray-800">
+                                                        {new Date(inv.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-400 font-medium">
+                                                        {new Date(inv.date).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                                                    </p>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-700 text-xs font-bold">
+                                                        {inv.items.length}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border ${PAYMENT_COLORS[inv.paymentType || "Cash"]}`}>
+                                                        {inv.paymentType || "Cash"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <p className="text-sm font-black text-gray-900">₹{inv.totalAmount.toLocaleString("en-IN")}</p>
+                                                    {inv.discountAmount > 0 && (
+                                                        <p className="text-[10px] text-red-400 font-bold">−₹{inv.discountAmount} disc.</p>
                                                     )}
                                                 </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <Link
+                                                            href={`/public/invoice/${inv._id}`}
+                                                            target="_blank"
+                                                            onClick={e => e.stopPropagation()}
+                                                            className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                                                        >
+                                                            View →
+                                                        </Link>
+                                                        {inv.pdfUrl && (
+                                                            <a
+                                                                href={inv.pdfUrl}
+                                                                target="_blank"
+                                                                onClick={e => e.stopPropagation()}
+                                                                className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+                                                            >
+                                                                <Download size={10} /> PDF
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </td>
                                             </tr>
-                                        )}
-                                    </>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                            {/* Expanded row */}
+                                            {expandedIdx === idx && (
+                                                <tr key={`${inv._id}-expanded`}>
+                                                    <td colSpan={6} className="px-6 pb-5 bg-blue-50/40">
+                                                        <div className="mt-2 rounded-xl border border-blue-100 overflow-hidden">
+                                                            <table className="w-full text-left text-xs">
+                                                                <thead className="bg-blue-100/60">
+                                                                    <tr>
+                                                                        <th className="px-4 py-2.5 font-black text-blue-700 uppercase tracking-wider">Item</th>
+                                                                        <th className="px-4 py-2.5 font-black text-blue-700 uppercase tracking-wider text-right">Price</th>
+                                                                        <th className="px-4 py-2.5 font-black text-blue-700 uppercase tracking-wider text-right">Qty</th>
+                                                                        <th className="px-4 py-2.5 font-black text-blue-700 uppercase tracking-wider text-right">Total</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-blue-100/50">
+                                                                    {inv.items.map((item: any, i: number) => (
+                                                                        <tr key={i} className="bg-white/60">
+                                                                            <td className="px-4 py-2.5 font-semibold text-gray-800">{item.name}</td>
+                                                                            <td className="px-4 py-2.5 text-gray-600 text-right">₹{item.price}</td>
+                                                                            <td className="px-4 py-2.5 text-gray-600 text-right">×{item.quantity}</td>
+                                                                            <td className="px-4 py-2.5 font-bold text-gray-900 text-right">₹{(item.price * item.quantity).toLocaleString("en-IN")}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        {inv.comment && (
+                                                            <p className="mt-2 text-xs text-gray-500 italic px-1">📝 {inv.comment}</p>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
             </div>
         </div>

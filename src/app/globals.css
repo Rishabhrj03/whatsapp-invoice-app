@@ -48,3 +48,44 @@ body {
     background: white;
   }
 }
+
+/* ─── Print Styles for Thermal POS & A4 Invoices ──────────────────────────── */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt;
+  }
+
+  /* Hide navigation, buttons, and decorative elements */
+  nav,
+  aside,
+  header,
+  footer,
+  button,
+  .no-print,
+  [role="navigation"] {
+    display: none !important;
+  }
+
+  /* Remove drop-shadows and artificial backgrounds */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Keep table rows intact across page breaks */
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Full width printable area */
+  .max-w-4xl,
+  .max-w-2xl {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+}

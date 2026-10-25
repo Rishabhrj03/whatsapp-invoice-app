@@ -1012,6 +1012,22 @@ export default function CreateInvoiceForm({
                         </div>
                     </div>
                 </div>
+
+                {/* Mobile Sticky Quick-Checkout Bar (< 768px) */}
+                {items.length > 0 && (
+                    <div className="md:hidden fixed bottom-20 left-3 right-3 z-30 bg-gray-900/95 backdrop-blur-md text-white p-3.5 px-4 rounded-2xl shadow-2xl border border-gray-700/80 flex items-center justify-between animate-in slide-in-from-bottom-4 duration-300">
+                        <div>
+                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">{items.length} item{items.length > 1 ? 's' : ''} added</p>
+                            <p className="text-lg font-black text-white">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        </div>
+                        <button
+                            type="submit"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-xs shadow-lg shadow-blue-900/50 transition-all active:scale-95"
+                        >
+                            <Eye size={15} /> Preview & Bill
+                        </button>
+                    </div>
+                )}
             </form>
         </div>
     );

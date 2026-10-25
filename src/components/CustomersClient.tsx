@@ -211,56 +211,137 @@ export default function CustomersClient({ initialCustomers, currentPage, totalPa
                                 {customers.length} Entries
                             </span>
                         </div>
-                        <div className="overflow-x-auto">
+                        {/* Mobile Cards View (< 768px) */}
+                        <div className="md:hidden divide-y divide-slate-100">
+                            {customers.map((customer) => (
+                                <div key={customer._id.toString()} className="p-4 space-y-3 hover:bg-slate-50/60 transition-colors">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-sm flex-shrink-0">
+                                                {customer.name ? customer.name.charAt(0).toUpperCase() : "C"}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-slate-900 truncate">{customer.name}</p>
+                                                <p className="text-xs text-slate-500 font-medium tracking-wide mt-0.5">{customer.phoneNumber}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setDeleteModal({ isOpen: true, id: customer._id.toString() })}
+                                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                            title="Delete Customer"
+                                            aria-label="Delete"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+
+                                    {customer.address && (
+                                        <p className="text-xs text-slate-500 flex items-center gap-1.5 pl-1">
+                                            <MapPin size={12} className="text-slate-400 flex-shrink-0" />
+                                            <span className="truncate">{customer.address}</span>
+                                        </p>
+                                    )}
+
+                                    {/* Dates Badges */}
+                                    {(customer.birthdayDate || customer.anniversaryDate) && (
+                                        <div className="flex flex-wrap gap-2 pt-0.5">
+                                            {customer.birthdayDate && (
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-pink-700 bg-pink-50 px-2 py-0.5 rounded-md border border-pink-100">
+                                                    <Calendar size={11} /> BDay: {new Date(customer.birthdayDate).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                            {customer.anniversaryDate && (
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                                                    <Calendar size={11} /> Anniv: {new Date(customer.anniversaryDate).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Action Bar */}
+                                    <div className="flex items-center gap-2 pt-1">
+                                        <Link
+                                            href={`/customers/${customer._id}/report`}
+                                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all min-h-[40px]"
+                                            title="View 90-day bill report"
+                                        >
+                                            <BarChart2 size={14} />
+                                            <span>90-Day Report</span>
+                                        </Link>
+                                        {customer.phoneNumber && (
+                                            <a
+                                                href={`https://wa.me/${customer.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + customer.phoneNumber.replace(/\D/g, '') : customer.phoneNumber.replace(/\D/g, '')}?text=${encodeURIComponent('Hello ' + customer.name + ', ')}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center justify-center gap-1.5 py-2 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all min-h-[40px]"
+                                                title="Open WhatsApp chat"
+                                            >
+                                                <MessageCircle size={15} />
+                                                <span>WhatsApp</span>
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            {customers.length === 0 && (
+                                <div className="p-12 text-center space-y-2">
+                                    <UsersIcon className="text-slate-300 mx-auto" size={32} />
+                                    <p className="text-sm font-bold text-slate-700">No customers registered yet</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Desktop & Tablet Table View (>= 768px) */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-gray-50/50">
+                                <thead className="bg-slate-50/80 border-b border-slate-100">
                                     <tr>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer Info</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Special Dates</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right px-10">Manage</th>
+                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider">Customer Info</th>
+                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider">Special Dates</th>
+                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-right px-8">Manage</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50">
+                                <tbody className="divide-y divide-slate-100">
                                     {customers.map((customer) => (
                                         <tr key={customer._id.toString()} className="hover:bg-blue-50/20 transition-colors group">
-                                            <td className="px-6 py-5">
+                                            <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="min-w-[40px] h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md">
-                                                        {customer.name.charAt(0).toUpperCase()}
+                                                    <div className="min-w-[40px] h-10 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-sm">
+                                                        {customer.name ? customer.name.charAt(0).toUpperCase() : "C"}
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-bold text-gray-900">{customer.name}</p>
-                                                        <p className="text-xs text-gray-500 font-medium tracking-wide">{customer.phoneNumber}</p>
+                                                        <p className="text-sm font-bold text-slate-900">{customer.name}</p>
+                                                        <p className="text-xs text-slate-500 font-medium tracking-wide">{customer.phoneNumber}</p>
                                                     </div>
                                                 </div>
                                                 {customer.address && (
-                                                    <p className="mt-2 text-[10px] text-gray-400 flex items-center gap-1.5 ml-14">
-                                                        <MapPin size={10} /> {customer.address}
+                                                    <p className="mt-1.5 text-xs text-slate-400 flex items-center gap-1.5 ml-14">
+                                                        <MapPin size={11} /> {customer.address}
                                                     </p>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-5">
+                                            <td className="px-6 py-4">
                                                 <div className="flex flex-wrap gap-2">
                                                     {customer.birthdayDate && (
-                                                        <div className="flex items-center gap-2 text-[10px] font-bold text-pink-600 bg-pink-50 px-2 py-1.5 rounded-lg border border-pink-100">
+                                                        <div className="flex items-center gap-1.5 text-xs font-bold text-pink-700 bg-pink-50 px-2.5 py-1 rounded-lg border border-pink-100">
                                                             <Calendar size={12} /> BDay: {new Date(customer.birthdayDate).toLocaleDateString()}
                                                         </div>
                                                     )}
                                                     {customer.anniversaryDate && (
-                                                        <div className="flex items-center gap-2 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1.5 rounded-lg border border-blue-100">
+                                                        <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
                                                             <Calendar size={12} /> Anniv: {new Date(customer.anniversaryDate).toLocaleDateString()}
                                                         </div>
                                                     )}
                                                     {!customer.birthdayDate && !customer.anniversaryDate && (
-                                                        <span className="text-gray-300 text-[10px] italic">No dates added</span>
+                                                        <span className="text-slate-300 text-xs italic">No dates added</span>
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5 text-right">
+                                            <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <Link
                                                         href={`/customers/${customer._id}/report`}
-                                                        className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all"
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all"
                                                         title="View 90-day bill report"
                                                     >
                                                         <BarChart2 size={14} /> Report
@@ -270,18 +351,18 @@ export default function CustomersClient({ initialCustomers, currentPage, totalPa
                                                             href={`https://wa.me/${customer.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + customer.phoneNumber.replace(/\D/g, '') : customer.phoneNumber.replace(/\D/g, '')}?text=${encodeURIComponent('Hello ' + customer.name + ', ')}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="flex items-center gap-1.5 px-3 py-2 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] rounded-xl text-xs font-bold transition-all"
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all"
                                                             title="Open WhatsApp chat"
                                                         >
-                                                            <MessageCircle size={14} /> WA
+                                                            <MessageCircle size={14} /> WhatsApp
                                                         </a>
                                                     )}
                                                     <button
                                                         onClick={() => setDeleteModal({ isOpen: true, id: customer._id.toString() })}
-                                                        className="p-2.5 text-red-200 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all"
+                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                                                         title="Delete Customer"
                                                     >
-                                                        <Trash2 size={18} />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -289,12 +370,12 @@ export default function CustomersClient({ initialCustomers, currentPage, totalPa
                                     ))}
                                     {customers.length === 0 && (
                                         <tr>
-                                            <td colSpan={3} className="px-6 py-20 text-center">
-                                                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                    <UsersIcon className="text-gray-200" size={40} />
+                                            <td colSpan={3} className="px-6 py-16 text-center">
+                                                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                    <UsersIcon className="text-slate-300" size={32} />
                                                 </div>
-                                                <p className="text-sm text-gray-500 font-bold">Your customer list is empty</p>
-                                                <p className="text-xs text-gray-400 mt-1">Start by adding your first client using the button above.</p>
+                                                <p className="text-sm text-slate-700 font-bold">Your customer list is empty</p>
+                                                <p className="text-xs text-slate-400 mt-1">Start by adding your first client using the button above.</p>
                                             </td>
                                         </tr>
                                     )}
