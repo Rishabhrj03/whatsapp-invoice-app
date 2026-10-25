@@ -8,12 +8,16 @@ import {
     UserPlus,
     Calendar,
     ArrowRight,
-    FileDown
+    FileDown,
+    Edit3,
+    MessageCircle,
+    MessageSquare
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import AddCustomerModal from "./AddCustomerModal";
+import EditInvoiceModal from "./EditInvoiceModal";
 import Pagination from "./Pagination";
 
 interface TransactionsClientProps {
@@ -21,17 +25,20 @@ interface TransactionsClientProps {
     currentPage: number;
     totalPages: number;
     initialSearch: string;
+    userRole?: string;
 }
 
-export default function TransactionsClient({ initialInvoices, currentPage, totalPages, initialSearch }: TransactionsClientProps) {
+export default function TransactionsClient({ initialInvoices, currentPage, totalPages, initialSearch, userRole }: TransactionsClientProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     const [searchQuery, setSearchQuery] = useState(initialSearch);
     const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+    const [editingInvoice, setEditingInvoice] = useState<any>(null);
+    const [invoices, setInvoices] = useState(initialInvoices);
 
-    const invoices = initialInvoices;
+    const isOwner = userRole === 'OWNER';
 
     useEffect(() => {
         const timeout = setTimeout(() => {
@@ -155,7 +162,7 @@ export default function TransactionsClient({ initialInvoices, currentPage, total
                                             </p>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="flex flex-col items-end gap-1">
+                                            <div className="flex flex-col items-end gap-1.5">
                                                 <Link
                                                     href={`/public/invoice/${inv._id}`}
                                                     target="_blank"
@@ -172,6 +179,35 @@ export default function TransactionsClient({ initialInvoices, currentPage, total
                                                     >
                                                         <FileDown size={12} /> PDF Backup
                                                     </a>
+                                                )}
+                                                {/* WhatsApp share */}
+                                                {inv.customer?.phoneNumber && (
+                                                    <a
+                                                        href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}${inv.pdfUrl ? '\nView PDF: ' + inv.pdfUrl : ''}`)}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-[#128C7E] hover:text-[#075E54] transition-colors"
+                                                    >
+                                                        <MessageCircle size={12} /> WhatsApp
+                                                    </a>
+                                                )}
+                                                {/* SMS / Text message share */}
+                                                {inv.customer?.phoneNumber && (
+                                                    <a
+                                                        href={`sms:${inv.customer.phoneNumber.replace(/\D/g,'')}?body=${encodeURIComponent(`Dear ${inv.customer.name || 'Customer'}, your bill of Rs. ${inv.totalAmount} dated ${new Date(inv.date).toLocaleDateString('en-IN')} is ready. View invoice: https://wa-invoice.app/public/invoice/${inv._id}`)}`}
+                                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-600 hover:text-sky-800 transition-colors"
+                                                    >
+                                                        <MessageSquare size={12} /> Text Message
+                                                    </a>
+                                                )}
+                                                {/* Edit — OWNER only */}
+                                                {isOwner && (
+                                                    <button
+                                                        onClick={() => setEditingInvoice(inv)}
+                                                        className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-500 hover:text-orange-700 transition-colors"
+                                                    >
+                                                        <Edit3 size={12} /> Edit Bill
+                                                    </button>
                                                 )}
                                             </div>
                                         </td>
@@ -205,6 +241,20 @@ export default function TransactionsClient({ initialInvoices, currentPage, total
                 isOpen={isAddCustomerOpen}
                 onClose={() => setIsAddCustomerOpen(false)}
             />
+
+            {isOwner && (
+                <EditInvoiceModal
+                    isOpen={!!editingInvoice}
+                    invoice={editingInvoice}
+                    onClose={() => setEditingInvoice(null)}
+                    onSaved={(updated) => {
+                        setInvoices(prev => prev.map(inv =>
+                            inv._id === updated._id ? { ...inv, ...updated, customer: inv.customer } : inv
+                        ));
+                        setEditingInvoice(null);
+                    }}
+                />
+            )}
         </div>
     );
 }

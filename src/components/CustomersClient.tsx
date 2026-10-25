@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { createCustomer, deleteCustomer } from "@/app/actions/customer";
-import { Trash2, UserPlus, Phone, MapPin, Calendar, Users as UsersIcon, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Trash2, UserPlus, Phone, MapPin, Calendar, Users as UsersIcon, CheckCircle2, ArrowLeft, BarChart2, MessageCircle } from "lucide-react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import ConfirmModal from "./ConfirmModal";
 import Pagination from "./Pagination";
 
@@ -255,14 +256,34 @@ export default function CustomersClient({ initialCustomers, currentPage, totalPa
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5 text-right px-10">
-                                                <button
-                                                    onClick={() => setDeleteModal({ isOpen: true, id: customer._id.toString() })}
-                                                    className="p-3 text-red-200 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all"
-                                                    title="Delete Customer"
-                                                >
-                                                    <Trash2 size={20} />
-                                                </button>
+                                            <td className="px-6 py-5 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Link
+                                                        href={`/customers/${customer._id}/report`}
+                                                        className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all"
+                                                        title="View 90-day bill report"
+                                                    >
+                                                        <BarChart2 size={14} /> Report
+                                                    </Link>
+                                                    {customer.phoneNumber && (
+                                                        <a
+                                                            href={`https://wa.me/${customer.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + customer.phoneNumber.replace(/\D/g, '') : customer.phoneNumber.replace(/\D/g, '')}?text=${encodeURIComponent('Hello ' + customer.name + ', ')}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-1.5 px-3 py-2 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] rounded-xl text-xs font-bold transition-all"
+                                                            title="Open WhatsApp chat"
+                                                        >
+                                                            <MessageCircle size={14} /> WA
+                                                        </a>
+                                                    )}
+                                                    <button
+                                                        onClick={() => setDeleteModal({ isOpen: true, id: customer._id.toString() })}
+                                                        className="p-2.5 text-red-200 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all"
+                                                        title="Delete Customer"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

@@ -50,4 +50,8 @@ const InvoiceSchema = new Schema<IInvoice>(
     { timestamps: true }
 );
 
+// Performance Indexes for fast multi-tenant queries & 90-day reports
+InvoiceSchema.index({ userId: 1, createdAt: -1 });
+InvoiceSchema.index({ userId: 1, customer: 1, date: -1 });
+
 export default mongoose.models.Invoice || mongoose.model<IInvoice>('Invoice', InvoiceSchema);

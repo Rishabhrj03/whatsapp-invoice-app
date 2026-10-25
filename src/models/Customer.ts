@@ -24,4 +24,7 @@ const CustomerSchema = new Schema<ICustomer>(
     { timestamps: true }
 );
 
+CustomerSchema.index({ userId: 1, name: 1 });
+CustomerSchema.index({ userId: 1, phoneNumber: 1 });
+
 export default mongoose.models.Customer || mongoose.model<ICustomer>('Customer', CustomerSchema);

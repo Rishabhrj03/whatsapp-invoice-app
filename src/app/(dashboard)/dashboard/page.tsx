@@ -4,6 +4,7 @@ import Customer from "@/models/Customer";
 import Invoice from "@/models/Invoice";
 import MenuEntry from "@/models/MenuEntry";
 import { auth } from "@/auth";
+import { getEffectiveUserId } from "@/lib/auth-utils";
 import {
     Users,
     FileText,
@@ -20,8 +21,9 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
     await dbConnect();
     const session = await auth();
-    const userId = session?.user?.id;
-    if (!userId) return null;
+    const effectiveUserId = await getEffectiveUserId();
+    if (!session?.user?.id || !effectiveUserId) return null;
+    const userId = effectiveUserId;
 
     const [customerCount, invoiceCount, menuCount, invoices, revenueResult] = await Promise.all([
         Customer.countDocuments({ userId }),

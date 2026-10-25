@@ -1,29 +1,42 @@
-import mongoose from 'mongoose';
+/**
+ * Database Connection Singleton (Singleton Pattern).
+ * Reuses the Mongoose connection across serverless invocations and dev hot-reloads.
+ * Uses typed global._mongooseCache for type safety without `any` casting.
+ */
+import mongoose, { Mongoose } from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const getMongoUri = () => process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/whatsapp-invoice-app';
 
-if (!MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+interface MongooseCache {
+    conn: Mongoose | null;
+    promise: Promise<Mongoose> | null;
 }
 
-let cached = (global as any).mongoose;
+// Global augmentation allows caching across HMR in development
+const globalRef = global as unknown as { _mongooseCache?: MongooseCache };
 
-if (!cached) {
-    cached = (global as any).mongoose = { conn: null, promise: null };
+if (!globalRef._mongooseCache) {
+    globalRef._mongooseCache = { conn: null, promise: null };
 }
 
-async function dbConnect() {
+const cached = globalRef._mongooseCache;
+
+export async function dbConnect(): Promise<Mongoose> {
     if (cached.conn) {
         return cached.conn;
     }
 
     if (!cached.promise) {
-        const opts = {
+        const uri = getMongoUri();
+        const opts: mongoose.ConnectOptions = {
             bufferCommands: false,
+            maxPoolSize: 10, // Maintain up to 10 socket connections
+            serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+            socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
         };
 
-        cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
-            return mongoose;
+        cached.promise = mongoose.connect(uri, opts).then((m) => {
+            return m;
         });
     }
 

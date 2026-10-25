@@ -172,45 +172,70 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
         if (!file) return;
 
         setLoading(true);
+        const isXlsx = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
 
-        const parseCSVLine = (line: string) => {
-            const values = [];
-            let current = "";
-            let inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    values.push(current.trim().replace(/^"|"$/g, ""));
-                    current = "";
-                } else {
-                    current += char;
-                }
-            }
-            values.push(current.trim().replace(/^"|"$/g, ""));
-            return values;
-        };
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            const text = event.target?.result as string;
-            const lines = text.split("\n").map(l => l.trim()).filter(l => l !== "");
-            if (lines.length < 2) {
-                alert("CSV must have at least a header row and one data row.");
+        if (isXlsx) {
+            // Parse Excel with SheetJS
+            const buffer = await file.arrayBuffer();
+            const XLSX = await import('xlsx');
+            const wb = XLSX.read(buffer, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const data: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1 }) as string[][];
+            if (data.length < 2) {
+                alert('Excel file must have at least a header row and one data row.');
                 setLoading(false);
                 return;
             }
-
-            const headers = parseCSVLine(lines[0]);
-            const rows = lines.slice(1).map(l => parseCSVLine(l));
+            const headers = (data[0] as any[]).map(h => String(h ?? ''));
+            const rows = (data.slice(1) as any[][]).map(row =>
+                headers.map((_h, i) => String(row[i] ?? ''))
+            ).filter(row => row.some(cell => cell.trim() !== ''));
 
             setCsvData({ headers, rows });
             setIsMappingModalOpen(true);
             setLoading(false);
-            e.target.value = "";
-        };
-        reader.readAsText(file);
+            e.target.value = '';
+        } else {
+            // Parse CSV
+            const parseCSVLine = (line: string) => {
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim().replace(/^"|"$/g, ''));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim().replace(/^"|"$/g, ''));
+                return values;
+            };
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const text = event.target?.result as string;
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l !== '');
+                if (lines.length < 2) {
+                    alert('CSV must have at least a header row and one data row.');
+                    setLoading(false);
+                    return;
+                }
+
+                const headers = parseCSVLine(lines[0]);
+                const rows = lines.slice(1).map(l => parseCSVLine(l));
+
+                setCsvData({ headers, rows });
+                setIsMappingModalOpen(true);
+                setLoading(false);
+                e.target.value = '';
+            };
+            reader.readAsText(file);
+        }
     };
 
     const handleMappingConfirm = async (mapping: Record<string, string>) => {
@@ -295,8 +320,8 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                         {activeTab === "items" && (
                             <label className="flex-1 md:flex-none flex items-center justify-center gap-2 py-3 px-5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl font-bold shadow-sm cursor-pointer">
                                 <FileUp size={18} className="text-orange-500" />
-                                Import CSV
-                                <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} disabled={loading} />
+                                Import CSV / Excel
+                                <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleCSVUpload} disabled={loading} />
                             </label>
                         )}
                         <button

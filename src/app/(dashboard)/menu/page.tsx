@@ -7,13 +7,14 @@ import { getEffectiveUserId } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function MenuPage({ searchParams }: { searchParams: { tab?: string, page?: string } }) {
+export default async function MenuPage({ searchParams }: { searchParams: Promise<{ tab?: string; page?: string }> }) {
     await dbConnect();
     const effectiveUserId = await getEffectiveUserId();
     if (!effectiveUserId) return null;
 
-    const tab = (searchParams.tab as "items" | "categories") || "items";
-    const page = parseInt(searchParams.page || "1", 10);
+    const resolvedSearchParams = await searchParams;
+    const tab = (resolvedSearchParams.tab as "items" | "categories") || "items";
+    const page = parseInt(resolvedSearchParams.page || "1", 10);
     const limit = 10;
     const skip = (page - 1) * limit;
 

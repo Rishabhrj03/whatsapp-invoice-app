@@ -7,14 +7,18 @@ import { getEffectiveUserId } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function TransactionsPage({ searchParams }: { searchParams: { page?: string, search?: string } }) {
+export default async function TransactionsPage({ searchParams }: { searchParams: Promise<{ page?: string; search?: string }> }) {
     await dbConnect();
+    const session = await auth();
     const effectiveUserId = await getEffectiveUserId();
     if (!effectiveUserId) return null;
 
-    const page = parseInt(searchParams.page || "1", 10);
+    const resolvedSearchParams = await searchParams;
+    const userRole = (session?.user as any)?.role ?? 'STAFF';
+
+    const page = parseInt(resolvedSearchParams.page || "1", 10);
     const limit = 10;
-    const search = searchParams.search || "";
+    const search = resolvedSearchParams.search || "";
 
     const query: any = { userId: effectiveUserId };
 
@@ -74,6 +78,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                 currentPage={page}
                 totalPages={Math.ceil(total / limit) || 1}
                 initialSearch={search}
+                userRole={userRole}
             />
         </div>
     );

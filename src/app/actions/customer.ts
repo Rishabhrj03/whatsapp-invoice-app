@@ -1,46 +1,37 @@
 "use server";
 
-import dbConnect from "@/lib/mongoose";
-import Customer from "@/models/Customer";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { getEffectiveUserId } from "@/lib/auth-utils";
+import { customerService } from "@/lib/services/CustomerService";
 
-export async function createCustomer(formData: FormData) {
+export type CreateCustomerResponse =
+    | { success: true; customer: any; error?: undefined }
+    | { success: false; error: string; customer?: undefined };
+
+export async function createCustomer(formData: FormData): Promise<CreateCustomerResponse> {
     try {
-        await dbConnect();
         const session = await auth();
         const effectiveUserId = await getEffectiveUserId();
         if (!effectiveUserId || !session?.user?.id) {
             return { success: false, error: "Unauthorized" };
         }
 
-        const name = formData.get("name") as string;
-        // ... (rest of form data extraction)
-        const phoneNumber = formData.get("phoneNumber") as string;
-        const anniversaryDate = formData.get("anniversaryDate") as string;
-        const birthdayDate = formData.get("birthdayDate") as string;
-        const address = formData.get("address") as string;
+        const rawData = {
+            name: formData.get("name") as string,
+            phoneNumber: formData.get("phoneNumber") as string,
+            anniversaryDate: (formData.get("anniversaryDate") as string) || undefined,
+            birthdayDate: (formData.get("birthdayDate") as string) || undefined,
+            address: (formData.get("address") as string) || undefined,
+        };
 
-        if (!name || !phoneNumber) {
-            return { success: false, error: "Name and Phone Number are required." };
+        const result = await customerService.createCustomer(rawData, effectiveUserId, session.user.id);
+        if (!result.success || !result.customer) {
+            return { success: false, error: result.error || "Failed to create customer" };
         }
 
-        const newCustomer = await Customer.create({
-            name,
-            phoneNumber,
-            ...(anniversaryDate && { anniversaryDate }),
-            ...(birthdayDate && { birthdayDate }),
-            ...(address && { address }),
-            userId: effectiveUserId,
-            createdBy: session.user.id,
-        });
-
         revalidatePath("/customers");
-        return {
-            success: true,
-            customer: JSON.parse(JSON.stringify(newCustomer))
-        };
+        return { success: true, customer: result.customer };
     } catch (error: any) {
         console.error("Failed to create customer:", error);
         return { success: false, error: error.message || "Failed to create customer" };
@@ -49,12 +40,16 @@ export async function createCustomer(formData: FormData) {
 
 export async function deleteCustomer(id: string) {
     try {
-        await dbConnect();
         const effectiveUserId = await getEffectiveUserId();
         if (!effectiveUserId) {
             return { success: false, error: "Unauthorized" };
         }
-        await Customer.findOneAndDelete({ _id: id, userId: effectiveUserId });
+
+        const success = await customerService.deleteCustomer(id, effectiveUserId);
+        if (!success) {
+            return { success: false, error: "Customer not found or unauthorized" };
+        }
+
         revalidatePath("/customers");
         return { success: true };
     } catch (error: any) {

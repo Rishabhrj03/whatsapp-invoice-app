@@ -4,12 +4,13 @@ import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { redirect } from "next/navigation";
 
-export default async function TeamPage({ searchParams }: { searchParams: { page?: string } }) {
+export default async function TeamPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
     await dbConnect();
     const session = await auth();
     if (!session?.user?.id) redirect("/login");
 
-    const page = parseInt(searchParams.page || "1", 10);
+    const resolvedSearchParams = await searchParams;
+    const page = parseInt(resolvedSearchParams.page || "1", 10);
     const limit = 10;
     const skip = (page - 1) * limit;
 
