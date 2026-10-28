@@ -8,6 +8,7 @@
  */
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { getEffectiveUserId } from "@/lib/auth-utils";
 import dbConnect from "@/lib/mongoose";
 import Invoice from "@/models/Invoice";
 import Papa from "papaparse";
@@ -20,7 +21,8 @@ export async function GET() {
     try {
         // Require authentication — CSV export must be tenant-scoped
         const session = await auth();
-        if (!session?.user?.id) {
+        const effectiveUserId = await getEffectiveUserId();
+        if (!session?.user?.id || !effectiveUserId) {
             return buildResponse(
                 NextResponse.json({ error: "Unauthorized" }, { status: 401 })
             );
@@ -28,9 +30,8 @@ export async function GET() {
 
         await dbConnect();
 
-        // Scope to authenticated user's tenant
-        const userId = session.user.id;
-        const invoices = await Invoice.find({ userId })
+        // Scope to authenticated business owner's tenant
+        const invoices = await Invoice.find({ userId: effectiveUserId })
             .populate("customer")
             .sort({ date: -1 })
             .lean();

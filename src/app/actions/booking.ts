@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import dbConnect from "@/lib/mongoose";
+import { getEffectiveUserId } from "@/lib/auth-utils";
 import AdvanceBooking from "@/models/AdvanceBooking";
 import User from "@/models/User";
 import Customer from "@/models/Customer";
@@ -10,26 +11,27 @@ import { revalidatePath } from "next/cache";
 
 export async function createAdvanceBooking(formData: any) {
     const session = await auth();
-    if (!session?.user) {
+    const effectiveUserId = await getEffectiveUserId();
+    if (!session?.user || !effectiveUserId) {
         return { success: false, error: "Unauthorized" };
     }
 
     try {
         await dbConnect();
 
-        const existingCustomer = await Customer.findOne({ phoneNumber: formData.phoneNumber, userId: session.user.id });
+        const existingCustomer = await Customer.findOne({ phoneNumber: formData.phoneNumber, userId: effectiveUserId });
         if (!existingCustomer) {
             const customer = new Customer({
                 name: formData.customerName,
                 phoneNumber: formData.phoneNumber,
                 address: formData.address,
-                userId: session.user.id
+                userId: effectiveUserId
             });
             await customer.save();
         }
 
         const booking = new AdvanceBooking({
-            userId: session.user.id,
+            userId: effectiveUserId,
             customerName: formData.customerName,
             phoneNumber: formData.phoneNumber,
             address: formData.address,
@@ -57,14 +59,15 @@ export async function createAdvanceBooking(formData: any) {
 
 export async function getAdvanceBookings({ page = 1, limit = 10, search = "", status = "All" } = {}) {
     const session = await auth();
-    if (!session?.user) {
+    const effectiveUserId = await getEffectiveUserId();
+    if (!session?.user || !effectiveUserId) {
         return { success: false, error: "Unauthorized" };
     }
 
     try {
         await dbConnect();
 
-        const query: any = { userId: session.user.id };
+        const query: any = { userId: effectiveUserId };
         if (search) {
             query.$or = [
                 { customerName: { $regex: search, $options: "i" } },
@@ -84,7 +87,7 @@ export async function getAdvanceBookings({ page = 1, limit = 10, search = "", st
                 .limit(limit)
                 .lean(),
             AdvanceBooking.countDocuments(query),
-            User.findById(session.user.id).lean()
+            User.findById(effectiveUserId).lean()
         ]);
 
         // Convert _id ObjectIds to strings
@@ -117,7 +120,8 @@ export async function getAdvanceBookings({ page = 1, limit = 10, search = "", st
 
 export async function updateAdvanceBookingDetails(bookingId: string, formData: any) {
     const session = await auth();
-    if (!session?.user) {
+    const effectiveUserId = await getEffectiveUserId();
+    if (!session?.user || !effectiveUserId) {
         return { success: false, error: "Unauthorized" };
     }
 
@@ -141,7 +145,7 @@ export async function updateAdvanceBookingDetails(bookingId: string, formData: a
         if (formData.photos) payload.photos = formData.photos;
 
         const booking = await AdvanceBooking.findOneAndUpdate(
-            { _id: bookingId, userId: session.user.id },
+            { _id: bookingId, userId: effectiveUserId },
             { $set: payload },
             { new: true }
         );
@@ -160,14 +164,15 @@ export async function updateAdvanceBookingDetails(bookingId: string, formData: a
 
 export async function updateBookingStatus(bookingId: string, status: string) {
     const session = await auth();
-    if (!session?.user) {
+    const effectiveUserId = await getEffectiveUserId();
+    if (!session?.user || !effectiveUserId) {
         return { success: false, error: "Unauthorized" };
     }
 
     try {
         await dbConnect();
         const booking = await AdvanceBooking.findOneAndUpdate(
-            { _id: bookingId, userId: session.user.id },
+            { _id: bookingId, userId: effectiveUserId },
             { status },
             { new: true }
         );
@@ -186,7 +191,8 @@ export async function updateBookingStatus(bookingId: string, status: string) {
 
 export async function completeAdvanceBooking(bookingId: string, paymentType: string) {
     const session = await auth();
-    if (!session?.user?.id) {
+    const effectiveUserId = await getEffectiveUserId();
+    if (!session?.user?.id || !effectiveUserId) {
         return { success: false, error: "Unauthorized" };
     }
 
@@ -194,7 +200,7 @@ export async function completeAdvanceBooking(bookingId: string, paymentType: str
         await dbConnect();
 
         const booking = await AdvanceBooking.findOneAndUpdate(
-            { _id: bookingId, userId: session.user.id },
+            { _id: bookingId, userId: effectiveUserId },
             { status: "Delivered" },
             { new: true }
         );
@@ -203,19 +209,19 @@ export async function completeAdvanceBooking(bookingId: string, paymentType: str
             return { success: false, error: "Booking not found" };
         }
 
-        // 1. Find or Create Customer
-        let customer = await Customer.findOne({ phoneNumber: booking.phoneNumber, userId: session.user.id });
+        // 1. Find or Create Customer scoped to tenant
+        let customer = await Customer.findOne({ phoneNumber: booking.phoneNumber, userId: effectiveUserId });
         if (!customer) {
             customer = new Customer({
                 name: booking.customerName,
                 phoneNumber: booking.phoneNumber,
                 address: booking.address,
-                userId: session.user.id
+                userId: effectiveUserId
             });
             await customer.save();
         }
 
-        // 2. Create Invoice
+        // 2. Create Invoice scoped to tenant
         const invoice = new Invoice({
             customer: customer._id,
             items: [{
@@ -228,7 +234,7 @@ export async function completeAdvanceBooking(bookingId: string, paymentType: str
             paymentType: paymentType as 'Cash' | 'Card' | 'UPI',
             date: new Date(),
             status: "Paid",
-            userId: session.user.id
+            userId: effectiveUserId
         });
 
         await invoice.save();
