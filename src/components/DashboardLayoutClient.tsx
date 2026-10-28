@@ -20,8 +20,14 @@ import {
     Sparkles,
     Settings,
     ChevronRight,
-    Plus
+    Plus,
+    GitBranch,
+    Info
 } from "lucide-react";
+import AppVersion from "@/components/AppVersion";
+
+// ── App version — injected at build time from package.json via next.config.mjs
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
 
 interface DashboardLayoutClientProps {
     children: React.ReactNode;
@@ -140,6 +146,11 @@ export default function DashboardLayoutClient({
                 })}
             </nav>
 
+            {/* Interactive Version Badge with Changelog Popover */}
+            <div className="px-4 py-2.5 border-t border-slate-800/80">
+                <AppVersion className="w-full" />
+            </div>
+
             {/* User Profile Card & Sign Out */}
             <div className="p-4 border-t border-slate-800/80 bg-slate-900/50">
                 <div className="flex items-center gap-3 px-2 mb-3">
@@ -206,6 +217,11 @@ export default function DashboardLayoutClient({
                             <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                                 {currentTitle}
                             </h2>
+                            {/* Version pill — visible on desktop only */}
+                            <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-black text-slate-400 tracking-wider">
+                                <GitBranch size={10} />
+                                v{APP_VERSION}
+                            </span>
                         </div>
                     </div>
 

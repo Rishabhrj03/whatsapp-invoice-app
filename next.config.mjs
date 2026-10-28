@@ -1,7 +1,15 @@
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const { version } = require("./package.json");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     typescript: {
         ignoreBuildErrors: false,
+    },
+    // Expose app version to the browser bundle — read from package.json at build time
+    env: {
+        NEXT_PUBLIC_APP_VERSION: version,
     },
     async headers() {
         return [

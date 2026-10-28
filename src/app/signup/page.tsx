@@ -19,7 +19,7 @@ export default function SignupPage() {
         setError("");
 
         try {
-            const res = await fetch("/api/signup", {
+            const res = await fetch("/api/v1/signup", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -164,6 +164,13 @@ export default function SignupPage() {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div className="mt-6 text-center">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-gray-200 text-xs font-semibold text-gray-500 shadow-sm">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    v{process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"} &bull; Production Ready
+                </span>
             </div>
         </div>
     );

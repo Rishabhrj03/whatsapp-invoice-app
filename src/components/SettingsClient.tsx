@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { updateBusinessProfile } from "@/app/actions/user";
-import { Building2, Image as ImageIcon, CheckCircle2, Loader2, Save, Upload, AlertCircle } from "lucide-react";
+import { Building2, Image as ImageIcon, CheckCircle2, Loader2, Save, Upload, AlertCircle, GitBranch, ShieldCheck, Terminal } from "lucide-react";
 import { getUploadUrl } from "@/app/actions/invoice";
 
 const compressImageForWhatsApp = (file: File): Promise<File> => {
@@ -281,6 +281,44 @@ Thank you for your business!`;
                         {loading ? "Saving Changes..." : "Save Business Settings"}
                     </button>
                 </form>
+
+                {/* System & Release Info */}
+                <div className="mt-8 bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                <GitBranch size={20} />
+                            </div>
+                            <div>
+                                <h4 className="text-base font-black text-white">Application Release Info</h4>
+                                <p className="text-xs text-slate-400">Semantic versioning and deployment metadata</p>
+                            </div>
+                        </div>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black text-emerald-400">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            Production Stable
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6">
+                        <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/50">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Version</span>
+                            <span className="text-base font-black text-blue-400 font-mono">v{process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0"}</span>
+                        </div>
+                        <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/50">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">API Tier</span>
+                            <span className="text-base font-black text-white font-mono">/api/v1</span>
+                        </div>
+                        <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/50">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Branch</span>
+                            <span className="text-base font-black text-white font-mono">main</span>
+                        </div>
+                        <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/50">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">Environment</span>
+                            <span className="text-base font-black text-white font-mono capitalize">{process.env.NODE_ENV || "production"}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
