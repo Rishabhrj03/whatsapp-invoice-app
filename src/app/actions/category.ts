@@ -2,8 +2,9 @@
 
 import dbConnect from "@/lib/mongoose";
 import Category from "@/models/Category";
-import { getEffectiveUserId } from "@/lib/auth-utils";
+import { getEffectiveUserId, getCurrentUser } from "@/lib/auth-utils";
 import { auth } from "@/auth";
+import { activityLogService } from "@/lib/services/ActivityLogService";
 
 export async function getCategories() {
     try {
@@ -38,7 +39,8 @@ export async function getCategories() {
 export async function createCategory(data: { name: string; description?: string; color?: string }) {
     try {
         const session = await auth();
-        if (!session?.user) {
+        const user = await getCurrentUser();
+        if (!session?.user || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -48,6 +50,7 @@ export async function createCategory(data: { name: string; description?: string;
 
         await dbConnect();
         const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId) return { success: false, error: "Unauthorized" };
 
         // Check for duplicates
         const existing = await Category.findOne({
@@ -65,6 +68,17 @@ export async function createCategory(data: { name: string; description?: string;
             color: data.color || '#f97316',
             userId: effectiveUserId,
             createdBy: session.user.id,
+        });
+
+        // Audit Trail: Record category creation
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'CATEGORY_CREATED',
+            entityType: 'CATEGORY',
+            entityId: newCategory._id.toString(),
+            description: `Created menu category "${data.name.trim()}"`,
+            metadata: { name: data.name.trim(), color: data.color },
         });
 
         return {
@@ -90,22 +104,31 @@ export async function createCategory(data: { name: string; description?: string;
 export async function deleteCategory(id: string) {
     try {
         const session = await auth();
-        if (!session?.user) {
+        const user = await getCurrentUser();
+        if (!session?.user || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
         await dbConnect();
         const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId) return { success: false, error: "Unauthorized" };
 
+        const target = await Category.findOne({ _id: id, userId: effectiveUserId });
         const result = await Category.deleteOne({ _id: id, userId: effectiveUserId });
 
         if (result.deletedCount === 0) {
             return { success: false, error: "Category not found or unauthorized" };
         }
 
-        // Note: Decided not to cascade delete MenuItems. 
-        // We will just let them have a dangling category name, or we could update them to clear the category.
-        // For simplicity, we just delete the category definition.
+        // Audit Trail: Record category deletion
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'CATEGORY_DELETED',
+            entityType: 'CATEGORY',
+            entityId: id,
+            description: `Deleted category "${target?.name || id}"`,
+        });
 
         return { success: true };
     } catch (error: any) {
@@ -117,7 +140,8 @@ export async function deleteCategory(id: string) {
 export async function updateCategory(id: string, data: { name: string; description?: string; color?: string }) {
     try {
         const session = await auth();
-        if (!session?.user) {
+        const user = await getCurrentUser();
+        if (!session?.user || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -127,6 +151,7 @@ export async function updateCategory(id: string, data: { name: string; descripti
 
         await dbConnect();
         const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId) return { success: false, error: "Unauthorized" };
 
         // Check for duplicates (other than this one)
         const existing = await Category.findOne({
@@ -153,6 +178,17 @@ export async function updateCategory(id: string, data: { name: string; descripti
             return { success: false, error: "Category not found" };
         }
 
+        // Audit Trail: Record category update
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'CATEGORY_UPDATED',
+            entityType: 'CATEGORY',
+            entityId: id,
+            description: `Updated category "${data.name.trim()}"`,
+            metadata: { name: data.name.trim(), color: data.color },
+        });
+
         return {
             success: true,
             category: {
@@ -167,4 +203,3 @@ export async function updateCategory(id: string, data: { name: string; descripti
         return { success: false, error: "Failed to update category" };
     }
 }
-

@@ -22,7 +22,8 @@ import {
     ChevronRight,
     Plus,
     GitBranch,
-    Info
+    Info,
+    History
 } from "lucide-react";
 import AppVersion from "@/components/AppVersion";
 
@@ -58,6 +59,7 @@ export default function DashboardLayoutClient({
         { href: "/menu", icon: MenuIcon, label: "Menu Catalog" },
         { href: "/coupons", icon: Tag, label: "Discount Coupons" },
         { href: "/bookings", icon: Calendar, label: "Advance Bookings" },
+        { href: "/activity", icon: History, label: "Activity Log", badge: "Audit" },
         { href: "/export", icon: Download, label: "Data Export" },
         { href: "/settings", icon: Settings, label: "Settings" },
         ...(isOwner ? [{ href: "/team", icon: Users, label: "Team Members", badge: "Owner" }] : []),

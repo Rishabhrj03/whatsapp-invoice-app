@@ -2,17 +2,19 @@
 
 import { auth } from "@/auth";
 import dbConnect from "@/lib/mongoose";
-import { getEffectiveUserId } from "@/lib/auth-utils";
+import { getEffectiveUserId, getCurrentUser } from "@/lib/auth-utils";
 import AdvanceBooking from "@/models/AdvanceBooking";
 import User from "@/models/User";
 import Customer from "@/models/Customer";
 import Invoice from "@/models/Invoice";
+import { activityLogService } from "@/lib/services/ActivityLogService";
 import { revalidatePath } from "next/cache";
 
 export async function createAdvanceBooking(formData: any) {
     const session = await auth();
     const effectiveUserId = await getEffectiveUserId();
-    if (!session?.user || !effectiveUserId) {
+    const user = await getCurrentUser();
+    if (!session?.user || !effectiveUserId || !user) {
         return { success: false, error: "Unauthorized" };
     }
 
@@ -48,6 +50,25 @@ export async function createAdvanceBooking(formData: any) {
         });
 
         await booking.save();
+
+        // Audit Trail: Record advance booking creation
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'BOOKING_CREATED',
+            entityType: 'BOOKING',
+            entityId: booking._id.toString(),
+            description: `Created advance booking for "${formData.customerName}" (${formData.type || "Order"}, ₹${formData.totalAmount || 0})`,
+            metadata: {
+                customerName: formData.customerName,
+                phoneNumber: formData.phoneNumber,
+                deliveryDate: formData.deliveryDate,
+                deliveryTime: formData.deliveryTime,
+                totalAmount: formData.totalAmount,
+                advanceAmount: formData.advanceAmount,
+            },
+        });
+
         revalidatePath("/bookings");
 
         return { success: true, id: booking._id.toString() };
@@ -165,7 +186,8 @@ export async function updateAdvanceBookingDetails(bookingId: string, formData: a
 export async function updateBookingStatus(bookingId: string, status: string) {
     const session = await auth();
     const effectiveUserId = await getEffectiveUserId();
-    if (!session?.user || !effectiveUserId) {
+    const user = await getCurrentUser();
+    if (!session?.user || !effectiveUserId || !user) {
         return { success: false, error: "Unauthorized" };
     }
 
@@ -181,6 +203,22 @@ export async function updateBookingStatus(bookingId: string, status: string) {
             return { success: false, error: "Booking not found" };
         }
 
+        // Audit Trail: Record booking status transition
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'BOOKING_STATUS_CHANGED',
+            entityType: 'BOOKING',
+            entityId: bookingId,
+            description: `Changed booking status to "${status}" for "${booking.customerName}"`,
+            metadata: {
+                bookingId,
+                customerName: booking.customerName,
+                newStatus: status,
+                deliveryDate: booking.deliveryDate,
+            },
+        });
+
         revalidatePath("/bookings");
         return { success: true };
     } catch (error: any) {
@@ -192,7 +230,8 @@ export async function updateBookingStatus(bookingId: string, status: string) {
 export async function completeAdvanceBooking(bookingId: string, paymentType: string) {
     const session = await auth();
     const effectiveUserId = await getEffectiveUserId();
-    if (!session?.user?.id || !effectiveUserId) {
+    const user = await getCurrentUser();
+    if (!session?.user?.id || !effectiveUserId || !user) {
         return { success: false, error: "Unauthorized" };
     }
 
@@ -238,6 +277,24 @@ export async function completeAdvanceBooking(bookingId: string, paymentType: str
         });
 
         await invoice.save();
+
+        // Audit Trail: Record booking completion and bill generation
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'BOOKING_COMPLETED',
+            entityType: 'BOOKING',
+            entityId: bookingId,
+            description: `Delivered advance booking & generated Bill #${invoice._id.toString().slice(-6).toUpperCase()} for "${booking.customerName}" (₹${booking.totalAmount || 0})`,
+            metadata: {
+                bookingId,
+                invoiceId: invoice._id.toString(),
+                customerName: booking.customerName,
+                paymentType,
+                totalAmount: booking.totalAmount,
+            },
+        });
+
         revalidatePath("/bookings");
         revalidatePath("/transactions");
 

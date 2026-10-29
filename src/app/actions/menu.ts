@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { getEffectiveUserId } from "@/lib/auth-utils";
+import { getEffectiveUserId, getCurrentUser } from "@/lib/auth-utils";
 import { menuService } from "@/lib/services/MenuService";
+import { activityLogService } from "@/lib/services/ActivityLogService";
 
 export type MenuEntryResponse =
     | { success: true; menuItem: any; error?: undefined }
@@ -17,7 +18,8 @@ export async function createMenuEntry(formData: FormData): Promise<MenuEntryResp
     try {
         const session = await auth();
         const effectiveUserId = await getEffectiveUserId();
-        if (!effectiveUserId || !session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!effectiveUserId || !session?.user?.id || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -33,6 +35,21 @@ export async function createMenuEntry(formData: FormData): Promise<MenuEntryResp
             return { success: false, error: result.error || "Failed to create menu entry" };
         }
 
+        // Audit Trail: Record menu item addition
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'MENU_ITEM_CREATED',
+            entityType: 'MENU_ITEM',
+            entityId: result.menuItem._id.toString(),
+            description: `Added "${rawData.name}" to menu catalog (₹${rawData.price})`,
+            metadata: {
+                name: rawData.name,
+                price: rawData.price,
+                category: rawData.category,
+            },
+        });
+
         revalidatePath("/menu");
         return { success: true, menuItem: result.menuItem };
     } catch (error: any) {
@@ -44,7 +61,8 @@ export async function createMenuEntry(formData: FormData): Promise<MenuEntryResp
 export async function updateMenuEntry(id: string, formData: FormData): Promise<MenuEntryResponse> {
     try {
         const effectiveUserId = await getEffectiveUserId();
-        if (!effectiveUserId) {
+        const user = await getCurrentUser();
+        if (!effectiveUserId || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -60,6 +78,21 @@ export async function updateMenuEntry(id: string, formData: FormData): Promise<M
             return { success: false, error: result.error || "Failed to update menu entry" };
         }
 
+        // Audit Trail: Record menu item modification
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'MENU_ITEM_UPDATED',
+            entityType: 'MENU_ITEM',
+            entityId: id,
+            description: `Updated menu item "${rawData.name}" (₹${rawData.price})`,
+            metadata: {
+                name: rawData.name,
+                price: rawData.price,
+                category: rawData.category,
+            },
+        });
+
         revalidatePath("/menu");
         return { success: true, menuItem: result.menuItem };
     } catch (error: any) {
@@ -71,7 +104,8 @@ export async function updateMenuEntry(id: string, formData: FormData): Promise<M
 export async function deleteMenuEntry(id: string) {
     try {
         const effectiveUserId = await getEffectiveUserId();
-        if (!effectiveUserId) {
+        const user = await getCurrentUser();
+        if (!effectiveUserId || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -79,6 +113,16 @@ export async function deleteMenuEntry(id: string) {
         if (!success) {
             return { success: false, error: "Item not found or unauthorized" };
         }
+
+        // Audit Trail: Record menu item deletion
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'MENU_ITEM_DELETED',
+            entityType: 'MENU_ITEM',
+            entityId: id,
+            description: `Removed menu item (#${id.slice(-6).toUpperCase()}) from catalog`,
+        });
 
         revalidatePath("/menu");
         return { success: true };
@@ -90,11 +134,23 @@ export async function deleteMenuEntry(id: string) {
 export async function deleteMultipleMenuEntries(ids: string[]) {
     try {
         const effectiveUserId = await getEffectiveUserId();
-        if (!effectiveUserId) {
+        const user = await getCurrentUser();
+        if (!effectiveUserId || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
         const count = await menuService.deleteMultipleItems(ids, effectiveUserId);
+
+        // Audit Trail: Record bulk deletion
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'MENU_ITEM_DELETED',
+            entityType: 'MENU_ITEM',
+            description: `Bulk deleted ${count} menu catalog items`,
+            metadata: { count, ids },
+        });
+
         revalidatePath("/menu");
         return { success: true, count };
     } catch (error: any) {
@@ -106,7 +162,8 @@ export async function importMenuItemsFromCSV(items: any[]): Promise<ImportMenuRe
     try {
         const session = await auth();
         const effectiveUserId = await getEffectiveUserId();
-        if (!effectiveUserId || !session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!effectiveUserId || !session?.user?.id || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -114,6 +171,16 @@ export async function importMenuItemsFromCSV(items: any[]): Promise<ImportMenuRe
         if (!result.success || result.count === undefined) {
             return { success: false, error: result.error || "Failed to import menu items" };
         }
+
+        // Audit Trail: Record bulk menu import
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'MENU_ITEMS_IMPORTED',
+            entityType: 'MENU_ITEM',
+            description: `Imported ${result.count} items into menu catalog from Excel/CSV`,
+            metadata: { count: result.count },
+        });
 
         revalidatePath("/menu");
         return { success: true, count: result.count };

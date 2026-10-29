@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { getEffectiveUserId } from "@/lib/auth-utils";
+import { getEffectiveUserId, getCurrentUser } from "@/lib/auth-utils";
 import { customerService } from "@/lib/services/CustomerService";
+import { activityLogService } from "@/lib/services/ActivityLogService";
 
 export type CreateCustomerResponse =
     | { success: true; customer: any; error?: undefined }
@@ -13,7 +14,8 @@ export async function createCustomer(formData: FormData): Promise<CreateCustomer
     try {
         const session = await auth();
         const effectiveUserId = await getEffectiveUserId();
-        if (!effectiveUserId || !session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!effectiveUserId || !session?.user?.id || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -30,6 +32,21 @@ export async function createCustomer(formData: FormData): Promise<CreateCustomer
             return { success: false, error: result.error || "Failed to create customer" };
         }
 
+        // Audit Trail: Record customer creation
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'CUSTOMER_CREATED',
+            entityType: 'CUSTOMER',
+            entityId: result.customer._id.toString(),
+            description: `Created customer profile for "${result.customer.name}" (${result.customer.phoneNumber})`,
+            metadata: {
+                name: result.customer.name,
+                phoneNumber: result.customer.phoneNumber,
+                address: result.customer.address,
+            },
+        });
+
         revalidatePath("/customers");
         return { success: true, customer: result.customer };
     } catch (error: any) {
@@ -41,7 +58,8 @@ export async function createCustomer(formData: FormData): Promise<CreateCustomer
 export async function deleteCustomer(id: string) {
     try {
         const effectiveUserId = await getEffectiveUserId();
-        if (!effectiveUserId) {
+        const user = await getCurrentUser();
+        if (!effectiveUserId || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -49,6 +67,16 @@ export async function deleteCustomer(id: string) {
         if (!success) {
             return { success: false, error: "Customer not found or unauthorized" };
         }
+
+        // Audit Trail: Record customer deletion
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'CUSTOMER_DELETED',
+            entityType: 'CUSTOMER',
+            entityId: id,
+            description: `Deleted customer record (#${id.slice(-6).toUpperCase()})`,
+        });
 
         revalidatePath("/customers");
         return { success: true };

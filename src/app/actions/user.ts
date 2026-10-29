@@ -3,16 +3,18 @@
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
 import { auth } from "@/auth";
+import { getEffectiveUserId, getCurrentUser } from "@/lib/auth-utils";
+import { activityLogService } from "@/lib/services/ActivityLogService";
 import { revalidatePath } from "next/cache";
 
 export async function updateBusinessProfile(formData: FormData) {
     try {
         await dbConnect();
         const session = await auth();
-        const { getEffectiveUserId } = await import("@/lib/auth-utils");
         const effectiveUserId = await getEffectiveUserId();
+        const user = await getCurrentUser();
         
-        if (!effectiveUserId) {
+        if (!effectiveUserId || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -46,6 +48,21 @@ export async function updateBusinessProfile(formData: FormData) {
         if (!updatedUser) {
             return { success: false, error: "User not found" };
         }
+
+        // Audit Trail: Record business profile & settings update
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'BUSINESS_PROFILE_UPDATED',
+            entityType: 'SETTINGS',
+            description: `Updated business profile "${businessName || user.businessName || 'Store'}" & alert preferences`,
+            metadata: {
+                businessName,
+                bookingAlertHoursBefore,
+                bookingAlertFrequencyMins,
+                dispatchAlertHoursBefore,
+            },
+        });
 
         revalidatePath("/settings");
         return { success: true };

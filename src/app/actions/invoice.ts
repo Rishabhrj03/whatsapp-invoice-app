@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { getEffectiveUserId, getCurrentUser } from "@/lib/auth-utils";
 import { invoiceService } from "@/lib/services/InvoiceService";
+import { activityLogService } from "@/lib/services/ActivityLogService";
 import type { MessagingChannel } from "@/lib/adapters/messaging/MessagingAdapterFactory";
 
 export type CreateInvoiceResponse =
@@ -30,7 +31,8 @@ export async function createInvoice(data: unknown): Promise<CreateInvoiceRespons
     try {
         const session = await auth();
         const effectiveUserId = await getEffectiveUserId();
-        if (!effectiveUserId || !session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!effectiveUserId || !session?.user?.id || !user) {
             return { success: false, error: "Unauthorized" };
         }
 
@@ -42,6 +44,22 @@ export async function createInvoice(data: unknown): Promise<CreateInvoiceRespons
         if (!result.success || !result.invoiceId) {
             return { success: false, error: result.error || "Failed to create invoice" };
         }
+
+        // Audit Trail: Record invoice creation
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'INVOICE_CREATED',
+            entityType: 'INVOICE',
+            entityId: result.invoiceId,
+            description: `Generated Bill #${result.invoiceId.slice(-6).toUpperCase()} for ₹${(data as any)?.totalAmount || 0} (${(data as any)?.paymentType || 'Cash'})`,
+            metadata: {
+                totalAmount: (data as any)?.totalAmount,
+                paymentType: (data as any)?.paymentType,
+                itemCount: (data as any)?.items?.length,
+                comment: (data as any)?.comment,
+            },
+        });
 
         revalidatePath("/dashboard");
         revalidatePath("/transactions");
@@ -72,6 +90,21 @@ export async function updateInvoice(invoiceId: string, data: unknown): Promise<U
         if (!result.success || !result.invoice) {
             return { success: false, error: result.error || "Failed to update invoice" };
         }
+
+        // Audit Trail: Record historical bill edit
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'INVOICE_UPDATED',
+            entityType: 'INVOICE',
+            entityId: invoiceId,
+            description: `Updated Bill #${invoiceId.slice(-6).toUpperCase()} — Total: ₹${result.invoice.totalAmount} (${result.invoice.paymentType})`,
+            metadata: {
+                totalAmount: result.invoice.totalAmount,
+                paymentType: result.invoice.paymentType,
+                comment: result.invoice.comment,
+            },
+        });
 
         revalidatePath("/transactions");
         revalidatePath("/dashboard");

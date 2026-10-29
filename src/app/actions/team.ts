@@ -5,6 +5,7 @@ import User from "@/models/User";
 import { auth } from "@/auth";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { activityLogService } from "@/lib/services/ActivityLogService";
 
 export async function addStaffMember(formData: FormData) {
     try {
@@ -42,6 +43,17 @@ export async function addStaffMember(formData: FormData) {
             ownerId: owner._id,
         });
 
+        // Audit Trail: Record staff onboarding
+        await activityLogService.logActivity({
+            tenantId: owner._id.toString(),
+            user: { id: owner._id, name: owner.name, email: owner.email, role: owner.role },
+            action: 'STAFF_ADDED',
+            entityType: 'TEAM',
+            entityId: newUser._id.toString(),
+            description: `Added staff member "${name}" (${email}) to the account`,
+            metadata: { name, email, role: 'STAFF' },
+        });
+
         revalidatePath("/team");
         return { success: true, staff: JSON.parse(JSON.stringify(newUser)) };
     } catch (error: any) {
@@ -63,7 +75,20 @@ export async function removeStaffMember(staffId: string) {
             return { success: false, error: "Only owners can manage staff." };
         }
 
-        await User.findOneAndDelete({ _id: staffId, ownerId: owner._id });
+        const deletedStaff = await User.findOneAndDelete({ _id: staffId, ownerId: owner._id });
+
+        if (deletedStaff) {
+            // Audit Trail: Record staff removal
+            await activityLogService.logActivity({
+                tenantId: owner._id.toString(),
+                user: { id: owner._id, name: owner.name, email: owner.email, role: owner.role },
+                action: 'STAFF_REMOVED',
+                entityType: 'TEAM',
+                entityId: staffId,
+                description: `Removed staff member "${deletedStaff.name}" (${deletedStaff.email})`,
+                metadata: { name: deletedStaff.name, email: deletedStaff.email },
+            });
+        }
 
         revalidatePath("/team");
         return { success: true };
