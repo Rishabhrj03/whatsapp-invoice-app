@@ -30,6 +30,7 @@ function serializeInvoice(doc: any): InvoiceDTO {
             name: it.name,
             price: it.price,
             quantity: it.quantity,
+            description: it.description,
         })),
         totalAmount: doc.totalAmount,
         discountAmount: doc.discountAmount ?? 0,

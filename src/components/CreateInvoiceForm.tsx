@@ -5,7 +5,8 @@ import { createInvoice, getUploadUrl, updateInvoicePdfUrl, getLogoBase64 } from 
 import {
     Plus, Trash2, Send, FileDown, Eye, Edit2,
     CheckCircle, UserPlus, ShoppingBag, CreditCard,
-    ChevronRight, Calendar, Info, Tag, Check, Printer, ArrowLeft, Minus, Percent
+    ChevronRight, Calendar, Info, Tag, Check, Printer, ArrowLeft, Minus, Percent,
+    FileText, Edit3, X
 } from "lucide-react";
 // jspdf and jspdf-autotable removed for dynamic import optimization
 import CustomerSelector from "./CustomerSelector";
@@ -39,7 +40,9 @@ export default function CreateInvoiceForm({
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     const [pdfUrl, setPdfUrl] = useState("");
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-    const [items, setItems] = useState<{ categoryId: string; menuEntryId: string; name: string; price: number; quantity: number; _menuOpenTrigger?: number }[]>([]);
+    const [items, setItems] = useState<{ categoryId: string; menuEntryId: string; name: string; price: number; quantity: number; description?: string; _menuOpenTrigger?: number }[]>([]);
+    const [descriptionModalIndex, setDescriptionModalIndex] = useState<number | null>(null);
+    const [descriptionText, setDescriptionText] = useState("");
     const [comment, setComment] = useState("");
     const [loading, setLoading] = useState(false);
     const [successData, setSuccessData] = useState<any>(null);
@@ -49,6 +52,35 @@ export default function CreateInvoiceForm({
     const [canShare, setCanShare] = useState(false);
     const [currentDate, setCurrentDate] = useState("");
     const [logoBase64, setLogoBase64] = useState<string>("");
+
+    const openDescriptionModal = (index: number) => {
+        setDescriptionModalIndex(index);
+        setDescriptionText(items[index]?.description || "");
+    };
+
+    const handleSaveDescription = () => {
+        if (descriptionModalIndex !== null && items[descriptionModalIndex]) {
+            const newItems = [...items];
+            const trimmed = descriptionText.trim();
+            if (trimmed) {
+                newItems[descriptionModalIndex] = {
+                    ...newItems[descriptionModalIndex],
+                    description: trimmed,
+                };
+            } else {
+                delete newItems[descriptionModalIndex].description;
+            }
+            setItems(newItems);
+        }
+        setDescriptionModalIndex(null);
+        setDescriptionText("");
+    };
+
+    const handleRemoveDescription = (index: number) => {
+        const newItems = [...items];
+        delete newItems[index].description;
+        setItems(newItems);
+    };
 
     // Check share compatibility on mount
     useEffect(() => {
@@ -214,7 +246,7 @@ export default function CreateInvoiceForm({
         // Table
         const tableData = data.items.map((item: any, index: number) => [
             index + 1,
-            item.name,
+            item.description ? `${item.name}\n${item.description}` : item.name,
             `Rs. ${item.price.toFixed(2)}`,
             item.quantity,
             `Rs. ${(item.price * item.quantity).toFixed(2)}`,
@@ -222,7 +254,7 @@ export default function CreateInvoiceForm({
 
         autoTable(doc, {
             startY: 72,
-            head: [["#", "Description", "Unit Price", "Quantity", "Total"]],
+            head: [["#", "Item", "Unit Price", "Quantity", "Total"]],
             body: tableData,
             theme: "striped",
             headStyles: { fillColor: [37, 99, 235] }, // Blue-600
@@ -342,7 +374,8 @@ export default function CreateInvoiceForm({
 
         let itemDetailText = "";
         successData.items.forEach((item: any) => {
-            itemDetailText += `- ${item.name} x${item.quantity} = ₹${(item.price * item.quantity).toFixed(2)}\n`;
+            const desc = item.description ? ` (${item.description})` : "";
+            itemDetailText += `- ${item.name}${desc} x${item.quantity} = ₹${(item.price * item.quantity).toFixed(2)}\n`;
         });
 
         let text = "";
@@ -586,7 +619,7 @@ export default function CreateInvoiceForm({
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b-2 border-gray-100">
-                                <th className="py-3 font-bold text-gray-600">Item Description</th>
+                                <th className="py-3 font-bold text-gray-600">Item</th>
                                 <th className="py-3 font-bold text-gray-600 text-center">Qty</th>
                                 <th className="py-3 font-bold text-gray-600 text-right">Price</th>
                                 <th className="py-3 font-bold text-gray-600 text-right">Total</th>
@@ -595,7 +628,14 @@ export default function CreateInvoiceForm({
                         <tbody>
                             {items.map((item, idx) => (
                                 <tr key={idx} className="border-b border-gray-50">
-                                    <td className="py-4 text-gray-800 font-medium">{item.name}</td>
+                                    <td className="py-4 text-gray-800 font-medium">
+                                        <div className="font-bold text-gray-900">{item.name}</div>
+                                        {item.description && (
+                                            <div className="mt-1 text-xs text-slate-700 font-semibold bg-slate-100 border border-slate-200/80 rounded-lg px-2.5 py-1 inline-block">
+                                                {item.description}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="py-4 text-gray-600 text-center">{item.quantity}</td>
                                     <td className="py-4 text-gray-600 text-right">₹{item.price.toFixed(2)}</td>
                                     <td className="py-4 text-gray-800 font-bold text-right">
@@ -671,6 +711,103 @@ export default function CreateInvoiceForm({
                     setCategories(prev => [...prev, newCat].sort((a, b) => a.name.localeCompare(b.name)));
                 }}
             />
+
+            {/* Line Item Customization & Description Modal */}
+            {descriptionModalIndex !== null && items[descriptionModalIndex] && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div 
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+                        onClick={() => setDescriptionModalIndex(null)}
+                    />
+                    <div className="relative bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-lg w-full p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-200 z-10">
+                        <div className="flex items-start justify-between pb-3 border-b border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl">
+                                    <FileText size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-gray-900 tracking-tight">Item Description</h3>
+                                    <p className="text-xs text-gray-500 font-medium">
+                                        {items[descriptionModalIndex].name || "Selected Item"}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setDescriptionModalIndex(null)}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                Custom Note / Real-Time Specifications
+                            </label>
+                            <textarea
+                                autoFocus
+                                rows={4}
+                                value={descriptionText}
+                                onChange={(e) => setDescriptionText(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                        e.preventDefault();
+                                        handleSaveDescription();
+                                    }
+                                }}
+                                placeholder="e.g., Custome cake Unicorn 1.5 kg, eggless, chocolate truffle..."
+                                className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all placeholder:text-gray-400 resize-none"
+                            />
+
+                            {/* Quick Presets Pills */}
+                            <div className="space-y-1.5">
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Quick suggestions</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                        "Custom cake Unicorn 1.5 kg",
+                                        "Eggless",
+                                        "1 kg",
+                                        "1.5 kg",
+                                        "2 kg",
+                                        "Chocolate Truffle",
+                                        "Heart Shape",
+                                        "Special Message"
+                                    ].map((preset) => (
+                                        <button
+                                            key={preset}
+                                            type="button"
+                                            onClick={() => {
+                                                setDescriptionText(prev => prev ? `${prev}, ${preset}` : preset);
+                                            }}
+                                            className="text-[11px] font-bold px-2.5 py-1 bg-gray-100 hover:bg-blue-50 hover:text-blue-600 text-gray-600 rounded-lg transition-colors"
+                                        >
+                                            + {preset}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                            <button
+                                type="button"
+                                onClick={() => setDescriptionModalIndex(null)}
+                                className="px-5 py-2.5 border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl text-xs font-bold transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveDescription}
+                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 active:scale-95"
+                            >
+                                Save Description
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <form
                 onSubmit={(e) => {
@@ -772,136 +909,192 @@ export default function CreateInvoiceForm({
                                 {items.map((item, index) => (
                                     <div
                                         key={index}
-                                        className="group relative flex flex-col md:flex-row gap-4 sm:gap-6 p-4 sm:p-6 border border-gray-100 rounded-2xl bg-white hover:border-blue-200 hover:shadow-md hover:shadow-blue-50/50 transition-all animate-in fade-in slide-in-from-left-4 duration-300"
+                                        className="group relative flex flex-col p-4 sm:p-6 border border-gray-100 rounded-2xl bg-white hover:border-blue-200 hover:shadow-md hover:shadow-blue-50/50 transition-all animate-in fade-in slide-in-from-left-4 duration-300"
                                         style={{ zIndex: items.length - index }}
                                     >
-                                        <div className="flex-1 space-y-1.5 min-w-[150px]">
-                                            <div className="flex justify-between items-center">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Category</label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsCategoryModalOpen(true)}
-                                                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md transition-colors"
-                                                >
-                                                    <Plus size={10} /> New
-                                                </button>
+                                        <div className="flex flex-col md:flex-row gap-4 sm:gap-6 items-stretch md:items-start">
+                                            <div className="flex-1 space-y-1.5 min-w-[150px]">
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Category</label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsCategoryModalOpen(true)}
+                                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-md transition-colors"
+                                                    >
+                                                        <Plus size={10} /> New
+                                                    </button>
+                                                </div>
+                                                <div className="relative">
+                                                    <CategorySelector
+                                                        categories={categories}
+                                                        selectedId={item.categoryId || ""}
+                                                        onSelect={(name) => {
+                                                            const newItems = [...items];
+                                                            newItems[index] = { ...newItems[index], categoryId: name, menuEntryId: "", name: "", price: 0, _menuOpenTrigger: Date.now() };
+                                                            setItems(newItems);
+                                                        }}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="relative">
-                                                <CategorySelector
-                                                    categories={categories}
-                                                    selectedId={item.categoryId || ""}
-                                                    onSelect={(name) => {
+
+                                            <div className="flex-1 space-y-1.5 min-w-[200px]">
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Menu Item</label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openDescriptionModal(index)}
+                                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md transition-colors"
+                                                        title="Add or edit item description / customization notes"
+                                                    >
+                                                        <Plus size={10} /> {item.description ? "Edit Note" : "Description"}
+                                                    </button>
+                                                </div>
+                                                <MenuSelector
+                                                    menuItems={item.categoryId ? menuItems.filter(m => m.category?.toLowerCase().trim() === item.categoryId.toLowerCase().trim()) : menuItems}
+                                                    selectedId={item.menuEntryId}
+                                                    onSelect={(id: string, name: string, price: number) => {
                                                         const newItems = [...items];
-                                                        newItems[index] = { ...newItems[index], categoryId: name, menuEntryId: "", name: "", price: 0, _menuOpenTrigger: Date.now() };
+                                                        const isSpecialOrOpenItem = name.toLowerCase().includes("open item") || name.toLowerCase().includes("custom");
+                                                        newItems[index] = {
+                                                            ...newItems[index],
+                                                            menuEntryId: id,
+                                                            name: name,
+                                                            price: price,
+                                                        };
                                                         setItems(newItems);
+                                                        if (isSpecialOrOpenItem && !newItems[index].description) {
+                                                            openDescriptionModal(index);
+                                                        }
                                                     }}
+                                                    forceOpenTrigger={item._menuOpenTrigger}
                                                 />
                                             </div>
-                                        </div>
 
-                                        <div className="flex-1 space-y-1.5 min-w-[200px]">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Select Menu Item</label>
-                                            <MenuSelector
-                                                menuItems={item.categoryId ? menuItems.filter(m => m.category?.toLowerCase().trim() === item.categoryId.toLowerCase().trim()) : menuItems}
-                                                selectedId={item.menuEntryId}
-                                                onSelect={(id: string, name: string, price: number) => {
-                                                    const newItems = [...items];
-                                                    newItems[index] = {
-                                                        ...newItems[index],
-                                                        menuEntryId: id,
-                                                        name: name,
-                                                        price: price,
-                                                    };
-                                                    setItems(newItems);
-                                                }}
-                                                forceOpenTrigger={item._menuOpenTrigger}
-                                            />
-                                        </div>
+                                            <div className="flex gap-2 md:gap-4 items-end w-full md:w-auto">
+                                                <div className="flex-1 min-w-[80px] md:w-32 md:flex-none space-y-1.5">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Unit Price</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
+                                                        <input
+                                                            type="number"
+                                                            value={item.price === 0 ? "" : item.price}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                handleItemChange(index, "price", val === "" ? 0 : parseFloat(val));
+                                                            }}
+                                                            onFocus={(e) => e.target.select()}
+                                                            className="block w-full pl-6 sm:pl-8 pr-2 sm:pr-4 h-[46px] border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-black text-gray-900 bg-white outline-none transition-shadow"
+                                                        />
+                                                    </div>
+                                                </div>
 
-                                        <div className="flex gap-2 md:gap-4 items-end w-full md:w-auto">
-                                            <div className="flex-1 min-w-[80px] md:w-32 md:flex-none space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Unit Price</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
-                                                    <input
-                                                        type="number"
-                                                        value={item.price === 0 ? "" : item.price}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            handleItemChange(index, "price", val === "" ? 0 : parseFloat(val));
-                                                        }}
-                                                        onFocus={(e) => e.target.select()}
-                                                        className="block w-full pl-6 sm:pl-8 pr-2 sm:pr-4 h-[46px] border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-black text-gray-900 bg-white outline-none transition-shadow"
-                                                    />
+                                                <div className="w-[100px] sm:w-[120px] md:w-32 shrink-0 space-y-1.5">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Quantity</label>
+                                                    <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all shadow-sm">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleItemChange(index, "quantity", Math.max(1, item.quantity - 1))}
+                                                            className="w-8 sm:w-10 h-[46px] flex justify-center items-center bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors border-r border-gray-200 shrink-0"
+                                                        >
+                                                            <Minus size={14} strokeWidth={3} />
+                                                        </button>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            value={item.quantity === 0 ? "" : item.quantity}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value);
+                                                                handleItemChange(index, "quantity", isNaN(val) ? 0 : val);
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                if (!e.target.value || parseInt(e.target.value) < 1) handleItemChange(index, "quantity", 1);
+                                                            }}
+                                                            onFocus={(e) => e.target.select()}
+                                                            required
+                                                            className="w-full text-center h-[46px] text-sm font-black text-gray-900 bg-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-0 px-0"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleItemChange(index, "quantity", item.quantity + 1)}
+                                                            className="w-8 sm:w-10 h-[46px] flex justify-center items-center bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors border-l border-gray-200 shrink-0"
+                                                        >
+                                                            <Plus size={14} strokeWidth={3} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Mobile Delete Button Inline */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveItem(index)}
+                                                    className="md:hidden shrink-0 h-[46px] w-[46px] flex justify-center items-center text-red-400 hover:text-red-600 bg-red-50/50 hover:bg-red-100 rounded-xl transition-all border border-red-100 focus:ring-2 focus:ring-red-500"
+                                                    title="Remove Item"
+                                                >
+                                                    <Trash2 size={18} strokeWidth={2.5} />
+                                                </button>
+                                            </div>
+
+                                            <div className="hidden md:flex flex-col justify-end space-y-1.5 min-w-[100px] border-l border-gray-50 pl-6">
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 text-right">Line Total</p>
+                                                <div className="h-[46px] flex items-center justify-end">
+                                                    <p className="text-lg font-black text-blue-600 tracking-tight">₹{((Number(item.price)||0) * (Number(item.quantity)||0)).toFixed(2)}</p>
                                                 </div>
                                             </div>
 
-                                            <div className="w-[100px] sm:w-[120px] md:w-32 shrink-0 space-y-1.5">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Quantity</label>
-                                                <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all shadow-sm">
+                                            {/* Desktop View Delete Button */}
+                                            <div className="hidden md:flex flex-col justify-end space-y-1.5">
+                                                {/* Spacer to match the labels above inputs */}
+                                                <div className="text-[10px] px-1 opacity-0">&nbsp;</div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveItem(index)}
+                                                    className="h-[46px] w-[46px] flex justify-center items-center text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shrink-0"
+                                                    title="Remove Item"
+                                                >
+                                                    <Trash2 size={20} strokeWidth={2.5} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Description / Customization Row at the bottom of the line item */}
+                                        {item.description ? (
+                                            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between bg-blue-50/50 hover:bg-blue-50/80 rounded-xl px-3.5 py-2.5 transition-colors">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <FileText size={15} className="text-blue-600 shrink-0" />
+                                                    <div className="min-w-0">
+                                                        <span className="text-[10px] font-black text-blue-500 uppercase tracking-wider block">Description / Custom Note:</span>
+                                                        <span className="text-xs font-bold text-gray-800 break-words">{item.description}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0 ml-3">
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleItemChange(index, "quantity", Math.max(1, item.quantity - 1))}
-                                                        className="w-8 sm:w-10 h-[46px] flex justify-center items-center bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors border-r border-gray-200 shrink-0"
+                                                        onClick={() => openDescriptionModal(index)}
+                                                        className="text-xs font-bold text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
                                                     >
-                                                        <Minus size={14} strokeWidth={3} />
+                                                        <Edit3 size={12} /> Edit
                                                     </button>
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        value={item.quantity === 0 ? "" : item.quantity}
-                                                        onChange={(e) => {
-                                                            const val = parseInt(e.target.value);
-                                                            handleItemChange(index, "quantity", isNaN(val) ? 0 : val);
-                                                        }}
-                                                        onBlur={(e) => {
-                                                            if (!e.target.value || parseInt(e.target.value) < 1) handleItemChange(index, "quantity", 1);
-                                                        }}
-                                                        onFocus={(e) => e.target.select()}
-                                                        required
-                                                        className="w-full text-center h-[46px] text-sm font-black text-gray-900 bg-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-w-0 px-0"
-                                                    />
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleItemChange(index, "quantity", item.quantity + 1)}
-                                                        className="w-8 sm:w-10 h-[46px] flex justify-center items-center bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors border-l border-gray-200 shrink-0"
+                                                        onClick={() => handleRemoveDescription(index)}
+                                                        className="text-xs font-bold text-gray-400 hover:text-red-500 p-1"
+                                                        title="Remove description"
                                                     >
-                                                        <Plus size={14} strokeWidth={3} />
+                                                        <X size={13} />
                                                     </button>
                                                 </div>
                                             </div>
-
-                                            {/* Mobile Delete Button Inline */}
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveItem(index)}
-                                                className="md:hidden shrink-0 h-[46px] w-[46px] flex justify-center items-center text-red-400 hover:text-red-600 bg-red-50/50 hover:bg-red-100 rounded-xl transition-all border border-red-100 focus:ring-2 focus:ring-red-500"
-                                                title="Remove Item"
-                                            >
-                                                <Trash2 size={18} strokeWidth={2.5} />
-                                            </button>
-                                        </div>
-
-                                        <div className="hidden md:flex flex-col justify-end space-y-1.5 min-w-[100px] border-l border-gray-50 pl-6">
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 text-right">Line Total</p>
-                                            <div className="h-[46px] flex items-center justify-end">
-                                                <p className="text-lg font-black text-blue-600 tracking-tight">₹{((Number(item.price)||0) * (Number(item.quantity)||0)).toFixed(2)}</p>
+                                        ) : (
+                                            <div className="mt-2 pt-1 flex justify-start">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openDescriptionModal(index)}
+                                                    className="text-[11px] font-bold text-slate-400 hover:text-blue-600 flex items-center gap-1 px-1 transition-colors"
+                                                >
+                                                    <Plus size={12} /> Add item note / custom cake description
+                                                </button>
                                             </div>
-                                        </div>
-
-                                        {/* Desktop View Delete Button */}
-                                        <div className="hidden md:flex flex-col justify-end space-y-1.5">
-                                            {/* Spacer to match the labels above inputs */}
-                                            <div className="text-[10px] px-1 opacity-0">&nbsp;</div>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveItem(index)}
-                                                className="h-[46px] w-[46px] flex justify-center items-center text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shrink-0"
-                                                title="Remove Item"
-                                            >
-                                                <Trash2 size={20} strokeWidth={2.5} />
-                                            </button>
-                                        </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

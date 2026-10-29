@@ -7,6 +7,7 @@ export interface IInvoiceItem {
     name: string;
     price: number;
     quantity: number;
+    description?: string;
 }
 
 export interface IInvoice extends Document {
@@ -30,6 +31,7 @@ const InvoiceItemSchema = new Schema<IInvoiceItem>({
     name: { type: String, required: true },
     price: { type: Number, required: true },
     quantity: { type: Number, required: true, default: 1 },
+    description: { type: String, required: false },
 });
 
 const InvoiceSchema = new Schema<IInvoice>(

@@ -69,7 +69,7 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
         // Table
         const tableData = invoice.items.map((item: any, index: number) => [
             index + 1,
-            item.name,
+            item.description ? `${item.name}\n${item.description}` : item.name,
             `₹${item.price.toFixed(2)}`,
             item.quantity,
             `₹${(item.price * item.quantity).toFixed(2)}`,
@@ -77,7 +77,7 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
 
         autoTable(doc, {
             startY: 105,
-            head: [["#", "Description", "Unit Price", "Quantity", "Total"]],
+            head: [["#", "Item", "Unit Price", "Quantity", "Total"]],
             body: tableData,
             theme: "grid",
             headStyles: { fillColor: [37, 99, 235] },
@@ -166,7 +166,7 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b-2 border-gray-200">
-                                <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</th>
+                                <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Item</th>
                                 <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Qty</th>
                                 <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Price</th>
                                 <th className="py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Total</th>
@@ -175,7 +175,14 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
                         <tbody className="divide-y divide-gray-50">
                             {invoice.items.map((item: any, idx: number) => (
                                 <tr key={idx}>
-                                    <td className="py-5 font-bold text-gray-800">{item.name}</td>
+                                    <td className="py-5">
+                                        <div className="font-bold text-gray-800">{item.name}</div>
+                                        {item.description && (
+                                            <div className="text-xs text-slate-600 font-medium mt-1 bg-slate-50 border border-slate-200/60 rounded-lg px-2.5 py-1 inline-block">
+                                                {item.description}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="py-5 text-gray-500 text-center font-bold">{item.quantity}</td>
                                     <td className="py-5 text-gray-500 text-right font-medium">₹{item.price.toLocaleString("en-IN")}</td>
                                     <td className="py-5 font-black text-gray-900 text-right text-lg">

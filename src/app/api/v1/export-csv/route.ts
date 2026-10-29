@@ -39,7 +39,7 @@ export async function GET() {
         const csvData = invoices.map((inv: any) => {
             const cust = inv.customer as any;
             const itemsString = inv.items
-                .map((item: any) => `${item.name} (x${item.quantity})`)
+                .map((item: any) => `${item.name}${item.description ? ` [${item.description}]` : ''} (x${item.quantity})`)
                 .join(", ");
 
             return {

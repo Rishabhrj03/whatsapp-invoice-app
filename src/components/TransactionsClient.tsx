@@ -409,15 +409,22 @@ export default function TransactionsClient({
                                     </div>
 
                                     {/* Line items snippet */}
-                                    <div className="bg-slate-50 rounded-xl p-2.5 text-xs text-slate-600 flex items-center justify-between">
-                                        <span className="flex items-center gap-1.5 font-medium">
-                                            <ShoppingBag size={14} className="text-slate-400" />
-                                            {inv.items.length} {inv.items.length === 1 ? "item" : "items"}
-                                        </span>
-                                        {inv.discountAmount > 0 && (
-                                            <span className="text-emerald-600 font-bold">
-                                                Discount: ₹{inv.discountAmount}
+                                    <div className="bg-slate-50 rounded-xl p-2.5 text-xs text-slate-600 space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className="flex items-center gap-1.5 font-medium">
+                                                <ShoppingBag size={14} className="text-slate-400" />
+                                                {inv.items.length} {inv.items.length === 1 ? "item" : "items"}
                                             </span>
+                                            {inv.discountAmount > 0 && (
+                                                <span className="text-emerald-600 font-bold">
+                                                    Discount: ₹{inv.discountAmount}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {inv.items?.some((it: any) => it.description) && (
+                                            <p className="text-[11px] text-slate-500 font-medium italic truncate">
+                                                Note: {inv.items.filter((it: any) => it.description).map((it: any) => `${it.name}: ${it.description}`).join(' • ')}
+                                            </p>
                                         )}
                                     </div>
 
@@ -517,7 +524,10 @@ export default function TransactionsClient({
                                                 </p>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                                                <span 
+                                                    className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold cursor-default hover:bg-slate-200 transition-colors"
+                                                    title={inv.items?.map((it: any) => `${it.name}${it.description ? ` (${it.description})` : ''} ×${it.quantity}`).join('\n')}
+                                                >
                                                     {inv.items.length}
                                                 </span>
                                             </td>

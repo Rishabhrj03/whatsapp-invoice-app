@@ -6,6 +6,28 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.2.0] — 2026-10-29
+
+### 🎂 Line Item Customization, Real-Time Descriptions & Invoice UX
+
+#### Added — Line Item Customization Modal & Description Box
+- **Item Description Modal Popup (`CreateInvoiceForm.tsx`)**:
+  - Added dedicated popup modal to capture real-time item specifications (e.g., custom cake flavor, weight, delivery notes).
+  - Quick-preset chips for rapid POS checkout (`Custom Cake`, `Eggless`, `1.5 kg`, `Special Message`).
+  - Auto-opens upon selecting custom or open items (e.g. `Open Item Wholesale Cake`).
+  - Direct `+ Description` / `+ Note` trigger button adjacent to `Select Menu Item`.
+  - Prominent line item description banner rendered beneath each configured line item row.
+- **Invoice Preview & Public Receipt Enhancements**:
+  - Updated table header from `Item Description` to clean `Item`.
+  - Renders item description box directly beneath item names on invoice preview, public invoice view (`/public/invoice/[id]`), and PDF receipts.
+- **Data Model & Schema Extensions**:
+  - `Invoice.ts`: Added `description?: string` to `IInvoiceItem` and schema.
+  - `src/lib/schemas/index.ts`: Added `description: z.string().max(500).optional()` to `InvoiceItemSchema`.
+  - `domain.ts`: Added `description?: string` to `InvoiceItemDTO`.
+  - `WhatsAppWebAdapter.ts` & `export-csv`: Included item descriptions in messaging payloads and CSV export.
+
+---
+
 ## [1.1.0] — 2026-10-29
 
 ### 🚀 Activity Log & Production Database Configuration Release

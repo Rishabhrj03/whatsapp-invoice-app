@@ -26,7 +26,7 @@ export class WhatsAppWebAdapter implements IMessagingAdapter {
         } = payload;
 
         const itemLines = items
-            .map(it => `  • ${it.name} ×${it.quantity} = ₹${(it.price * it.quantity).toFixed(2)}`)
+            .map(it => `  • ${it.name}${(it as any).description ? ` (${(it as any).description})` : ''} ×${it.quantity} = ₹${(it.price * it.quantity).toFixed(2)}`)
             .join('\n');
 
         if (template) {

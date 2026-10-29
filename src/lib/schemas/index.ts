@@ -11,6 +11,7 @@ export const InvoiceItemSchema = z.object({
     name: z.string().min(1, 'Item name is required').max(200),
     price: z.number().nonnegative('Price must be ≥ 0'),
     quantity: z.number().int().positive('Quantity must be a positive integer'),
+    description: z.string().max(500).optional(),
 });
 
 export const CreateInvoiceSchema = z.object({

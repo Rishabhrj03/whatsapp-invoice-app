@@ -9,6 +9,7 @@ interface InvoiceItem {
     name: string;
     price: number;
     quantity: number;
+    description?: string;
 }
 
 interface EditInvoiceModalProps {
@@ -33,6 +34,7 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
                 name: it.name,
                 price: it.price,
                 quantity: it.quantity,
+                description: it.description || '',
             })) || []);
             setPaymentType(invoice.paymentType || 'Cash');
             setDiscountAmount(invoice.discountAmount || 0);
@@ -48,7 +50,7 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
 
     const handleItemChange = (idx: number, field: keyof InvoiceItem, value: any) => {
         const next = [...items];
-        (next[idx] as any)[field] = field === 'name' ? value : parseFloat(value) || 0;
+        (next[idx] as any)[field] = (field === 'name' || field === 'description') ? value : parseFloat(value) || 0;
         setItems(next);
     };
 
@@ -130,6 +132,13 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
                                             onChange={e => handleItemChange(idx, 'name', e.target.value)}
                                             placeholder="Item name"
                                             className="w-full text-sm font-bold text-gray-800 bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none pb-1"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={item.description || ''}
+                                            onChange={e => handleItemChange(idx, 'description', e.target.value)}
+                                            placeholder="Custom note (e.g. 1.5kg, eggless)"
+                                            className="w-full text-[11px] font-medium text-slate-500 bg-transparent outline-none pt-1 placeholder:text-gray-300"
                                         />
                                     </div>
                                     <div className="flex items-center gap-1.5 bg-white rounded-xl border border-gray-200 px-3 py-2 w-28">

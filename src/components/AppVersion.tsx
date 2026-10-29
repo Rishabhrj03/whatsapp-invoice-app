@@ -10,10 +10,11 @@ interface AppVersionProps {
     className?: string;
 }
 
-const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.1.0";
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.2.0";
 
 const CHANGELOG_SUMMARY = [
-    { version: "1.1.0", date: "Oct 2026", label: "Current", notes: "Activity Log / Audit Trail system, multi-tenant booking isolation, production DB config" },
+    { version: "1.2.0", date: "Oct 2026", label: "Current", notes: "Real-time item descriptions, custom cake customization popup, and invoice item notes" },
+    { version: "1.1.0", date: "Oct 2026", label: "Stable", notes: "Activity Log / Audit Trail system, multi-tenant booking isolation, production DB config" },
     { version: "1.0.0", date: "Oct 2026", label: "Stable", notes: "SOLID architecture, RBAC, rate limiting, API v1, responsive UI" },
     { version: "0.1.0", date: "May 2026", label: "Initial", notes: "Core invoicing, WhatsApp sharing, customer CRM, bookings" },
 ];

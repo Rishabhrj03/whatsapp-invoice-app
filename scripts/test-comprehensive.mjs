@@ -68,7 +68,7 @@ async function runComprehensiveTests() {
     
     const healthData = await healthRes.json();
     assert(healthData.status === 'ok', 'Health status is ok');
-    assert(healthData.version === '1.1.0', 'Reported application version matches 1.1.0');
+    assert(healthData.version === '1.2.0', 'Reported application version matches 1.2.0');
     assert(healthData.apiVersion === 'v1', 'Reported apiVersion is v1');
     assert(typeof healthData.uptimeSeconds === 'number', 'Uptime seconds is a valid number');
 
