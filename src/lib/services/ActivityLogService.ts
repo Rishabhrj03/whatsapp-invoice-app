@@ -125,7 +125,7 @@ export class ActivityLogService {
             entityType: log.entityType,
             entityId: log.entityId || null,
             description: log.description,
-            metadata: log.metadata || {},
+            metadata: log.metadata ? JSON.parse(JSON.stringify(log.metadata)) : {},
             createdAt: log.createdAt.toISOString(),
         }));
 

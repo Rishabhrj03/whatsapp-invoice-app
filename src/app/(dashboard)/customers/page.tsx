@@ -24,16 +24,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         Customer.countDocuments(query)
     ]);
 
-    // Serialize MongoDB objects
-    const serializedCustomers = customers.map(c => ({
-        ...c,
-        _id: c._id.toString(),
-        birthdayDate: (c.birthdayDate instanceof Date) ? c.birthdayDate.toISOString() : undefined,
-        anniversaryDate: (c.anniversaryDate instanceof Date) ? c.anniversaryDate.toISOString() : undefined,
-    }));
-
     return <CustomersClient
-        initialCustomers={serializedCustomers}
+        initialCustomers={JSON.parse(JSON.stringify(customers))}
         currentPage={page}
         totalPages={Math.ceil(total / limit) || 1}
     />;

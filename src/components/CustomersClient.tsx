@@ -23,6 +23,16 @@ interface CustomersClientProps {
     totalPages: number;
 }
 
+function formatDisplayDate(dateStr?: string): string {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
 export default function CustomersClient({ initialCustomers, currentPage, totalPages }: CustomersClientProps) {
     const [customers, setCustomers] = useState(initialCustomers);
     const [view, setView] = useState<"list" | "add">("list");
@@ -246,13 +256,13 @@ export default function CustomersClient({ initialCustomers, currentPage, totalPa
                                     {(customer.birthdayDate || customer.anniversaryDate) && (
                                         <div className="flex flex-wrap gap-2 pt-0.5">
                                             {customer.birthdayDate && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-pink-700 bg-pink-50 px-2 py-0.5 rounded-md border border-pink-100">
-                                                    <Calendar size={11} /> BDay: {new Date(customer.birthdayDate).toLocaleDateString()}
+                                                <span suppressHydrationWarning className="inline-flex items-center gap-1 text-[10px] font-bold text-pink-700 bg-pink-50 px-2 py-0.5 rounded-md border border-pink-100">
+                                                    <Calendar size={11} /> BDay: {formatDisplayDate(customer.birthdayDate)}
                                                 </span>
                                             )}
                                             {customer.anniversaryDate && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
-                                                    <Calendar size={11} /> Anniv: {new Date(customer.anniversaryDate).toLocaleDateString()}
+                                                <span suppressHydrationWarning className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                                                    <Calendar size={11} /> Anniv: {formatDisplayDate(customer.anniversaryDate)}
                                                 </span>
                                             )}
                                         </div>
@@ -323,13 +333,13 @@ export default function CustomersClient({ initialCustomers, currentPage, totalPa
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-wrap gap-2">
                                                     {customer.birthdayDate && (
-                                                        <div className="flex items-center gap-1.5 text-xs font-bold text-pink-700 bg-pink-50 px-2.5 py-1 rounded-lg border border-pink-100">
-                                                            <Calendar size={12} /> BDay: {new Date(customer.birthdayDate).toLocaleDateString()}
+                                                        <div suppressHydrationWarning className="flex items-center gap-1.5 text-xs font-bold text-pink-700 bg-pink-50 px-2.5 py-1 rounded-lg border border-pink-100">
+                                                            <Calendar size={12} /> BDay: {formatDisplayDate(customer.birthdayDate)}
                                                         </div>
                                                     )}
                                                     {customer.anniversaryDate && (
-                                                        <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
-                                                            <Calendar size={12} /> Anniv: {new Date(customer.anniversaryDate).toLocaleDateString()}
+                                                        <div suppressHydrationWarning className="flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+                                                            <Calendar size={12} /> Anniv: {formatDisplayDate(customer.anniversaryDate)}
                                                         </div>
                                                     )}
                                                     {!customer.birthdayDate && !customer.anniversaryDate && (

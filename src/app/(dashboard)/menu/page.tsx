@@ -31,21 +31,10 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
         Category.countDocuments(catQuery)
     ]);
 
-    // Serialize MongoDB objects
-    const serializedItems = menuItems.map(item => ({
-        ...item,
-        _id: item._id.toString(),
-    }));
-
-    const serializedCategories = categories.map(cat => ({
-        ...cat,
-        _id: cat._id.toString(),
-    }));
-
     return (
         <MenuClient
-            initialMenuItems={serializedItems}
-            initialCategories={serializedCategories}
+            initialMenuItems={JSON.parse(JSON.stringify(menuItems))}
+            initialCategories={JSON.parse(JSON.stringify(categories))}
             initialTab={tab}
             currentPage={page}
             totalItemPages={Math.ceil(totalItems / limit) || 1}

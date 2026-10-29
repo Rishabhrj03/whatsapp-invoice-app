@@ -55,16 +55,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         Invoice.countDocuments(query)
     ]);
 
-    const serializedInvoices = invoices.map((inv: any) => ({
-        ...inv,
-        _id: inv._id.toString(),
-        customer: inv.customer ? {
-            ...inv.customer,
-            _id: inv.customer._id.toString()
-        } : null,
-        date: inv.date.toISOString(),
-        createdAt: inv.createdAt.toISOString(),
-    }));
+    const serializedInvoices = JSON.parse(JSON.stringify(invoices));
 
     return (
         <div className="space-y-8">

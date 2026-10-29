@@ -113,20 +113,9 @@ export async function getAdvanceBookings({ page = 1, limit = 10, search = "", st
             User.findById(effectiveUserId).lean()
         ]);
 
-        // Convert _id ObjectIds to strings
-        const serialized = bookings.map((b: any) => ({
-            ...b,
-            _id: b._id.toString(),
-            userId: b.userId.toString(),
-            createdAt: b.createdAt.toISOString(),
-            updatedAt: b.updatedAt.toISOString(),
-            deliveryDate: b.deliveryDate.toISOString(),
-            alertTime: b.alertTime ? b.alertTime.toISOString() : undefined,
-        }));
-
         return {
             success: true,
-            bookings: serialized,
+            bookings: JSON.parse(JSON.stringify(bookings)),
             total,
             totalPages: Math.ceil(total / limit),
             settings: {
