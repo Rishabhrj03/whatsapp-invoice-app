@@ -5,7 +5,7 @@ import { createInvoice, getUploadUrl, updateInvoicePdfUrl, getLogoBase64 } from 
 import {
     Plus, Trash2, Send, FileDown, Eye, Edit2,
     CheckCircle, UserPlus, ShoppingBag, CreditCard,
-    ChevronRight, Calendar, Info, Tag, Check, Printer, ArrowLeft, Minus
+    ChevronRight, Calendar, Info, Tag, Check, Printer, ArrowLeft, Minus, Percent
 } from "lucide-react";
 // jspdf and jspdf-autotable removed for dynamic import optimization
 import CustomerSelector from "./CustomerSelector";
@@ -61,12 +61,15 @@ export default function CreateInvoiceForm({
         }
     }, []);
 
+    const [manualDiscountType, setManualDiscountType] = useState<'FIXED' | 'PERCENTAGE'>('FIXED');
+    const [manualDiscountValue, setManualDiscountValue] = useState<string>("");
+
     const totalAmount = items.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0
     );
 
-    const getDiscountAmount = () => {
+    const getCouponDiscount = () => {
         if (!appliedCoupon) return 0;
         if (appliedCoupon.type === 'PERCENTAGE') {
             if (appliedCoupon.applicableTo === 'SPECIFIC_ITEMS') {
@@ -80,12 +83,31 @@ export default function CreateInvoiceForm({
             }
             return (totalAmount * appliedCoupon.value) / 100;
         } else {
-            return appliedCoupon.value; // Fixed
+            return appliedCoupon.value;
         }
     };
 
-    const discountAmount = getDiscountAmount();
+    const couponDiscount = getCouponDiscount();
+    const parsedManual = parseFloat(manualDiscountValue) || 0;
+    const manualDiscount = parsedManual > 0
+        ? (manualDiscountType === 'PERCENTAGE'
+            ? (totalAmount * Math.min(100, parsedManual)) / 100
+            : Math.min(totalAmount, parsedManual))
+        : 0;
+
+    const discountAmount = Math.min(totalAmount, couponDiscount + manualDiscount);
     const grandTotal = Math.max(0, totalAmount - discountAmount);
+
+    const getDiscountDescription = () => {
+        const parts: string[] = [];
+        if (manualDiscount > 0) {
+            parts.push(manualDiscountType === 'PERCENTAGE' ? `${parsedManual}% Direct` : `₹${parsedManual} Flat`);
+        }
+        if (appliedCoupon) {
+            parts.push(`Coupon ${appliedCoupon.code}`);
+        }
+        return parts.join(' + ');
+    };
 
     const handleApplyCoupon = () => {
         if (!couponCode) return;
@@ -362,7 +384,7 @@ export default function CreateInvoiceForm({
             items,
             totalAmount: grandTotal,
             discountAmount,
-            couponCode: appliedCoupon?.code,
+            couponCode: getDiscountDescription() || appliedCoupon?.code,
             comment,
             paymentType,
         };
@@ -583,13 +605,21 @@ export default function CreateInvoiceForm({
                             ))}
                         </tbody>
                         <tfoot>
-                            <tr>
-                                <td colSpan={3} className="py-6 text-right font-bold text-gray-500">Subtotal</td>
-                                <td className="py-6 text-right font-bold text-gray-800">₹{totalAmount.toFixed(2)}</td>
+                            <tr className="border-t border-gray-100">
+                                <td colSpan={3} className="py-3 text-right font-bold text-gray-500 text-sm">Subtotal</td>
+                                <td className="py-3 text-right font-bold text-gray-800 text-sm">₹{totalAmount.toFixed(2)}</td>
                             </tr>
-                            <tr>
-                                <td colSpan={3} className="py-2 text-right text-xl font-bold text-gray-800">Grand Total</td>
-                                <td className="py-2 text-right text-2xl font-extrabold text-blue-600">₹{totalAmount.toFixed(2)}</td>
+                            {discountAmount > 0 && (
+                                <tr className="text-emerald-600 font-bold text-sm">
+                                    <td colSpan={3} className="py-2 text-right">
+                                        Discount {getDiscountDescription() ? `(${getDiscountDescription()})` : ''}
+                                    </td>
+                                    <td className="py-2 text-right font-black">-₹{discountAmount.toFixed(2)}</td>
+                                </tr>
+                            )}
+                            <tr className="border-t-2 border-gray-200">
+                                <td colSpan={3} className="py-3 text-right text-xl font-black text-gray-900">Grand Total</td>
+                                <td className="py-3 text-right text-3xl font-black text-blue-600">₹{grandTotal.toFixed(2)}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -894,69 +924,174 @@ export default function CreateInvoiceForm({
                             placeholder="Add thank you note, payment details, or special instructions..."
                         ></textarea>
 
-                        <div className="border-t pt-4 space-y-2">
-                            <div className="flex items-center gap-2">
-                                <Tag size={14} className="text-gray-400" />
-                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Apply Discount Coupon</h4>
+                        {/* Discount & Savings Section */}
+                        <div className="border-t pt-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Percent size={15} className="text-blue-600" />
+                                    <h4 className="text-[11px] font-black text-gray-700 uppercase tracking-wider">
+                                        Discount & Offers
+                                    </h4>
+                                </div>
+                                {discountAmount > 0 && (
+                                    <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100 flex items-center gap-1">
+                                        <Check size={12} /> Total Savings: ₹{discountAmount.toFixed(2)}
+                                    </span>
+                                )}
                             </div>
-                            <div className="flex gap-2 relative">
-                                <div className="flex-1 relative">
+
+                            {/* Direct Bill Discount Field */}
+                            <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-100 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-gray-700">Direct Bill Discount</span>
+                                    <div className="flex bg-white rounded-xl p-0.5 border border-gray-200 shadow-sm text-xs font-bold">
+                                        <button
+                                            type="button"
+                                            onClick={() => setManualDiscountType('FIXED')}
+                                            className={`px-3 py-1 rounded-lg transition-all ${
+                                                manualDiscountType === 'FIXED'
+                                                    ? 'bg-blue-600 text-white shadow-sm'
+                                                    : 'text-gray-500 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            ₹ Flat
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setManualDiscountType('PERCENTAGE')}
+                                            className={`px-3 py-1 rounded-lg transition-all ${
+                                                manualDiscountType === 'PERCENTAGE'
+                                                    ? 'bg-blue-600 text-white shadow-sm'
+                                                    : 'text-gray-500 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            % Off
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="relative">
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">
+                                        {manualDiscountType === 'FIXED' ? '₹' : '%'}
+                                    </span>
                                     <input
-                                        type="text"
-                                        placeholder="Search or Enter Code..."
-                                        value={couponCode}
-                                        onChange={(e) => {
-                                            setCouponCode(e.target.value);
-                                            setIsCouponDropdownOpen(true);
-                                        }}
-                                        onFocus={() => setIsCouponDropdownOpen(true)}
-                                        onBlur={() => setTimeout(() => setIsCouponDropdownOpen(false), 200)}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm font-bold uppercase placeholder:text-gray-300 outline-none focus:ring-2 focus:ring-blue-100 text-gray-900"
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        placeholder={manualDiscountType === 'FIXED' ? 'Enter discount amount (e.g. 50)' : 'Enter discount percentage (e.g. 10)'}
+                                        value={manualDiscountValue}
+                                        onChange={(e) => setManualDiscountValue(e.target.value)}
+                                        className="w-full pl-8 pr-16 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 placeholder:text-gray-300 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                     />
-                                    {isCouponDropdownOpen && (
-                                        <div className="absolute z-50 bottom-full mb-2 left-0 right-0 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-40 overflow-y-auto divide-y divide-gray-50 animate-in slide-in-from-bottom-2 duration-200">
-                                            {filteredCoupons.length > 0 ? (
-                                                filteredCoupons.map(c => (
-                                                    <button
-                                                        key={c._id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setCouponCode(c.code);
-                                                            setAppliedCoupon(c);
-                                                            setIsCouponDropdownOpen(false);
-                                                        }}
-                                                        className="w-full text-left p-3 hover:bg-gray-50 flex items-center justify-between text-sm font-bold"
-                                                    >
-                                                        <div>
-                                                            <span className="text-blue-600 font-extrabold">{c.code}</span>
-                                                            <span className="text-gray-400 text-xs ml-2">({c.type === 'PERCENTAGE' ? `${c.value}%` : `₹${c.value}`})</span>
-                                                        </div>
-                                                        <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-black">
-                                                            {c.applicableTo === 'ALL' ? 'ALL ITEMS' : 'SPECIFIC'}
-                                                        </span>
-                                                    </button>
-                                                ))
-                                            ) : (
-                                                <div className="p-4 text-center text-xs font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
-                                                    No coupons found
-                                                </div>
-                                            )}
-                                        </div>
+                                    {manualDiscountValue && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setManualDiscountValue('')}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors"
+                                        >
+                                            Clear
+                                        </button>
                                     )}
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handleApplyCoupon}
-                                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all"
-                                >
-                                    Apply
-                                </button>
+
+                                {/* Quick Preset Buttons */}
+                                <div className="flex items-center gap-1.5 pt-0.5">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Quick:</span>
+                                    {(manualDiscountType === 'PERCENTAGE' ? [5, 10, 15, 20] : [20, 50, 100, 200]).map((val) => (
+                                        <button
+                                            key={val}
+                                            type="button"
+                                            onClick={() => setManualDiscountValue(val.toString())}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all ${
+                                                manualDiscountValue === val.toString()
+                                                    ? 'bg-blue-600 text-white shadow-sm'
+                                                    : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+                                            }`}
+                                        >
+                                            {manualDiscountType === 'PERCENTAGE' ? `${val}%` : `₹${val}`}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            {appliedCoupon && (
-                                <p className="text-xs text-green-600 font-bold flex items-center gap-1">
-                                    <Check size={14} className="text-green-600" /> Coupon {appliedCoupon.code} Applied! Saved {appliedCoupon.type === 'PERCENTAGE' ? `${appliedCoupon.value}%` : `₹${appliedCoupon.value}`}
-                                </p>
-                            )}
+
+                            {/* Store Coupon Code Section */}
+                            <div className="space-y-2 pt-1">
+                                <div className="flex items-center gap-1.5">
+                                    <Tag size={13} className="text-gray-400" />
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Or Apply Promo Coupon</span>
+                                </div>
+                                <div className="flex gap-2 relative">
+                                    <div className="flex-1 relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Search or enter coupon code..."
+                                            value={couponCode}
+                                            onChange={(e) => {
+                                                setCouponCode(e.target.value);
+                                                setIsCouponDropdownOpen(true);
+                                            }}
+                                            onFocus={() => setIsCouponDropdownOpen(true)}
+                                            onBlur={() => setTimeout(() => setIsCouponDropdownOpen(false), 200)}
+                                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold uppercase placeholder:text-gray-300 outline-none focus:ring-2 focus:ring-blue-100 text-gray-900"
+                                        />
+                                        {isCouponDropdownOpen && (
+                                            <div className="absolute z-50 bottom-full mb-2 left-0 right-0 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-40 overflow-y-auto divide-y divide-gray-50 animate-in slide-in-from-bottom-2 duration-200">
+                                                {filteredCoupons.length > 0 ? (
+                                                    filteredCoupons.map(c => (
+                                                        <button
+                                                            key={c._id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setCouponCode(c.code);
+                                                                setAppliedCoupon(c);
+                                                                setIsCouponDropdownOpen(false);
+                                                            }}
+                                                            className="w-full text-left p-3 hover:bg-gray-50 flex items-center justify-between text-sm font-bold"
+                                                        >
+                                                            <div>
+                                                                <span className="text-blue-600 font-extrabold">{c.code}</span>
+                                                                <span className="text-gray-400 text-xs ml-2">({c.type === 'PERCENTAGE' ? `${c.value}%` : `₹${c.value}`})</span>
+                                                            </div>
+                                                            <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-black">
+                                                                {c.applicableTo === 'ALL' ? 'ALL ITEMS' : 'SPECIFIC'}
+                                                            </span>
+                                                        </button>
+                                                    ))
+                                                ) : (
+                                                    <div className="p-4 text-center text-xs font-black text-gray-400 uppercase tracking-widest bg-gray-50/50">
+                                                        No coupons found
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleApplyCoupon}
+                                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all"
+                                    >
+                                        Apply
+                                    </button>
+                                </div>
+                                {appliedCoupon && (
+                                    <div className="flex items-center justify-between text-xs text-green-700 bg-green-50 px-3 py-1.5 rounded-xl border border-green-200 font-bold">
+                                        <span className="flex items-center gap-1.5">
+                                            <Check size={14} className="text-green-600" />
+                                            Coupon {appliedCoupon.code} Applied ({appliedCoupon.type === 'PERCENTAGE' ? `${appliedCoupon.value}%` : `₹${appliedCoupon.value}`})
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setAppliedCoupon(null);
+                                                setCouponCode('');
+                                            }}
+                                            className="text-gray-400 hover:text-red-500 text-[11px] underline"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -974,10 +1109,16 @@ export default function CreateInvoiceForm({
                                     <span>Subtotal</span>
                                     <span>₹{totalAmount.toFixed(2)}</span>
                                 </div>
-                                {discountAmount > 0 && (
+                                {manualDiscount > 0 && (
                                     <div className="flex justify-between text-emerald-400 text-sm font-black">
-                                        <span>Discount ({appliedCoupon?.code})</span>
-                                        <span>- ₹{discountAmount.toFixed(2)}</span>
+                                        <span>Direct Discount ({manualDiscountType === 'PERCENTAGE' ? `${parsedManual}%` : `₹${parsedManual}`})</span>
+                                        <span>- ₹{manualDiscount.toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {couponDiscount > 0 && (
+                                    <div className="flex justify-between text-emerald-400 text-sm font-black">
+                                        <span>Coupon Discount ({appliedCoupon?.code})</span>
+                                        <span>- ₹{couponDiscount.toFixed(2)}</span>
                                     </div>
                                 )}
                             </div>

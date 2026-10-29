@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import DashboardLayoutClient from "@/components/DashboardLayoutClient";
 import dbConnect from "@/lib/mongoose";
 import User from "@/models/User";
+import { getEffectiveUserId } from "@/lib/auth-utils";
 
 export default async function DashboardLayout({
     children,
@@ -16,10 +17,21 @@ export default async function DashboardLayout({
     }
 
     await dbConnect();
-    const dbUser = await User.findById(session.user.id);
+    const effectiveUserId = await getEffectiveUserId();
+
+    const [dbUser, ownerUser] = await Promise.all([
+        User.findById(session.user.id),
+        effectiveUserId && effectiveUserId !== session.user.id
+            ? User.findById(effectiveUserId)
+            : null
+    ]);
+
     if (!dbUser) {
         redirect("/login");
     }
+
+    const effectiveBusinessName = ownerUser?.businessName || dbUser?.businessName;
+    const effectiveLogoUrl = ownerUser?.logoUrl || dbUser?.logoUrl;
 
     return (
         <DashboardLayoutClient
@@ -28,8 +40,8 @@ export default async function DashboardLayout({
                 name: session.user.name,
                 email: session.user.email,
                 role: (session.user as any).role,
-                businessName: dbUser?.businessName,
-                logoUrl: dbUser?.logoUrl
+                businessName: effectiveBusinessName,
+                logoUrl: effectiveLogoUrl
             }}
         >
             {children}

@@ -64,7 +64,10 @@ export async function updateBusinessProfile(formData: FormData) {
             },
         });
 
+        revalidatePath("/", "layout");
         revalidatePath("/settings");
+        revalidatePath("/dashboard");
+        revalidatePath("/invoice/create");
         return { success: true };
     } catch (error: any) {
         console.error("Failed to update business profile:", error);

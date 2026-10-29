@@ -9,6 +9,9 @@ import { useState, useEffect } from "react";
 export default function PublicInvoiceClient({ invoice, user }: { invoice: any; user?: any }) {
     const [logoBase64, setLogoBase64] = useState<string>("");
 
+    const subtotal = (invoice.items || []).reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
+    const discountAmount = invoice.discountAmount || (subtotal > invoice.totalAmount ? subtotal - invoice.totalAmount : 0);
+
     useEffect(() => {
         if (user?.logoUrl) {
             fetch(user.logoUrl)
@@ -81,19 +84,33 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
             styles: { fontSize: 9 },
         });
 
+        const subtotal = invoice.items.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
+        const discountAmount = invoice.discountAmount || (subtotal > invoice.totalAmount ? subtotal - invoice.totalAmount : 0);
+
         const finalY = (doc as any).lastAutoTable.finalY + 15;
 
         // Totals
-        const rupeeSymbol = "Rs. "; // Fix glyph
-        doc.setFontSize(12);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Subtotal:`, 140, finalY);
-        doc.text(`${rupeeSymbol}${invoice.totalAmount.toFixed(2)}`, 180, finalY, { align: "right" });
+        const rupeeSymbol = "Rs. ";
+        let currentY = finalY;
 
-        doc.setFontSize(16);
+        doc.setFontSize(11);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Subtotal:`, 140, currentY);
+        doc.text(`${rupeeSymbol}${subtotal.toFixed(2)}`, 190, currentY, { align: "right" });
+
+        if (discountAmount > 0) {
+            currentY += 6;
+            doc.setTextColor(220, 38, 38);
+            const discountLabel = invoice.couponCode ? `Discount (${invoice.couponCode}):` : `Discount:`;
+            doc.text(discountLabel, 140, currentY);
+            doc.text(`-${rupeeSymbol}${discountAmount.toFixed(2)}`, 190, currentY, { align: "right" });
+        }
+
+        currentY += 8;
+        doc.setFontSize(15);
         doc.setTextColor(37, 99, 235);
-        doc.text(`Grand Total:`, 140, finalY + 10);
-        doc.text(`${rupeeSymbol}${invoice.totalAmount.toFixed(2)}`, 180, finalY + 10, { align: "right" });
+        doc.text(`Grand Total:`, 140, currentY);
+        doc.text(`${rupeeSymbol}${invoice.totalAmount.toFixed(2)}`, 190, currentY, { align: "right" });
 
         // Notes
         if (invoice.comment) {
@@ -168,9 +185,25 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
                             ))}
                         </tbody>
                         <tfoot>
-                            <tr>
-                                <td colSpan={3} className="py-8 text-right font-bold text-gray-400 uppercase tracking-widest text-[10px]">Grand Total</td>
-                                <td className="py-8 text-right text-4xl font-black text-blue-600 tracking-tighter">₹{invoice.totalAmount.toLocaleString("en-IN")}</td>
+                            <tr className="border-t border-gray-100">
+                                <td colSpan={3} className="py-4 text-right font-bold text-gray-500 uppercase tracking-widest text-[11px]">Subtotal</td>
+                                <td className="py-4 text-right font-bold text-gray-800 text-base">₹{subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            </tr>
+                            {discountAmount > 0 && (
+                                <tr className="text-emerald-600 font-bold">
+                                    <td colSpan={3} className="py-2.5 text-right uppercase tracking-widest text-[11px]">
+                                        Discount {invoice.couponCode ? `(${invoice.couponCode})` : ''}
+                                    </td>
+                                    <td className="py-2.5 text-right font-black text-base text-emerald-600">
+                                        -₹{discountAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                </tr>
+                            )}
+                            <tr className="border-t-2 border-gray-200">
+                                <td colSpan={3} className="py-6 text-right font-black text-gray-400 uppercase tracking-widest text-xs">Grand Total</td>
+                                <td className="py-6 text-right text-4xl font-black text-blue-600 tracking-tighter">
+                                    ₹{invoice.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </td>
                             </tr>
                         </tfoot>
                     </table>
