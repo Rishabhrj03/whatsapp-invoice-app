@@ -185,8 +185,19 @@ export async function getUploadUrl(filename: string, contentType: string) {
             return { success: false, error: "Unauthorized" };
         }
 
-        const userEmail = session.user.email;
-        const objectKey = `${userEmail}/${filename}`;
+        const { isValidUploadMimeType, sanitizeFilename } = await import("@/lib/security");
+        
+        // Validate MIME type against strict whitelist
+        if (!isValidUploadMimeType(contentType)) {
+            return { 
+                success: false, 
+                error: "Invalid file type. Only JPEG, PNG, WEBP, and PDF documents are permitted." 
+            };
+        }
+
+        const safeFilename = sanitizeFilename(filename);
+        const userEmail = session.user.email.replace(/[^a-zA-Z0-9.@_-]/g, '_');
+        const objectKey = `${userEmail}/${Date.now()}_${safeFilename}`;
 
         const { PutObjectCommand } = await import("@aws-sdk/client-s3");
         const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");

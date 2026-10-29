@@ -9,6 +9,7 @@ import Customer from "@/models/Customer";
 import Invoice from "@/models/Invoice";
 import { activityLogService } from "@/lib/services/ActivityLogService";
 import { revalidatePath } from "next/cache";
+import { escapeRegex } from "@/lib/security";
 
 export async function createAdvanceBooking(formData: any) {
     const session = await auth();
@@ -90,9 +91,10 @@ export async function getAdvanceBookings({ page = 1, limit = 10, search = "", st
 
         const query: any = { userId: effectiveUserId };
         if (search) {
+            const safeSearch = escapeRegex(search.trim());
             query.$or = [
-                { customerName: { $regex: search, $options: "i" } },
-                { phoneNumber: { $regex: search, $options: "i" } }
+                { customerName: { $regex: safeSearch, $options: "i" } },
+                { phoneNumber: { $regex: safeSearch, $options: "i" } }
             ];
         }
         if (status && status !== "All") {

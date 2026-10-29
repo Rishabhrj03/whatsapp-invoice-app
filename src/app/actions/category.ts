@@ -5,6 +5,7 @@ import Category from "@/models/Category";
 import { getEffectiveUserId, getCurrentUser } from "@/lib/auth-utils";
 import { auth } from "@/auth";
 import { activityLogService } from "@/lib/services/ActivityLogService";
+import { escapeRegex } from "@/lib/security";
 
 export async function getCategories() {
     try {
@@ -53,9 +54,10 @@ export async function createCategory(data: { name: string; description?: string;
         if (!effectiveUserId) return { success: false, error: "Unauthorized" };
 
         // Check for duplicates
+        const escapedName = escapeRegex(data.name.trim());
         const existing = await Category.findOne({
             userId: effectiveUserId,
-            name: { $regex: new RegExp(`^${data.name.trim()}$`, "i") }
+            name: { $regex: new RegExp(`^${escapedName}$`, "i") }
         });
 
         if (existing) {
@@ -154,10 +156,11 @@ export async function updateCategory(id: string, data: { name: string; descripti
         if (!effectiveUserId) return { success: false, error: "Unauthorized" };
 
         // Check for duplicates (other than this one)
+        const escapedName = escapeRegex(data.name.trim());
         const existing = await Category.findOne({
             _id: { $ne: id },
             userId: effectiveUserId,
-            name: { $regex: new RegExp(`^${data.name.trim()}$`, "i") }
+            name: { $regex: new RegExp(`^${escapedName}$`, "i") }
         });
 
         if (existing) {

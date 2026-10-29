@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongoose';
 import ActivityLog, { ActivityActionType, ActivityEntityType } from '@/models/ActivityLog';
+import { escapeRegex } from '@/lib/security';
 
 export interface LogActivityParams {
     tenantId: string | mongoose.Types.ObjectId;
@@ -82,7 +83,8 @@ export class ActivityLogService {
         }
 
         if (options.search && options.search.trim()) {
-            const regex = new RegExp(options.search.trim(), 'i');
+            const safeSearch = escapeRegex(options.search.trim());
+            const regex = new RegExp(safeSearch, 'i');
             query.$or = [
                 { description: regex },
                 { userName: regex },

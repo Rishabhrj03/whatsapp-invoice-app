@@ -5,6 +5,8 @@ import Customer from "@/models/Customer";
 import { auth } from "@/auth";
 import { getEffectiveUserId } from "@/lib/auth-utils";
 
+import { escapeRegex } from "@/lib/security";
+
 export const dynamic = "force-dynamic";
 
 export default async function TransactionsPage({ searchParams }: { searchParams: Promise<{ page?: string; search?: string }> }) {
@@ -23,9 +25,10 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     const query: any = { userId: effectiveUserId };
 
     if (search) {
+        const safeSearch = escapeRegex(search.trim());
         const matchingCustomers = await Customer.find({
             userId: effectiveUserId,
-            name: { $regex: `^${search}`, $options: "i" }
+            name: { $regex: `^${safeSearch}`, $options: "i" }
         }).select("_id").lean();
         const customerIds = matchingCustomers.map(c => c._id);
 

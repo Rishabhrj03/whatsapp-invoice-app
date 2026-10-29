@@ -5,6 +5,7 @@ import dbConnect from '@/lib/mongoose';
 import MenuEntryModel from '@/models/MenuEntry';
 import CategoryModel from '@/models/Category';
 import type { MenuItemDTO, CategoryDTO, CreateMenuItemInput, CreateCategoryInput } from '@/types/domain';
+import { escapeRegex } from '@/lib/security';
 
 function serializeMenuItem(doc: any): MenuItemDTO {
     return {
@@ -128,7 +129,7 @@ class MenuRepository {
         await dbConnect();
         const existing = await CategoryModel.find({
             userId,
-            name: { $in: names.map(n => new RegExp(`^${n}$`, 'i')) },
+            name: { $in: names.map(n => new RegExp(`^${escapeRegex(n.trim())}$`, 'i')) },
         }).select('name').lean();
 
         const existingNames = new Set(existing.map((c: any) => c.name.toLowerCase()));

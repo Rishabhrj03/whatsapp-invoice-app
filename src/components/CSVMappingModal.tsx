@@ -21,15 +21,17 @@ export default function CSVMappingModal({ isOpen, onClose, headers, previewRows,
 
     // Auto-detect headers if possible
     useEffect(() => {
-        const newMapping = { ...mapping };
-        headers.forEach(h => {
-            const lowH = h.toLowerCase().trim();
-            if (lowH === "name" || lowH === "title" || lowH === "item" || lowH === "product") newMapping.name = h;
-            if (lowH === "price" || lowH === "rate" || lowH === "cost" || lowH === "amount") newMapping.price = h;
-            if (lowH === "category" || lowH === "type" || lowH === "group") newMapping.category = h;
-            if (lowH === "description" || lowH === "desc" || lowH === "details" || lowH === "info") newMapping.description = h;
+        setMapping(prev => {
+            const newMapping = { ...prev };
+            headers.forEach(h => {
+                const lowH = h.toLowerCase().trim();
+                if (lowH === "name" || lowH === "title" || lowH === "item" || lowH === "product") newMapping.name = h;
+                if (lowH === "price" || lowH === "rate" || lowH === "cost" || lowH === "amount") newMapping.price = h;
+                if (lowH === "category" || lowH === "type" || lowH === "group") newMapping.category = h;
+                if (lowH === "description" || lowH === "desc" || lowH === "details" || lowH === "info") newMapping.description = h;
+            });
+            return newMapping;
         });
-        setMapping(newMapping);
     }, [headers]);
 
     if (!isOpen) return null;

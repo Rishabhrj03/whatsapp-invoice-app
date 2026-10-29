@@ -178,7 +178,7 @@ export default function BookingsClient({ initialBookings, settings, currentPage,
         checkAlerts();
 
         return () => clearInterval(interval);
-    }, [bookings, dismissedAlerts]);
+    }, [bookings, dismissedAlerts, settings?.dispatchAlertHoursBefore, settings?.frequencyMins, settings?.hoursBefore]);
 
     const handleDismissAlert = () => {
         if (!activeAlert) return;
