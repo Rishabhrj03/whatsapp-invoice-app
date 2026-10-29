@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-invoice-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "WhatsApp-integrated POS & Digital Invoicing Platform for retail, bakeries, and service businesses.",
   "private": true,
   "scripts": {

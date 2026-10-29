@@ -6,6 +6,43 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.1.0] — 2026-10-29
+
+### 🚀 Activity Log & Production Database Configuration Release
+
+#### Added — Activity Log & Audit Trail Subsystem
+- **`ActivityLog` Data Model** (`src/models/ActivityLog.ts`):
+  - Stores all operations performed by account administrators (`OWNER`) and staff (`STAFF`).
+  - Indexed on `{ tenantId: 1, createdAt: -1 }`, `{ tenantId: 1, userId: 1, createdAt: -1 }`, `{ tenantId: 1, entityType: 1, createdAt: -1 }`.
+  - Captures actor identity snapshot (`name`, `email`, `role`), action type, description, and detailed JSON context metadata.
+- **`ActivityLogService`** (`src/lib/services/ActivityLogService.ts`):
+  - Fire-and-forget, non-blocking asynchronous audit logging.
+  - Multi-criteria filtering: team member, entity type, action type, keyword search, date range.
+  - Aggregate statistics: 24-hour volume, 7-day volume, and Owner vs. Staff breakdown.
+- **Activity Log Server Actions** (`src/app/actions/activity.ts`):
+  - `fetchActivityLogs()`, `fetchActivityStats()`, and `fetchAccountMembers()`.
+- **Frontend Audit Dashboard** (`/activity` & `src/components/ActivityLogClient.tsx`):
+  - Live KPI cards for total actions, 24h activity, and owner/staff split.
+  - Interactive multi-filter bar with keyword search, member picker, module picker, and date range inputs.
+  - Chronological event timeline with color-coded entity badges and expandable metadata context tray.
+  - Navigation bar integration with `History` icon and `Audit` chip.
+- **Full Action Instrumentation**:
+  - Automatically records events for Invoices, Customers, Advance Bookings, Menu Items, Categories, Coupons, Team Members, and Business Profile updates.
+
+#### Added — Database Hardening & Production Configuration
+- **Production Database Enforcement**:
+  - `src/lib/mongoose.ts` now explicitly specifies `dbName: process.env.MONGODB_DB_NAME || 'primebake-prod'`.
+  - Guarantees MongoDB connections never silently default to the MongoDB Atlas `test` database.
+  - Updated `.env.local` to `MONGODB_URI=mongodb://127.0.0.1:27017/primebake-prod`.
+
+#### Fixed — Multi-Tenant Security & Isolation
+- **Advance Bookings Multi-Tenant Scoping**:
+  - Refactored all booking actions (`createAdvanceBooking`, `getAdvanceBookings`, `updateAdvanceBookingDetails`, `updateBookingStatus`, `completeAdvanceBooking`) to use `effectiveUserId`.
+- **CSV Export Scoping**:
+  - Scoped `/api/v1/export-csv` to `effectiveUserId` so staff can export business invoices accurately.
+
+---
+
 ## [1.0.0] — 2026-10-29
 
 ### 🎉 First Production Release

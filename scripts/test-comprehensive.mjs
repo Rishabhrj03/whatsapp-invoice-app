@@ -37,7 +37,7 @@ import { menuService } from '../src/lib/services/MenuService.js';
 import { checkRateLimit } from '../src/lib/rateLimit.js';
 
 const BASE_URL = 'http://localhost:3000';
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/whatsapp-invoice-app';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/primebake-prod';
 
 let passedChecks = 0;
 let totalChecks = 0;
@@ -68,7 +68,7 @@ async function runComprehensiveTests() {
     
     const healthData = await healthRes.json();
     assert(healthData.status === 'ok', 'Health status is ok');
-    assert(healthData.version === '1.0.0', 'Reported application version matches 1.0.0');
+    assert(healthData.version === '1.1.0', 'Reported application version matches 1.1.0');
     assert(healthData.apiVersion === 'v1', 'Reported apiVersion is v1');
     assert(typeof healthData.uptimeSeconds === 'number', 'Uptime seconds is a valid number');
 

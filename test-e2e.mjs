@@ -21,7 +21,7 @@ import { customerService } from './src/lib/services/CustomerService.js';
 import { menuService } from './src/lib/services/MenuService.js';
 import { MessagingAdapterFactory } from './src/lib/adapters/messaging/MessagingAdapterFactory.js';
 
-const MONGODB_URI = 'mongodb://127.0.0.1:27017/whatsapp-invoice-app';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/primebake-prod';
 
 async function runE2E() {
     console.log('======================================================================');

@@ -5,7 +5,7 @@
  */
 import mongoose, { Mongoose } from 'mongoose';
 
-const getMongoUri = () => process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/whatsapp-invoice-app';
+const getMongoUri = () => process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/primebake-prod';
 
 interface MongooseCache {
     conn: Mongoose | null;
@@ -28,11 +28,14 @@ export async function dbConnect(): Promise<Mongoose> {
 
     if (!cached.promise) {
         const uri = getMongoUri();
+        // Force production database name 'primebake-prod' so MongoDB Atlas never falls back to 'test'
+        const dbName = process.env.MONGODB_DB_NAME || 'primebake-prod';
         const opts: mongoose.ConnectOptions = {
             bufferCommands: false,
             maxPoolSize: 10, // Maintain up to 10 socket connections
             serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
             socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+            dbName,
         };
 
         cached.promise = mongoose.connect(uri, opts).then((m) => {

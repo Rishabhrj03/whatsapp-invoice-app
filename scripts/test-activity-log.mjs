@@ -21,7 +21,7 @@ if (fs.existsSync('.env.local')) {
 import { activityLogService } from '../src/lib/services/ActivityLogService.js';
 import ActivityLog from '../src/models/ActivityLog.js';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/whatsapp-invoice-app';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/primebake-prod';
 
 async function runTest() {
     console.log('╔═══════════════════════════════════════════════════════════════════════╗');

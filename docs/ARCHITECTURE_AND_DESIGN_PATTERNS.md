@@ -84,3 +84,20 @@ graph TD
 
 ### 3.5 Service Layer Pattern
 * Encapsulates domain logic, multi-step transactions, and access control checks away from HTTP request/response handlers.
+
+### 3.6 Audit Trail & Observer Pattern (ActivityLogService)
+* **`ActivityLogService` (`src/lib/services/ActivityLogService.ts`):**
+  * Acts as a non-blocking asynchronous event observer across all state-mutating actions (Invoices, Customers, Bookings, Menu, Categories, Coupons, Team, Settings).
+  * Automatically stores snapshot details of the actor (`name`, `email`, `role: 'OWNER' | 'STAFF'`), tenant account ID (`effectiveUserId`), timestamp, entity type, and full context payload.
+  * Ensures operations are cleanly segregated by account (`tenantId`) and indexed for real-time querying.
+
+---
+
+## 4. Production Database Configuration & Hardening
+
+* **Enforced Production Database Name (`dbName`):**
+  * Configured in `src/lib/mongoose.ts` as `opts.dbName = process.env.MONGODB_DB_NAME || 'primebake-prod'`.
+  * **Critical Safeguard:** Prevents connections from silently falling back to the MongoDB Atlas default database (`test`) when using unadorned cluster URIs (`mongodb+srv://...mongodb.net/?...`).
+* **Connection Pooling:**
+  * `maxPoolSize: 10`, `serverSelectionTimeoutMS: 5000`, `socketTimeoutMS: 45000`, and `bufferCommands: false` to optimize connection lifecycle in serverless runtime environments.
+

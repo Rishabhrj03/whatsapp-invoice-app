@@ -85,6 +85,21 @@ erDiagram
         number price "Unit Price Snapshot"
         number quantity "Purchased Units"
     }
+
+    ACTIVITY_LOG {
+        ObjectId _id PK
+        ObjectId tenantId FK "Account Owner ID"
+        ObjectId userId FK "Performer (Owner or Staff)"
+        string userName "User Name Snapshot"
+        string userEmail "User Email Snapshot"
+        string userRole "OWNER | STAFF"
+        string action "Event Action Code"
+        string entityType "INVOICE | CUSTOMER | BOOKING | etc"
+        string entityId "Entity Object ID reference"
+        string description "Human-readable summary"
+        json metadata "Context Payload"
+        date createdAt "Event Timestamp"
+    }
 ```
 
 ---
@@ -103,3 +118,7 @@ To ensure sub-5 millisecond response times under multi-tenant workloads, the fol
 | **`users`** | `{ ownerId: 1, role: 1 }` | Compound | Fast retrieval of staff members belonging to a store owner. |
 | **`menuentries`**| `{ userId: 1, createdAt: -1 }` | Compound | Paginated menu catalog retrieval. |
 | **`categories`** | `{ userId: 1, name: 1 }` | Compound | Auto-provisioning lookup during spreadsheet import. |
+| **`activitylogs`**| `{ tenantId: 1, createdAt: -1 }` | Compound | Instant timeline feed retrieval per account. |
+| **`activitylogs`**| `{ tenantId: 1, userId: 1, createdAt: -1 }` | Compound | Filter activity logs by specific team member. |
+| **`activitylogs`**| `{ tenantId: 1, entityType: 1, createdAt: -1 }` | Compound | Filter activity stream by specific module / entity. |
+
