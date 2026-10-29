@@ -4,6 +4,7 @@ import Coupon from "@/models/Coupon";
 import CouponsClient from "@/components/CouponsClient";
 import { auth } from "@/auth";
 import { getEffectiveUserId } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,9 @@ export default async function CouponsPage({ searchParams }: { searchParams: Prom
     await dbConnect();
     const session = await auth();
     const effectiveUserId = await getEffectiveUserId();
-    if (!session?.user?.id || !effectiveUserId) return null;
+    if (!session?.user?.id || !effectiveUserId) {
+        redirect("/login");
+    }
 
     const resolvedSearchParams = await searchParams;
     const page = parseInt(resolvedSearchParams.page || "1", 10);

@@ -7,6 +7,7 @@ import User from "@/models/User";
 
 import { auth } from "@/auth";
 import { getEffectiveUserId } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
 
 import { getCoupons } from "@/app/actions/coupon";
 
@@ -16,9 +17,10 @@ export default async function CreateInvoicePage() {
     await dbConnect();
     const effectiveUserId = await getEffectiveUserId();
     const session = await auth();
-    const userId = session?.user?.id;
 
-    if (!effectiveUserId) return null;
+    if (!effectiveUserId) {
+        redirect("/login");
+    }
 
     const [customers, menuItems, categories, couponsRes] = await Promise.all([
         Customer.find({ userId: effectiveUserId }).sort({ name: 1 }),

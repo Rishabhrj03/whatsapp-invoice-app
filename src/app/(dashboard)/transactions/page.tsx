@@ -7,13 +7,17 @@ import { getEffectiveUserId } from "@/lib/auth-utils";
 
 import { escapeRegex } from "@/lib/security";
 
+import { redirect } from "next/navigation";
+
 export const dynamic = "force-dynamic";
 
 export default async function TransactionsPage({ searchParams }: { searchParams: Promise<{ page?: string; search?: string }> }) {
     await dbConnect();
     const session = await auth();
     const effectiveUserId = await getEffectiveUserId();
-    if (!effectiveUserId) return null;
+    if (!effectiveUserId) {
+        redirect("/login");
+    }
 
     const resolvedSearchParams = await searchParams;
     const userRole = (session?.user as any)?.role ?? 'STAFF';

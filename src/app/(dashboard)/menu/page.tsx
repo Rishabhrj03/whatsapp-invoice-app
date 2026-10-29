@@ -4,13 +4,16 @@ import Category from "@/models/Category";
 import MenuClient from "@/components/MenuClient";
 import { auth } from "@/auth";
 import { getEffectiveUserId } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function MenuPage({ searchParams }: { searchParams: Promise<{ tab?: string; page?: string }> }) {
     await dbConnect();
     const effectiveUserId = await getEffectiveUserId();
-    if (!effectiveUserId) return null;
+    if (!effectiveUserId) {
+        redirect("/login");
+    }
 
     const resolvedSearchParams = await searchParams;
     const tab = (resolvedSearchParams.tab as "items" | "categories") || "items";

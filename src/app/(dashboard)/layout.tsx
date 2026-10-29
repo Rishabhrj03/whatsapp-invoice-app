@@ -17,6 +17,9 @@ export default async function DashboardLayout({
 
     await dbConnect();
     const dbUser = await User.findById(session.user.id);
+    if (!dbUser) {
+        redirect("/login");
+    }
 
     return (
         <DashboardLayoutClient

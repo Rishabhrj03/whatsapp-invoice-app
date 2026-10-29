@@ -4,13 +4,16 @@ import MenuEntry from "@/models/MenuEntry";
 import Invoice from "@/models/Invoice";
 import ExportClient from "@/components/ExportClient";
 import { getEffectiveUserId } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function ExportPage() {
     await dbConnect();
     const effectiveUserId = await getEffectiveUserId();
-    if (!effectiveUserId) return null;
+    if (!effectiveUserId) {
+        redirect("/login");
+    }
 
     const [customers, menuItems, invoices] = await Promise.all([
         Customer.find({ userId: effectiveUserId }).sort({ name: 1 }).lean(),
