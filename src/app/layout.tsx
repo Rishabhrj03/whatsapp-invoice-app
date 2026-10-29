@@ -14,22 +14,22 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://bakingbros.anewway.in"),
-  title: "BakingBros",
-  description: "Premium Digital WhatsApp Invoicing App",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://primebake.anewway.in"),
+  title: "Primebake",
+  description: "Primebake — Premium Digital Invoicing & POS Platform",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "BakingBros",
+    title: "Primebake",
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
-    icon: '/icons/logo.png',
-    shortcut: '/icons/logo.png',
-    apple: '/icons/icon-192x192.png',
+    icon: '/primebake-logo.png',
+    shortcut: '/primebake-logo.png',
+    apple: '/primebake-logo.png',
   },
 };
 

@@ -72,6 +72,8 @@ export async function POST(req: Request) {
             email,
             password: hashedPassword,
             role: "OWNER",
+            businessName: "Primebake",
+            logoUrl: "/primebake-logo.png",
         });
 
         return buildResponse(

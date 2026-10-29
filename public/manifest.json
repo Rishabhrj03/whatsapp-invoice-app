@@ -1,20 +1,20 @@
 {
-    "name": "WA Invoice App",
-    "short_name": "WA Invoice",
-    "description": "Premium Digital WhatsApp Invoicing App",
+    "name": "Primebake",
+    "short_name": "Primebake",
+    "description": "Primebake — Premium Digital Invoicing & POS Platform",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#2563eb",
     "icons": [
         {
-            "src": "/icons/icon-192x192.png",
+            "src": "/primebake-logo.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any maskable"
         },
         {
-            "src": "/icons/icon-512x512.png",
+            "src": "/primebake-logo.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"

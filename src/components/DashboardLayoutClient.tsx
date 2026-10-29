@@ -81,16 +81,16 @@ export default function DashboardLayoutClient({
             {/* Brand Header */}
             <div className="p-5 border-b border-slate-800/80 flex items-center justify-between">
                 <Link href="/dashboard" className="flex items-center gap-3 group">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 p-0.5 shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform flex items-center justify-center overflow-hidden">
-                        {user.logoUrl ? (
-                            <img src={user.logoUrl} alt="Logo" className="w-full h-full object-cover rounded-[14px]" />
-                        ) : (
-                            <Sparkles className="w-5 h-5 text-white" />
-                        )}
+                    <div className="w-11 h-11 rounded-2xl bg-white p-1 shadow-lg shadow-black/20 group-hover:scale-105 transition-transform flex items-center justify-center overflow-hidden border border-slate-700/50">
+                        <img
+                            src={user.logoUrl || "/primebake-logo.png"}
+                            alt={user.businessName || "Primebake"}
+                            className="w-full h-full object-contain rounded-xl"
+                        />
                     </div>
                     <div className="min-w-0">
                         <h1 className="text-base font-black text-white tracking-tight truncate group-hover:text-blue-400 transition-colors">
-                            {user.businessName || "Invoice Pro"}
+                            {user.businessName || "Primebake"}
                         </h1>
                         <div className="flex items-center gap-1.5 mt-0.5">
                             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
@@ -213,8 +213,15 @@ export default function DashboardLayoutClient({
                         >
                             <Menu size={22} />
                         </button>
-                        <div className="flex items-center gap-2">
-                            <span className="hidden sm:inline-block text-xs font-semibold text-slate-400">App</span>
+                        <div className="flex items-center gap-2.5">
+                            <img
+                                src={user.logoUrl || "/primebake-logo.png"}
+                                alt={user.businessName || "Primebake"}
+                                className="w-8 h-8 object-contain rounded-lg border border-slate-200 lg:hidden bg-white p-0.5 shadow-sm"
+                            />
+                            <span className="hidden sm:inline-block text-xs font-bold text-slate-400">
+                                {user.businessName || "Primebake"}
+                            </span>
                             <span className="hidden sm:inline-block text-slate-300">/</span>
                             <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                                 {currentTitle}

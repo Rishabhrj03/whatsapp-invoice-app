@@ -27,8 +27,8 @@ This project uses a **Trunk-Based Development with Long-Lived Store Branches** m
 
 ```
 main                    ← Stable trunk; merge point for all features
-├── bakingbros--dev     ← Active development for BakingBros tenant
-├── bakingbros--prod    ← Production-deployed for BakingBros tenant
+├── primebake--dev      ← Active development for Primebake tenant
+├── primebake--prod     ← Production-deployed for Primebake tenant
 ├── thecakeshop--prod   ← Production-deployed for The Cake Shop tenant
 └── feature/*           ← Short-lived feature branches (1–5 days max)
     hotfix/*            ← Emergency patches branched off prod branches
@@ -127,7 +127,7 @@ All public-facing REST API routes are versioned under `/api/v{N}/`:
 
 ```bash
 # From your feature branch — after merge and code review:
-git checkout bakingbros--dev
+git checkout primebake--dev
 git pull
 
 # Choose bump type:
@@ -157,7 +157,7 @@ npm run version:major
 
 ```bash
 # 1. Branch from production
-git checkout bakingbros--prod
+git checkout primebake--prod
 git checkout -b hotfix/fix-payment-rounding
 
 # 2. Make the fix, commit
@@ -167,14 +167,14 @@ git commit -m "fix(billing): correct grand total rounding for UPI payments"
 npm run release patch
 
 # 4. Merge back to prod and dev/main
-git checkout bakingbros--prod
+git checkout primebake--prod
 git merge hotfix/fix-payment-rounding
-git checkout bakingbros--dev
+git checkout primebake--dev
 git merge hotfix/fix-payment-rounding
 git branch -d hotfix/fix-payment-rounding
 
 # 5. Push
-git push origin bakingbros--prod bakingbros--dev v{version}
+git push origin primebake--prod primebake--dev v{version}
 ```
 
 ---

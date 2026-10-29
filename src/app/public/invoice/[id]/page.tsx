@@ -23,9 +23,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         description: `View and download your professional digital bill for ₹${invoice.totalAmount.toLocaleString('en-IN')}.`,
         openGraph: {
             title: `Digital Invoice - ${customer?.name}`,
-            description: `Total: ₹${invoice.totalAmount.toLocaleString('en-IN')} | Professional Bill from ${(user as any)?.businessName || 'WA Invoice App'}`,
+            description: `Total: ₹${invoice.totalAmount.toLocaleString('en-IN')} | Professional Bill from ${(user as any)?.businessName || 'Primebake'}`,
             type: 'website',
-            images: (user as any)?.logoUrl ? [encodeURI((user as any).logoUrl)] : ["/icons/icon-512x512.png"],
+            images: (user as any)?.logoUrl ? [encodeURI((user as any).logoUrl)] : ["/primebake-logo.png"],
         }
     };
 }
@@ -68,7 +68,7 @@ export default async function PublicInvoicePage({ params }: { params: Promise<{ 
 
                 <div className="mt-8 text-center">
                     <p className="text-gray-400 text-sm font-medium">
-                        Powered by <span className="text-blue-600 font-bold tracking-tight">WA Invoice App</span>
+                        Powered by <span className="text-blue-600 font-bold tracking-tight">Primebake</span>
                     </p>
                 </div>
             </div>

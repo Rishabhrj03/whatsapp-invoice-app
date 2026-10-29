@@ -48,11 +48,16 @@ export default function SignupPage() {
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="flex justify-center">
-                    <img src="/icons/icon-192x192.png" alt="WA Invoice Logo" className="w-20 h-20" />
+                    <div className="w-24 h-24 bg-white rounded-2xl p-2 shadow-md border border-gray-100 flex items-center justify-center">
+                        <img src="/primebake-logo.png" alt="Primebake Logo" className="w-full h-full object-contain" />
+                    </div>
                 </div>
-                <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                    Create a new account
+                <h2 className="mt-5 text-center text-3xl font-black text-gray-900 tracking-tight">
+                    Create your Primebake account
                 </h2>
+                <p className="mt-1 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    Raw Material & Bakery Management
+                </p>
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">

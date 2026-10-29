@@ -158,11 +158,11 @@ export default function CreateInvoiceForm({
 
         doc.setFontSize(16);
         doc.setTextColor(30, 41, 59); // Slate-800
-        doc.text(initialUser?.businessName || "WA Invoice App", textX, 19);
+        doc.text(initialUser?.businessName || "Primebake", textX, 19);
 
         doc.setFontSize(9);
         doc.setTextColor(148, 163, 184); // Slate-400
-        doc.text("PREMIUM DIGITAL BILLING", textX, 24);
+        doc.text("PRIMEBAKE RAW MATERIAL", textX, 24);
 
         // Header Divider
         doc.setDrawColor(241, 245, 249); // Slate-100
@@ -313,7 +313,7 @@ export default function CreateInvoiceForm({
         const customer = customers.find((c) => c._id === successData.customerId);
         if (!customer) return;
 
-        const businessName = initialUser?.businessName || "WA Invoice";
+        const businessName = initialUser?.businessName || "Primebake";
         const customerName = customer?.name || "Customer";
         const totalAmount = `₹${successData.totalAmount.toFixed(2)}`;
         const invoiceLink = pdfUrl || `${window.location.origin}/public/invoice/${invoiceId}`;
@@ -535,20 +535,14 @@ export default function CreateInvoiceForm({
                 {/* Invoice Header Branding */}
                 <div className="flex justify-between items-start py-6 border-b border-gray-50">
                     <div className="flex items-center gap-4">
-                        {initialUser?.logoUrl ? (
-                            <img
-                                src={initialUser.logoUrl}
-                                alt="Business Logo"
-                                className="w-16 h-16 object-contain rounded-xl bg-gray-50 p-2 shadow-sm border border-gray-100"
-                            />
-                        ) : (
-                            <div className="w-16 h-16 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 font-black text-xl border border-blue-100 shadow-sm">
-                                {initialUser?.businessName?.[0] || "W"}
-                            </div>
-                        )}
+                        <img
+                            src={initialUser?.logoUrl || "/primebake-logo.png"}
+                            alt={initialUser?.businessName || "Primebake"}
+                            className="w-16 h-16 object-contain rounded-xl bg-white p-1.5 shadow-sm border border-gray-100"
+                        />
                         <div>
-                            <h3 className="text-2xl font-black text-gray-900 tracking-tight">{initialUser?.businessName || "WA Invoice App"}</h3>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">Premium Digital Billing</p>
+                            <h3 className="text-2xl font-black text-gray-900 tracking-tight">{initialUser?.businessName || "Primebake"}</h3>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">Raw Material & Bakery Supplies</p>
                         </div>
                     </div>
                 </div>
