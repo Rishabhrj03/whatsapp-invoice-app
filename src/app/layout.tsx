@@ -18,6 +18,28 @@ export const metadata: Metadata = {
   title: "Primebake",
   description: "Primebake — Premium Digital Invoicing & POS Platform",
   manifest: "/manifest.json",
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    url: "https://primebake.anewway.in",
+    siteName: "Primebake",
+    title: "Primebake",
+    description: "Primebake — Premium Digital Invoicing & POS Platform",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Primebake — Raw Material & Bakery Supplies",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Primebake",
+    description: "Primebake — Premium Digital Invoicing & POS Platform",
+    images: ["/og-image.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -27,7 +49,10 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: '/primebake-logo.png',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/primebake-logo.png', type: 'image/png' },
+    ],
     shortcut: '/primebake-logo.png',
     apple: '/primebake-logo.png',
   },
