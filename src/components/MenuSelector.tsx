@@ -56,13 +56,13 @@ export default function MenuSelector(props: MenuSelectorProps) {
                 title={selectedMenu ? selectedMenu.name : "Select Menu Item"}
                 className="w-full h-[46px] flex items-center justify-between px-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-left shadow-sm group overflow-hidden"
             >
-                <div className="flex items-center gap-3 overflow-hidden pr-2 w-full">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
                     <div className={`p-1.5 rounded-lg shrink-0 ${selectedMenu ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-500'}`}>
                         <Tag size={16} />
                     </div>
                     <p 
                         title={selectedMenu ? selectedMenu.name : "Select Menu Item"}
-                        className={`text-sm font-bold truncate w-full ${selectedMenu ? 'text-gray-900' : 'text-gray-500'}`}
+                        className={`text-sm font-bold truncate min-w-0 flex-1 block ${selectedMenu ? 'text-gray-900' : 'text-gray-500'}`}
                     >
                         {selectedMenu ? selectedMenu.name : "Select Menu Item"}
                     </p>

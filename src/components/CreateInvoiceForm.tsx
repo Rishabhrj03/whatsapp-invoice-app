@@ -121,14 +121,14 @@ export default function CreateInvoiceForm({
 
     const couponDiscount = getCouponDiscount();
     const parsedManual = parseFloat(manualDiscountValue) || 0;
-    const manualDiscount = parsedManual > 0
+    const manualDiscount = parsedManual > 0 && totalAmount > 0
         ? (manualDiscountType === 'PERCENTAGE'
             ? (totalAmount * Math.min(100, parsedManual)) / 100
             : Math.min(totalAmount, parsedManual))
         : 0;
 
-    const discountAmount = Math.min(totalAmount, couponDiscount + manualDiscount);
-    const grandTotal = Math.max(0, totalAmount - discountAmount);
+    const discountAmount = totalAmount > 0 ? Math.min(totalAmount, couponDiscount + manualDiscount) : 0;
+    const grandTotal = totalAmount - discountAmount;
 
     const getDiscountDescription = () => {
         const parts: string[] = [];
@@ -659,7 +659,7 @@ export default function CreateInvoiceForm({
                             )}
                             <tr className="border-t-2 border-gray-200">
                                 <td colSpan={3} className="py-3 text-right text-xl font-black text-gray-900">Grand Total</td>
-                                <td className="py-3 text-right text-3xl font-black text-blue-600">₹{grandTotal.toFixed(2)}</td>
+                                <td className="py-3 text-right text-3xl font-black text-blue-600">{grandTotal < 0 ? `-₹${Math.abs(grandTotal).toFixed(2)}` : `₹${grandTotal.toFixed(2)}`}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1322,7 +1322,7 @@ export default function CreateInvoiceForm({
                             <div className="flex justify-between items-end">
                                 <div>
                                     <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Grand Total</p>
-                                    <p className="text-4xl font-black text-white tracking-tighter">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                    <p className="text-4xl font-black text-white tracking-tighter">{grandTotal < 0 ? `-₹${Math.abs(grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `₹${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</p>
                                 </div>
                                 <div className="bg-white/10 px-3 py-1 rounded-full backdrop-blur-md border border-white/10">
                                     <span className="text-[10px] font-bold text-white uppercase tracking-tighter">INR (₹)</span>
@@ -1347,7 +1347,7 @@ export default function CreateInvoiceForm({
                     <div className="md:hidden fixed bottom-20 left-3 right-3 z-30 bg-gray-900/95 backdrop-blur-md text-white p-3.5 px-4 rounded-2xl shadow-2xl border border-gray-700/80 flex items-center justify-between animate-in slide-in-from-bottom-4 duration-300">
                         <div>
                             <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">{items.length} item{items.length > 1 ? 's' : ''} added</p>
-                            <p className="text-lg font-black text-white">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            <p className="text-lg font-black text-white">{grandTotal < 0 ? `-₹${Math.abs(grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `₹${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</p>
                         </div>
                         <button
                             type="submit"

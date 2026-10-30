@@ -46,7 +46,7 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
     if (!isOpen || !invoice) return null;
 
     const subtotal = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
-    const total = Math.max(0, subtotal - discountAmount);
+    const total = subtotal - discountAmount;
 
     const handleItemChange = (idx: number, field: keyof InvoiceItem, value: any) => {
         const next = [...items];

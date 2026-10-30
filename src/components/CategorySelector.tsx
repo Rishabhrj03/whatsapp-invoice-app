@@ -41,22 +41,20 @@ export default function CategorySelector({
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 title={selectedId || "All Categories"}
-                className="w-full h-[46px] flex items-center justify-between px-4 bg-white border border-gray-200 rounded-xl hover:bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-left shadow-sm group"
+                className="w-full h-[46px] flex items-center justify-between px-3 sm:px-4 bg-white border border-gray-200 rounded-xl hover:bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-left shadow-sm group overflow-hidden"
             >
-                <div className="flex items-center gap-3">
-                    <div className={`p-1.5 rounded-lg ${selectedId ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2 overflow-hidden">
+                    <div className={`p-1.5 rounded-lg shrink-0 ${selectedId ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
                         <Tag size={16} />
                     </div>
-                    <div className="flex-1 truncate">
-                        <p 
-                            title={selectedId || "All Categories"}
-                            className={`text-sm font-bold truncate ${selectedId ? 'text-gray-900' : 'text-gray-500'}`}
-                        >
-                            {selectedId || "All Categories"}
-                        </p>
-                    </div>
+                    <p 
+                        title={selectedId || "All Categories"}
+                        className={`text-sm font-bold truncate min-w-0 flex-1 block ${selectedId ? 'text-gray-900' : 'text-gray-500'}`}
+                    >
+                        {selectedId || "All Categories"}
+                    </p>
                 </div>
-                <ChevronsUpDown size={18} className="text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0" />
+                <ChevronsUpDown size={18} className="text-gray-400 group-hover:text-blue-500 transition-colors shrink-0" />
             </button>
 
             {isOpen && (
@@ -108,8 +106,8 @@ export default function CategorySelector({
                                     }}
                                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-colors ${selectedId === c.name ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-600'}`}
                                 >
-                                    <div className="flex flex-col items-start px-1 font-bold text-left truncate mr-2">
-                                        <span title={c.name} className="text-gray-900 truncate w-full">{c.name}</span>
+                                    <div className="flex-1 min-w-0 px-1 font-bold text-left mr-2 overflow-hidden">
+                                        <span title={c.name} className="text-gray-900 truncate block w-full">{c.name}</span>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                         {selectedId === c.name && <Check size={16} />}
