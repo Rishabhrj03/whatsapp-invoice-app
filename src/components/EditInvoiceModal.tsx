@@ -63,8 +63,8 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
     };
 
     const handleSave = async () => {
-        if (items.length === 0 || items.some(it => !it.name || it.price <= 0)) {
-            alert("All items must have a name and a price greater than 0.");
+        if (items.length === 0 || items.some(it => !it.name || it.price === undefined || isNaN(it.price) || it.price === null)) {
+            alert("All items must have a valid name and price.");
             return;
         }
         setLoading(true);
@@ -148,7 +148,7 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
                                             value={item.price}
                                             onChange={e => handleItemChange(idx, 'price', e.target.value)}
                                             placeholder="Price"
-                                            min="0"
+                                            step="any"
                                             className="w-full text-sm font-bold text-gray-800 bg-transparent outline-none"
                                         />
                                     </div>

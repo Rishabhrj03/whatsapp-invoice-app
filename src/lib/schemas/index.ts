@@ -9,7 +9,7 @@ import { z } from 'zod';
 export const InvoiceItemSchema = z.object({
     menuEntryId: z.string().optional(),
     name: z.string().min(1, 'Item name is required').max(200),
-    price: z.number().nonnegative('Price must be ≥ 0'),
+    price: z.number(),
     quantity: z.number().int().positive('Quantity must be a positive integer'),
     description: z.string().max(500).optional(),
 });
@@ -17,7 +17,7 @@ export const InvoiceItemSchema = z.object({
 export const CreateInvoiceSchema = z.object({
     customerId: z.string().optional(),
     items: z.array(InvoiceItemSchema).min(1, 'At least one item is required'),
-    totalAmount: z.number().nonnegative(),
+    totalAmount: z.number(),
     discountAmount: z.number().nonnegative().optional().default(0),
     couponCode: z.string().optional(),
     comment: z.string().max(500).optional(),
@@ -27,7 +27,7 @@ export const CreateInvoiceSchema = z.object({
 export const UpdateInvoiceSchema = z.object({
     items: z.array(InvoiceItemSchema).min(1, 'At least one item is required'),
     paymentType: z.enum(['Cash', 'Card', 'UPI']),
-    totalAmount: z.number().nonnegative(),
+    totalAmount: z.number(),
     discountAmount: z.number().nonnegative().optional().default(0),
     couponCode: z.string().optional(),
     comment: z.string().max(500).optional(),

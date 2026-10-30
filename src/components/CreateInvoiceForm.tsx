@@ -977,6 +977,7 @@ export default function CreateInvoiceForm({
                                                         <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
                                                         <input
                                                             type="number"
+                                                            step="any"
                                                             value={item.price === 0 ? "" : item.price}
                                                             onChange={(e) => {
                                                                 const val = e.target.value;

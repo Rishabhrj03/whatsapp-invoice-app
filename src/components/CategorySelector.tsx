@@ -40,6 +40,7 @@ export default function CategorySelector({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
+                title={selectedId || "All Categories"}
                 className="w-full h-[46px] flex items-center justify-between px-4 bg-white border border-gray-200 rounded-xl hover:bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-left shadow-sm group"
             >
                 <div className="flex items-center gap-3">
@@ -47,7 +48,10 @@ export default function CategorySelector({
                         <Tag size={16} />
                     </div>
                     <div className="flex-1 truncate">
-                        <p className={`text-sm font-bold truncate ${selectedId ? 'text-gray-900' : 'text-gray-500'}`}>
+                        <p 
+                            title={selectedId || "All Categories"}
+                            className={`text-sm font-bold truncate ${selectedId ? 'text-gray-900' : 'text-gray-500'}`}
+                        >
                             {selectedId || "All Categories"}
                         </p>
                     </div>
@@ -97,6 +101,7 @@ export default function CategorySelector({
                                 <button
                                     key={c._id}
                                     type="button"
+                                    title={c.name}
                                     onClick={() => {
                                         onSelect(c.name);
                                         setIsOpen(false);
@@ -104,7 +109,7 @@ export default function CategorySelector({
                                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-colors ${selectedId === c.name ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-600'}`}
                                 >
                                     <div className="flex flex-col items-start px-1 font-bold text-left truncate mr-2">
-                                        <span className="text-gray-900 truncate w-full">{c.name}</span>
+                                        <span title={c.name} className="text-gray-900 truncate w-full">{c.name}</span>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                         {selectedId === c.name && <Check size={16} />}

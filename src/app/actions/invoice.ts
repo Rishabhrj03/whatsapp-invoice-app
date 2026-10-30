@@ -196,15 +196,24 @@ export async function getUploadUrl(filename: string, contentType: string) {
         }
 
         const safeFilename = sanitizeFilename(filename);
-        const userEmail = session.user.email.replace(/[^a-zA-Z0-9.@_-]/g, '_');
-        const objectKey = `${userEmail}/${Date.now()}_${safeFilename}`;
+        let folder = 'invoices';
+        if (filename.startsWith('logos/')) {
+            folder = 'logos';
+        } else if (filename.startsWith('bookings/')) {
+            folder = 'bookings';
+        } else if (filename.startsWith('invoices/')) {
+            folder = 'invoices';
+        }
+
+        // Inside primebake bucket, invoices are stored in the invoices/ folder
+        const objectKey = `${folder}/${safeFilename}`;
 
         const { PutObjectCommand } = await import("@aws-sdk/client-s3");
         const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
         const { s3Client } = await import("@/lib/s3");
 
         const command = new PutObjectCommand({
-            Bucket: process.env.AWS_S3_BUCKET_NAME,
+            Bucket: process.env.AWS_S3_BUCKET_NAME || "primebake",
             Key: objectKey,
             ContentType: contentType,
         });

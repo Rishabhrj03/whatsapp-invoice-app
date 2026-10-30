@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Search, Check, ChevronsUpDown, X, Tag } from "lucide-react";
 
 interface MenuSelectorProps {
@@ -14,7 +15,12 @@ export default function MenuSelector(props: MenuSelectorProps) {
     const { menuItems, selectedId, onSelect } = props;
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [mounted, setMounted] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const selectedMenu = menuItems.find((m) => m._id === selectedId);
 
@@ -32,6 +38,9 @@ export default function MenuSelector(props: MenuSelectorProps) {
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+                // If clicked outside wrapper and not clicking inside portal modal
+                const modal = document.getElementById("menu-selector-modal-content");
+                if (modal && modal.contains(event.target as Node)) return;
                 setIsOpen(false);
             }
         }
@@ -44,29 +53,43 @@ export default function MenuSelector(props: MenuSelectorProps) {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
+                title={selectedMenu ? selectedMenu.name : "Select Menu Item"}
                 className="w-full h-[46px] flex items-center justify-between px-4 bg-gray-50 border border-gray-200 rounded-xl hover:bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-left shadow-sm group overflow-hidden"
             >
                 <div className="flex items-center gap-3 overflow-hidden pr-2 w-full">
                     <div className={`p-1.5 rounded-lg shrink-0 ${selectedMenu ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-500'}`}>
                         <Tag size={16} />
                     </div>
-                    <p className={`text-sm font-bold truncate w-full ${selectedMenu ? 'text-gray-900' : 'text-gray-500'}`}>
+                    <p 
+                        title={selectedMenu ? selectedMenu.name : "Select Menu Item"}
+                        className={`text-sm font-bold truncate w-full ${selectedMenu ? 'text-gray-900' : 'text-gray-500'}`}
+                    >
                         {selectedMenu ? selectedMenu.name : "Select Menu Item"}
                     </p>
                 </div>
                 <ChevronsUpDown size={18} className="text-gray-400 group-hover:text-blue-500 transition-colors shrink-0" />
             </button>
 
-            {isOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {isOpen && mounted && typeof document !== "undefined" && createPortal(
+                <div 
+                    className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setIsOpen(false);
+                    }}
+                >
+                    <div 
+                        id="menu-selector-modal-content"
+                        className="bg-white w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/70">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900">Select Menu Item</h3>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Choose an item to add to the bill</p>
                             </div>
                             <button
+                                type="button"
                                 onClick={() => setIsOpen(false)}
                                 className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full transition-colors"
                             >
@@ -75,21 +98,22 @@ export default function MenuSelector(props: MenuSelectorProps) {
                         </div>
 
                         {/* Search Bar */}
-                        <div className="p-4 border-b border-gray-100 shrink-0">
+                        <div className="p-4 border-b border-gray-100 shrink-0 bg-white">
                             <div className="relative">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <input
                                     type="text"
                                     placeholder="Search specific item..."
-                                    className="w-full pl-12 pr-10 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:bg-white text-gray-900 outline-none transition-all shadow-inner"
+                                    className="w-full pl-12 pr-10 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:bg-white text-gray-900 outline-none transition-all shadow-inner"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     autoFocus
                                 />
                                 {searchTerm && (
                                     <button
+                                        type="button"
                                         onClick={() => setSearchTerm("")}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 bg-gray-200 p-1 rounded-full"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 bg-gray-200 p-1 rounded-full transition-colors"
                                     >
                                         <X size={12} strokeWidth={3} />
                                     </button>
@@ -98,21 +122,22 @@ export default function MenuSelector(props: MenuSelectorProps) {
                         </div>
 
                         {/* Menu Grid */}
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar bg-gray-50/30">
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar bg-slate-50/50">
                             {filteredMenu.length > 0 ? (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                                     {filteredMenu.map((m) => (
                                         <button
                                             key={m._id}
                                             type="button"
+                                            title={m.name}
                                             onClick={() => {
                                                 onSelect(m._id, m.name, m.price);
                                                 setIsOpen(false);
                                             }}
-                                            className={`relative flex flex-col items-center justify-center p-5 rounded-2xl border-2 transition-all group ${
+                                            className={`relative flex flex-col items-center justify-center p-5 rounded-2xl border-2 transition-all group cursor-pointer ${
                                                 selectedId === m._id 
                                                     ? 'border-indigo-500 bg-indigo-50 shadow-md transform scale-[0.98]' 
-                                                    : 'border-transparent bg-white shadow-sm hover:border-gray-200 hover:shadow-md hover:-translate-y-1 text-gray-700'
+                                                    : 'border-transparent bg-white shadow-sm hover:border-gray-200 hover:shadow-md hover:-translate-y-0.5 text-gray-700'
                                             }`}
                                         >
                                             {selectedId === m._id && (
@@ -120,7 +145,10 @@ export default function MenuSelector(props: MenuSelectorProps) {
                                                     <Check size={14} strokeWidth={3} />
                                                 </div>
                                             )}
-                                            <span className={`text-sm sm:text-base font-black text-center line-clamp-2 w-full mb-2 transition-colors ${selectedId === m._id ? 'text-indigo-900' : 'text-gray-800 group-hover:text-gray-900'}`}>
+                                            <span 
+                                                title={m.name}
+                                                className={`text-sm sm:text-base font-black text-center line-clamp-2 w-full mb-2 transition-colors ${selectedId === m._id ? 'text-indigo-900' : 'text-gray-800 group-hover:text-gray-900'}`}
+                                            >
                                                 {m.name}
                                             </span>
                                             <span className={`text-sm font-bold bg-gray-100/80 px-3 py-1 rounded-full ${selectedId === m._id ? 'text-indigo-700 bg-indigo-100' : 'text-gray-500 group-hover:text-gray-700'}`}>
@@ -138,7 +166,8 @@ export default function MenuSelector(props: MenuSelectorProps) {
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

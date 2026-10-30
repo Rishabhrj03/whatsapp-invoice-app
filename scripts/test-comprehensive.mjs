@@ -242,6 +242,23 @@ async function runComprehensiveTests() {
     assert(typeof newInvoice.invoiceId === 'string', 'Generated valid Invoice ID');
     const invoiceId = newInvoice.invoiceId;
 
+    // 6b: Negative line item test (adjustments / delivery fee / custom discount)
+    const negInvoice = await invoiceService.createInvoice({
+        items: [
+            { name: 'Belgium Chocolate Mousse Chips', price: 230, quantity: 1 },
+            { name: 'Open Item Wholesale Cake', price: 1500, quantity: 2, description: '1.5 kg, Chocolate Truffle' },
+            { name: 'Open Item Wholesale Cake', price: -70, quantity: 1, description: 'Custome dicount, divery charges' }
+        ],
+        totalAmount: 3110,
+        discountAmount: 50,
+        paymentType: 'Cash',
+        comment: 'Custom discount adjustment'
+    }, {
+        effectiveUserId: tenantAOwnerId,
+        authUserId: tenantAStaffId
+    });
+    assert(negInvoice.success === true, 'Negative price item (custom discount / delivery adjustment: -₹70.00) permitted and processed');
+
     // ─────────────────────────────────────────────────────────────────
     // MODULE 7: 90-Day Analytics & Spend Aggregation
     // ─────────────────────────────────────────────────────────────────
