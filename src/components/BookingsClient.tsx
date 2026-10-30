@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Plus, Search, Calendar, Clock, MapPin, Truck, AlertCircle, CheckCircle2, Package, TrendingUp, X, Edit2, ChevronDown, ChevronUp } from "lucide-react";
 import { createAdvanceBooking, updateBookingStatus, updateAdvanceBookingDetails, completeAdvanceBooking } from "@/app/actions/booking";
-import { getUploadUrl } from "@/app/actions/invoice";
+import { getUploadUrl, uploadFileDirect } from "@/app/actions/invoice";
 import Pagination from "./Pagination";
 
 interface BookingsClientProps {
@@ -205,25 +205,27 @@ export default function BookingsClient({ initialBookings, settings, currentPage,
 
     const uploadPhotos = async () => {
         const urls: string[] = [];
-        const publicPrefix = process.env.NEXT_PUBLIC_S3_PUBLIC_URL || "";
 
         for (const file of filesToUpload) {
             try {
                 const uniqueKey = `bookings/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-                const response = await getUploadUrl(uniqueKey, file.type);
-                if (response.success && response.url) {
-                    const uploadFetch = await fetch(response.url, {
-                        method: "PUT",
-                        body: file,
-                        headers: { "Content-Type": file.type }
-                    });
+                const reader = new FileReader();
+                const fileBase64 = await new Promise<string>((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
 
-                    if (uploadFetch.ok) {
-                        const cleanPrefix = publicPrefix.endsWith('/') ? publicPrefix.slice(0, -1) : publicPrefix;
-                        urls.push(`${cleanPrefix}/${response.objectKey}`);
-                    } else {
-                        console.error("Upload failed for:", file.name);
-                    }
+                const response = await uploadFileDirect({
+                    fileBase64,
+                    filename: uniqueKey,
+                    contentType: file.type
+                });
+
+                if (response.success && response.publicUrl) {
+                    urls.push(response.publicUrl);
+                } else {
+                    console.error("Direct S3 upload failed for:", file.name, response.error);
                 }
             } catch (err) {
                 console.error("Upload error:", err);

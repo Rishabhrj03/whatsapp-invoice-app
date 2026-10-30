@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { updateBusinessProfile } from "@/app/actions/user";
 import { Building2, Image as ImageIcon, CheckCircle2, Loader2, Save, Upload, AlertCircle, GitBranch, ShieldCheck, Terminal } from "lucide-react";
-import { getUploadUrl } from "@/app/actions/invoice";
+import { getUploadUrl, uploadFileDirect } from "@/app/actions/invoice";
 
 const compressImageForWhatsApp = (file: File): Promise<File> => {
     return new Promise((resolve) => {
@@ -64,23 +64,25 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
         try {
             const file = await compressImageForWhatsApp(rawFile);
             setCompressionMsg("");
-            const uploadRes = await getUploadUrl(`logos/${initialUser._id}-${file.name}`, file.type);
-            if (!uploadRes.success || !uploadRes.url) {
-                return alert(`Failed to get upload URL: ${uploadRes.error}`);
-            }
 
-            const uploadFetch = await fetch(uploadRes.url, {
-                method: "PUT",
-                body: file,
-                headers: { "Content-Type": file.type }
+            const reader = new FileReader();
+            const fileBase64 = await new Promise<string>((resolve, reject) => {
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
             });
 
-            if (!uploadFetch.ok) {
-                return alert("Upload failed. Configure S3 CORS settings!");
+            const uploadRes = await uploadFileDirect({
+                fileBase64,
+                filename: `logos/${initialUser._id}-${file.name}`,
+                contentType: file.type
+            });
+
+            if (!uploadRes.success || !uploadRes.publicUrl) {
+                return alert(`Failed to upload logo: ${uploadRes.error || "Upload error"}`);
             }
 
-            const publicUrl = `${process.env.NEXT_PUBLIC_S3_PUBLIC_URL || ""}/${uploadRes.objectKey}`;
-            setLogoUrl(publicUrl);
+            setLogoUrl(uploadRes.publicUrl);
             alert("Logo uploaded to S3 successfully!");
         } catch (err: any) {
             alert(`Upload Exception: ${err.message}`);

@@ -226,6 +226,69 @@ export async function getUploadUrl(filename: string, contentType: string) {
     }
 }
 
+export async function uploadFileDirect(data: {
+    fileBase64: string;
+    filename: string;
+    contentType: string;
+    invoiceId?: string;
+}) {
+    try {
+        const session = await auth();
+        const effectiveUserId = await getEffectiveUserId();
+        if (!session?.user?.email || !effectiveUserId) {
+            return { success: false, error: "Unauthorized" };
+        }
+
+        const { isValidUploadMimeType, sanitizeFilename } = await import("@/lib/security");
+
+        const contentType = data.contentType || "application/pdf";
+        if (!isValidUploadMimeType(contentType)) {
+            return { success: false, error: "Invalid file type. Only JPEG, PNG, WEBP, and PDF documents are permitted." };
+        }
+
+        const safeFilename = sanitizeFilename(data.filename);
+
+        let folder = 'invoices';
+        if (data.filename.startsWith('logos/')) folder = 'logos';
+        else if (data.filename.startsWith('bookings/')) folder = 'bookings';
+        else if (data.filename.startsWith('invoices/')) folder = 'invoices';
+
+        const objectKey = `${folder}/${safeFilename}`;
+
+        // Strip prefix (e.g. "data:image/png;base64,")
+        const base64Data = data.fileBase64.replace(/^data:[^;]+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        const { PutObjectCommand } = await import("@aws-sdk/client-s3");
+        const { s3Client } = await import("@/lib/s3");
+
+        const command = new PutObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET_NAME || "primebake",
+            Key: objectKey,
+            Body: buffer,
+            ContentType: contentType,
+        });
+
+        await s3Client.send(command);
+
+        const publicPrefix = (process.env.NEXT_PUBLIC_S3_PUBLIC_URL || `https://${process.env.AWS_S3_BUCKET_NAME || 'primebake'}.s3.${process.env.AWS_REGION || 'ap-south-1'}.amazonaws.com`).replace(/\/$/, '');
+        const publicUrl = `${publicPrefix}/${objectKey}`;
+
+        // If an invoiceId is provided and it's a PDF or invoice document, update invoice record
+        if (data.invoiceId && (contentType === 'application/pdf' || data.filename.endsWith('.pdf'))) {
+            await invoiceService.updatePdfUrl(data.invoiceId, publicUrl, effectiveUserId);
+        }
+
+        revalidatePath("/dashboard");
+        revalidatePath("/transactions");
+
+        return { success: true, publicUrl, objectKey };
+    } catch (error: any) {
+        console.error("Direct S3 Upload error:", error);
+        return { success: false, error: error.message || "Failed to upload file to S3" };
+    }
+}
+
 export async function getLogoBase64(url: string) {
     try {
         const res = await fetch(url);

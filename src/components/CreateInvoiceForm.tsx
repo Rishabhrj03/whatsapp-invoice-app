@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { createInvoice, getUploadUrl, updateInvoicePdfUrl, getLogoBase64 } from "@/app/actions/invoice";
+import { createInvoice, getUploadUrl, updateInvoicePdfUrl, getLogoBase64, uploadFileDirect } from "@/app/actions/invoice";
 import {
     Plus, Trash2, Send, FileDown, Eye, Edit2,
     CheckCircle, UserPlus, ShoppingBag, CreditCard,
@@ -427,32 +427,30 @@ export default function CreateInvoiceForm({
             setInvoiceId(res.invoiceId);
             setSuccessData(invoiceData);
 
-            // Upload PDF to S3
+            // Direct Server-Side Upload to S3 (Guaranteed backup without browser CORS issues)
             try {
                 const file = await getInvoiceFile(invoiceData);
-                const uploadRes = await getUploadUrl(`invoices/${res.invoiceId}.pdf`, "application/pdf");
-
-                if (!uploadRes.success || !uploadRes.url) {
-                    return alert(`Presign URL Error: ${uploadRes.error || "Failed to get presigned URL"}`);
-                }
-
-                const uploadFetch = await fetch(uploadRes.url, {
-                    method: "PUT",
-                    body: file,
-                    headers: { "Content-Type": "application/pdf" }
+                const reader = new FileReader();
+                const fileBase64 = await new Promise<string>((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
                 });
 
-                if (!uploadFetch.ok) {
-                    return alert(`S3 Upload Failed: ${uploadFetch.statusText || "Fetch error"}. Check Amazon S3 CORS settings.`);
-                }
+                const uploadRes = await uploadFileDirect({
+                    invoiceId: res.invoiceId,
+                    fileBase64,
+                    filename: `invoices/${res.invoiceId}.pdf`,
+                    contentType: "application/pdf"
+                });
 
-                const publicUrl = `${process.env.NEXT_PUBLIC_S3_PUBLIC_URL || ""}/${uploadRes.objectKey}`;
-                await updateInvoicePdfUrl(res.invoiceId, publicUrl);
-                setPdfUrl(publicUrl);
-                alert("PDF backed up to S3 successfully!");
+                if (uploadRes.success && uploadRes.publicUrl) {
+                    setPdfUrl(uploadRes.publicUrl);
+                } else {
+                    console.warn("Direct upload notice:", uploadRes.error);
+                }
             } catch (uploadErr: any) {
                 console.error("Auto S3 Upload failed:", uploadErr);
-                alert(`Upload Exception: ${uploadErr.message || "Network or CORS Error"}`);
             }
         } else {
             alert(res.error);
