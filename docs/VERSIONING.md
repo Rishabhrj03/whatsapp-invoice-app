@@ -200,3 +200,6 @@ git tag -l | sort -V
 | :--- | :--- | :--- |
 | `0.1.0` | 2026-05-01 | Initial development build: auth, invoicing, WhatsApp sharing |
 | `1.0.0` | 2026-10-29 | Production-ready: SOLID architecture, RBAC, rate limiting, security headers, API v1, responsive UI |
+| `1.1.0` | 2026-10-29 | Activity Log audit subsystem, multi-tenant booking isolation, production DB config hardening |
+| `1.2.0` | 2026-10-29 | Line item customization modal, item descriptions/notes, POS preset chips, CSV/WhatsApp schema sync |
+| `1.3.0` | 2026-10-30 | Direct Server-Side S3 Uploads (Zero-CORS), negative line items/totals (Credit Notes & Refunds), portaled item catalog, and transaction date range presets |

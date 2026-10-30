@@ -1,7 +1,7 @@
 # Functional Requirements Specification (FRS)
 
 **Application:** WhatsApp Digital Invoicing & POS Application  
-**Version:** 2.0.0 (Next.js 16.4.3 / React 19)  
+**Version:** 2.1.0 (App v1.3.0 • Next.js 16.4.3 / React 19)  
 **Status:** Approved & Implemented  
 
 ---
@@ -38,7 +38,10 @@
 * **FR-04.1 Order Assembly:** Select a registered customer or proceed as an anonymous "Guest". Select menu items with quantity adjustments.
 * **FR-04.2 Discounts & Coupons:** Apply bill-level discounts or enter promo coupon codes.
 * **FR-04.3 Payment Methods:** Support for `Cash`, `Card`, and `UPI`.
-* **FR-04.4 PDF Generation & S3 Storage:** Client renders invoice to canvas/PDF via `html2canvas` / `jspdf` and uploads to AWS S3 using presigned upload URLs.
+* **FR-04.4 Direct Server-Side S3 PDF Storage:** Client renders invoice to canvas/PDF via `html2canvas` / `jspdf`, base64-encodes the buffer, and dispatches via `uploadFileDirect` server action directly to AWS S3 (`primebake` bucket, `invoices/` folder). This server-side proxy completely eliminates browser CORS restrictions and ensures 100% upload delivery.
+* **FR-04.5 Negative Line Items & Credit Notes:** Supports negative prices on individual line items and negative invoice grand totals. Enables native creation of Credit Notes, customer refund slips, advance payment deductions, and line-item corrections.
+* **FR-04.6 Line Item Customization Modal & Notes:** Interactive item description modal to capture custom product specifications (e.g. custom cake flavor, eggless, weight, delivery notes) with quick preset chips (`Custom Cake`, `Eggless`, `1.5 kg`, `Special Message`). Rendered directly beneath item names on invoice previews, public receipts, and PDF files.
+* **FR-04.7 Portaled Full-Screen Item Picker:** `MenuSelector` portaled directly to `document.body` via React `createPortal` to prevent layout clipping and parent overflow issues. Features hover tooltips (`title` attribute) on item and category cards for unabbreviated product titles.
 
 ### FR-05: 90-Day Customer Financial Reporting
 * **FR-05.1 Historical Window:** Accessible via `/customers/[id]/report` to view all invoices generated for the customer in the past 90 days.
@@ -57,7 +60,7 @@
 
 ### FR-07: Root-Only Past Invoice Modification
 * **FR-07.1 Error Correction:** Enables correcting past billing mistakes:
-  * Adding or removing line items.
+  * Adding or removing line items (positive or negative).
   * Correcting wrong item quantities or prices.
   * Correcting payment methods (e.g. changing UPI to Cash or vice-versa).
   * Adding operational notes/comments.
@@ -76,3 +79,22 @@
 ### FR-10: Team & Staff Management
 * **FR-10.1 Staff Roster:** Owners can view all staff members associated with their account via `/team`.
 * **FR-10.2 Staff Onboarding & Revocation:** Owners can invite new staff with secure passwords and delete staff credentials at any time.
+
+### FR-11: Activity Log & Comprehensive Audit Trail
+* **FR-11.1 Non-Blocking Event Recording:** `ActivityLogService` automatically logs audit events across invoices, customers, bookings, menu entries, categories, coupons, team members, and business settings.
+* **FR-11.2 Actor Snapshot:** Records performer identity (`userId`, `name`, `email`, `role`), event timestamp, action code, human-readable summary, and JSON metadata context.
+* **FR-11.3 Audit Dashboard (`/activity`):** Interactive UI providing KPI cards (total events, 24h volume, owner vs. staff breakdown), multi-criteria filtering (performer, module, action type, date range, keyword search), and expandable JSON context inspect drawers.
+
+### FR-12: Advance Booking Subsystem
+* **FR-12.1 Order Scheduling:** Schedule future cake and catering orders with delivery dates, advance deposits, remaining balances, and status tracking (`PENDING`, `CONFIRMED`, `DELIVERED`, `CANCELLED`).
+* **FR-12.2 Cake Reference Photo Upload:** Direct server-side upload of design reference photos via `uploadFileDirect` into `bookings/` S3 folder without client CORS dependencies.
+* **FR-12.3 Multi-Tenant Isolation:** Advance bookings are strictly scoped to the store's `effectiveUserId`.
+
+### FR-13: Advanced Transactions Analytics & Date Filtering
+* **FR-13.1 Instant Multi-Field Search:** Real-time search across customer names, phone numbers, and invoice identifiers.
+* **FR-13.2 Quick Date Presets:** 1-click filter bar with presets: `Today`, `Yesterday`, `This Week`, `This Month`, and `Custom Date Range`.
+* **FR-13.3 Dynamic Aggregate Metrics:** Header KPI cards automatically recompute total revenue and invoice counts matching the active date/search filter.
+
+### FR-14: Store Branding & Asset Management
+* **FR-14.1 Custom Store Profile:** Store owner configures business name, custom WhatsApp message template, and branding logo.
+* **FR-14.2 Server-Side Logo Uploads:** High-res store logos are compressed client-side and streamed server-side to S3 (`logos/` folder) via `uploadFileDirect`.

@@ -39,6 +39,9 @@ The **WhatsApp Digital Invoicing & POS Application** is a multi-tenant Point-of-
 * **FR-04.2:** Users shall add multiple items, adjust quantities, apply item-level or bill-level discounts, and redeem promo coupons.
 * **FR-04.3:** The system shall support payment methods: `Cash`, `Card`, and `UPI`.
 * **FR-04.4:** Upon bill creation, the system shall assign a unique MongoDB ObjectId and timestamp.
+* **FR-04.5 (Negative Line Items & Credit Notes):** Support negative unit prices and negative grand totals to record returns, refunds, credit notes, and advance payment offsets.
+* **FR-04.6 (Real-Time Item Description Modal):** Dedicated modal to capture product specifications (flavor, weight, eggless, custom notes) rendered on invoices and receipts.
+* **FR-04.7 (Portaled Catalog Selector):** The item selector dialog is portaled directly to `document.body` to eliminate layout clipping and provides hover tooltips for long product titles.
 
 ### 2.5 90-Day Customer Financial Reporting (FR-05)
 * **FR-05.1:** The system shall pull a dedicated 90-day financial history for any specific customer via `/customers/[id]/report`.
@@ -66,10 +69,26 @@ The **WhatsApp Digital Invoicing & POS Application** is a multi-tenant Point-of-
 
 ### 2.9 Public Invoice Portal & Cloud Storage (FR-09)
 * **FR-09.1:** Each invoice shall have a publicly shareable responsive web view at `/public/invoice/[id]` accessible by customers without requiring authentication.
-* **FR-09.2:** The system integrates AWS S3 via presigned upload URLs for archiving customer-facing PDF backups.
+* **FR-09.2 (Zero-CORS Direct S3 Storage):** Integrates direct server-side S3 upload (`uploadFileDirect`) via AWS SDK v3 `PutObjectCommand`. Completely bypasses client-side browser CORS restrictions, preflight checks, and proxy timeouts.
 
 ### 2.10 Team & Staff Management (FR-10)
 * **FR-10.1:** Only `OWNER` users can access `/team` to view staff rosters, provision staff logins, and revoke staff access.
+
+### 2.11 Activity Log & Audit Trail (FR-11)
+* **FR-11.1:** Non-blocking audit recording across Invoices, Customers, Bookings, Menu, Categories, Coupons, Team, and Profile Settings via `ActivityLogService`.
+* **FR-11.2:** Administrative dashboard at `/activity` with KPI cards, multi-criteria filters, and detailed JSON context inspection trays.
+
+### 2.12 Advance Booking Subsystem (FR-12)
+* **FR-12.1:** Future order scheduling with delivery dates, advance payments, balance tracking, and status transitions.
+* **FR-12.2:** Customer reference photo storage backed by direct server-side S3 uploads (`bookings/` folder).
+
+### 2.13 Advanced Transactions Analytics & Date Filtering (FR-13)
+* **FR-13.1:** Fast multi-field search across customer names, phone numbers, and invoice numbers.
+* **FR-13.2:** Quick date presets (`Today`, `Yesterday`, `This Week`, `This Month`, `Custom Date Range`) with dynamic KPI aggregations.
+
+### 2.14 Store Profile & Brand Asset Management (FR-14)
+* **FR-14.1:** Store branding configuration including business name, custom WhatsApp messaging templates, and business logos.
+* **FR-14.2:** Server-side logo uploads (`logos/` folder) with client-side image compression.
 
 ---
 

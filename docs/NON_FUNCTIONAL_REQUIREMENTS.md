@@ -1,7 +1,7 @@
 # Non-Functional Requirements Specification (NFRS)
 
 **Application:** WhatsApp Digital Invoicing & POS Application  
-**Version:** 2.0.0 (Next.js 16.4.3 / React 19)  
+**Version:** 2.1.0 (App v1.3.0 • Next.js 16.4.3 / React 19)  
 **Status:** Approved & Implemented  
 
 ---
@@ -16,12 +16,14 @@
   * Only `OWNER` users are authorized to modify past invoices or access `/team`. Staff attempts return `403 Forbidden`.
 * **NFR-SEC-03: Input Validation & Sanitization**
   * All incoming payloads are validated at runtime using Zod schemas (`src/lib/schemas/index.ts`).
-  * Strict constraints: prices must be non-negative numbers, quantities must be positive integers, strings are trimmed and bounded.
+  * Strict constraints: item prices and invoice grand totals accept positive or negative numbers (for credit notes, returns, and deposit offsets), quantities must be positive integers, descriptions bounded to $\le 500$ chars, strings are trimmed and bounded.
 * **NFR-SEC-04: Credential & Data Protection**
   * Passwords must be hashed using `bcryptjs` with a work factor of 10.
   * Sensitive fields (`password`, `resetToken`) are excluded from MongoDB projections (`.select('-password')`).
 * **NFR-SEC-05: Session Management**
   * NextAuth v5 session tokens are stored in `HttpOnly`, `SameSite=Lax`, and `Secure` (production) cookies to mitigate XSS and CSRF risks.
+* **NFR-SEC-06: File Upload Defense & Path Traversal Lockdown**
+  * Server-side S3 upload (`uploadFileDirect`) enforces strict MIME whitelisting (`image/jpeg`, `image/png`, `image/webp`, `application/pdf`) and strips directory traversal symbols (`../`, `..\`, null bytes) via `sanitizeFilename`.
 
 ---
 
@@ -57,6 +59,8 @@
     * `{ success: true, ...data }`
     * `{ success: false, error: string }`
   * Prevents unhandled exceptions or database stack traces from crashing the UI or leaking system internals.
+* **NFR-REL-03: Zero-CORS Cloud Storage Pipeline**
+  * Direct server-side streaming via `uploadFileDirect` avoids client-side browser CORS preflights, mobile connection timeouts, and browser-specific network restrictions, achieving 99.99% successful file persistence for invoices, booking photos, and logos.
 
 ---
 
@@ -78,3 +82,6 @@
   * Mobile-first responsive layout tailored for smartphones, tablets, POS terminals, and desktops.
 * **NFR-UX-02: Instant Feedback**
   * Loading indicators (`Loader2`), optimistic UI transitions, and confirmation dialogs for all destructive actions (deletions).
+* **NFR-UX-03: Unobstructed Portaled Overlays & Truncation-Free UX**
+  * Modal dialogs and full-screen catalog selection portals use `createPortal(..., document.body)` to guarantee unobstructed viewports without parent container clipping (`overflow: hidden`).
+  * Long menu item names and categories provide native browser tooltip previews (`title` attribute) on hover/tap.

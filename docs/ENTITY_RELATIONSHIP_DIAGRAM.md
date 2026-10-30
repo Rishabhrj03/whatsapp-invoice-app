@@ -1,7 +1,7 @@
 # Entity-Relationship Diagram (ERD) & Database Schema Specification
 
 **Application:** WhatsApp Digital Invoicing & POS Application  
-**Version:** 2.0.0 (Next.js 16.4.3 / React 19)  
+**Version:** 2.1.0 (App v1.3.0 • Next.js 16.4.3 / React 19)  
 **Database:** MongoDB via Mongoose ODM  
 **Status:** Approved & Implemented  
 
@@ -18,7 +18,9 @@ erDiagram
     USER ||--o{ INVOICE : "generates"
     CUSTOMER ||--o{ INVOICE : "receives"
     INVOICE ||--|{ INVOICE_ITEM : "contains"
-    CATEGORY ||--o{ MENU_ENTRY : "classifies"
+    USER ||--o{ BOOKING : "schedules"
+    CUSTOMER ||--o{ BOOKING : "books"
+    USER ||--o{ ACTIVITY_LOG : "records"
 
     USER {
         ObjectId _id PK
@@ -68,7 +70,7 @@ erDiagram
         ObjectId userId FK "Tenant Store Owner"
         ObjectId customerId FK "Optional Customer Reference"
         ObjectId createdBy FK "User who generated the bill"
-        number totalAmount "Net Bill Amount"
+        number totalAmount "Net Bill Amount (can be negative for credit notes)"
         number discountAmount "Discount Amount"
         string couponCode "Applied Promo Code"
         string paymentType "Cash | Card | UPI"
@@ -82,8 +84,25 @@ erDiagram
     INVOICE_ITEM {
         ObjectId menuEntryId FK "Optional Menu Entry"
         string name "Item Name Snapshot"
-        number price "Unit Price Snapshot"
+        number price "Unit Price Snapshot (can be negative for returns/discounts)"
         number quantity "Purchased Units"
+        string description "Custom item notes & specifications"
+    }
+
+    BOOKING {
+        ObjectId _id PK
+        ObjectId userId FK "Tenant Store Owner"
+        ObjectId customerId FK "Optional Customer Reference"
+        string customerName "Customer Name Snapshot"
+        string customerPhone "Customer Phone Number"
+        date deliveryDate "Delivery / Pickup Date"
+        number totalAmount "Order Total"
+        number advanceAmount "Advance Paid"
+        number pendingAmount "Pending Balance"
+        string status "PENDING | CONFIRMED | DELIVERED | CANCELLED"
+        string notes "Cake Design & Order Notes"
+        array referencePhotos "S3 Photo URLs array"
+        date createdAt "Booking Timestamp"
     }
 
     ACTIVITY_LOG {

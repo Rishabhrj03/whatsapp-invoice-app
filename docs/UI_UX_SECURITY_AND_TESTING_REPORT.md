@@ -1,6 +1,7 @@
 # UI/UX, Security & Comprehensive QA Testing Report
 
 **Application:** WhatsApp Digital Invoicing & POS Platform  
+**Version:** 2.1.0 (App v1.3.0)  
 **Architecture:** Next.js 16.4.3 (Turbopack) • React 19.3.1 • Tailwind CSS • MongoDB / Mongoose 9 • NextAuth v5  
 **Audited & Authored By:** Antigravity Engineering (Acting as UI/UX Expert, QA Lead Tester & Security In-Charge)  
 **Date:** October 2026  
@@ -33,6 +34,8 @@ The application currently provides a complete suite of cloud-based POS and digit
 | **Discounts & Coupons (`/coupons`)** | Percentage-based or fixed-value coupon codes, with applicability rules (all items vs specific menu entries). | OWNER only |
 | **Order Bookings (`/bookings`)** | Future order and catering booking management with status badges (`PENDING`, `CONFIRMED`, `DELIVERED`). | OWNER, STAFF |
 | **Settings & Store Profile (`/settings`)** | Store branding customization: business name, custom WhatsApp message template, logo upload, and automated reminder alert intervals. | OWNER only |
+| **Activity Log & Audit (`/activity`)** | Immutable chronological audit trail recording all owner/staff actions with actor snapshots, KPI analytics, and JSON context drawers. | OWNER, STAFF |
+| **Direct S3 Cloud Pipeline** | Zero-CORS server-side upload gateway (`uploadFileDirect`) for PDF invoices, booking photos, and logos. | OWNER, STAFF |
 | **Public Invoice Portal (`/public/invoice/[id]`)** | Client-facing digital receipt accessible without authentication via secure unique invoice ID. Displays itemized table, merchant branding, dynamic PDF download, and thermal receipt printing. | Public |
 
 ---
@@ -57,31 +60,43 @@ A professional POS application must cater to three distinct device form factors:
 - **Desktop (>= 1024px)**:
   - Fixed 64-column sidebar with active route indicator, user profile summary, and logout trigger.
 
-#### B. Transactions List (`TransactionsClient.tsx`)
-- **Problem Identified**: The wide 7-column table caused horizontal scrolling on mobile devices, obscuring WhatsApp and SMS share buttons.
+#### B. Transactions List & Fast Date Bar (`TransactionsClient.tsx`)
+- **Problem Identified**: The wide 7-column table caused horizontal scrolling on mobile devices, obscuring WhatsApp and SMS share buttons. Date filtering required complex input typing.
 - **Solution Implemented**:
-  - Implemented **dual-mode presentation**:
-    - `md:hidden`: Clean touch cards displaying customer name, invoice ID badge, date/time, total amount, and large touch-friendly buttons for WhatsApp, SMS, and Edit.
-    - `hidden md:block`: Rich table with sticky headers, payment badges, and compact action dropdowns.
+  - Implemented **dual-mode presentation**: touch cards on mobile, rich tabular grid on desktop.
+  - Added **1-click Quick Date Presets Bar** (`Today`, `Yesterday`, `This Week`, `This Month`, `Custom Range`) with instant KPI recalculation.
+  - Multi-field search across customer name, phone number, and invoice IDs.
 
-#### C. Customer Directory (`CustomersClient.tsx`)
+#### C. Portaled Menu Item Selector & Tooltips (`MenuSelector.tsx`)
+- **Problem Identified**: Inside nested flex containers on the POS billing form, the item catalog dropdown was clipped by parent `overflow: hidden` rules, and long item titles were truncated.
+- **Solution Implemented**:
+  - Portaled dialog to `document.body` using React 19 `createPortal`, escaping container constraints.
+  - Added native hover tooltips (`title` attribute) on item cards and category badges, allowing staff to read complete product titles.
+
+#### D. Category Text Truncation & Flex Resiliency (`CategorySelector.tsx`)
+- **Problem Identified**: Category pill buttons with long names caused horizontal overflow and misaligned flex wrap.
+- **Solution Implemented**:
+  - Added flexbox shrink protection, controlled ellipsis, and title tooltips.
+
+#### E. Customer Directory (`CustomersClient.tsx`)
 - **Problem Identified**: Viewing customer phone numbers and generating 90-day reports required horizontal scrolling on mobile.
 - **Solution Implemented**:
-  - Added mobile customer card deck featuring initial avatars, direct click-to-call, click-to-WhatsApp, and an prominent "90-Day Report" button.
+  - Added mobile customer card deck featuring initial avatars, direct click-to-call, click-to-WhatsApp, and a prominent "90-Day Report" button.
 
-#### D. 90-Day Customer Bill Report (`CustomerReportClient.tsx`)
+#### F. 90-Day Customer Bill Report (`CustomerReportClient.tsx`)
 - **Problem Identified**: Detailed itemized breakdowns inside nested table rows were cut off on phone screens.
 - **Solution Implemented**:
   - Built an accordion-based mobile card list where tapping any bill unfolds the exact items, unit prices, discounts, and merchant comments directly in place.
   - Added full Excel export button optimized for touch devices.
 
-#### E. POS Invoicing & Billing (`CreateInvoiceForm.tsx`)
+#### G. POS Invoicing & Billing (`CreateInvoiceForm.tsx`)
 - **Problem Identified**: On long orders (5+ items), the subtotal and "Generate Bill" button were pushed below the viewport, requiring cashiers to scroll all the way to the bottom.
 - **Solution Implemented**:
-  - Added a **fixed bottom checkout bar** (`md:hidden`) floating above the bottom nav when items are added. Cashiers see live total amount and item count, and can trigger "Preview & Bill" with one tap.
-  - Added touch steppers (`+` and `-`) with min 44px tap targets for fast quantity adjustments.
+  - Added a **fixed bottom checkout bar** (`md:hidden`) floating above the bottom nav when items are added.
+  - Added dedicated **Item Description Modal** with quick chips (`Custom Cake`, `Eggless`, `1.5 kg`) for real-time item notes.
+  - Enabled **Credit Notes & Negative Line-Item Prices** for refunds and deposit offsets.
 
-#### F. Printing Stylesheet (`globals.css`)
+#### H. Printing Stylesheet (`globals.css`)
 - **Problem Identified**: Standard browser `window.print()` printed the webpage navigation, dark backgrounds, buttons, and misaligned margins.
 - **Solution Implemented**:
   - Added comprehensive `@media print` rules:
@@ -100,10 +115,14 @@ As Security In-Charge, a rigorous vulnerability assessment was performed. The fo
 | :--- | :--- | :--- | :--- | :--- |
 | **Insecure Direct Object Reference (IDOR)** | **High** | Some route handlers queried directly by `session.user.id`. For staff accounts, this isolated them into an empty tenant instead of their employer's store. | Enforced centralized `getEffectiveUserId()` across all queries and mutations, strictly scoping staff to `ownerId`. | **FIXED** |
 | **Broken Object Level Authorization (RBAC)** | **High** | Staff cashiers could theoretically edit historical bills, alter totals, or delete records. | Enforced strict RBAC guard in `InvoiceService.updateInvoice()`: only users with `role === 'OWNER'` can modify past invoices; staff mutations are rejected with HTTP 403 Forbidden. | **FIXED** |
+| **Client-Side S3 CORS & Upload Drop Risk** | **High** | Browser direct-to-S3 presigned PUT requests failed due to CORS preflight OPTIONS blocking, mobile proxy drops, and ad-blockers. | Replaced client PUT with `uploadFileDirect` server action. Streams file buffer directly from Node.js to AWS S3, strictly whitelisting MIME types and sanitizing filenames. Zero CORS dependencies. | **FIXED** |
+| **Accounting Inflexibility & Return Rejections** | **Medium** | Schemas strictly required $price \ge 0$, rejecting returns, refund slips, or credit note deductions. | Updated `InvoiceItemSchema`, `CreateInvoiceSchema`, and `UpdateInvoiceSchema` to permit negative prices and grand totals for returns and credit adjustments. | **FIXED** |
 | **Brute-Force & Denial-of-Service on Signup** | **Medium** | `/api/signup` allowed unlimited unauthenticated account creation without rate limiting or IP throttling. | Built `src/lib/rateLimit.ts` sliding-window in-memory rate limiter (5 registrations per 5 minutes per IP). Rejects flooding with HTTP 429 Too Many Requests. | **FIXED** |
 | **Weak Input Validation & Injection** | **Medium** | Endpoints accepted unvalidated JSON payloads without character limits or type assertions. | Added Zod validation schemas (`CreateInvoiceSchema`, `SignupSchema`, `CreateCustomerSchema`, `CreateMenuItemSchema`) with strict typing, string length bounds, and email normalization. | **FIXED** |
 | **Clickjacking & MIME-Sniffing** | **Medium** | Missing HTTP security response headers. | Configured security headers in `next.config.mjs`: `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: origin-when-cross-origin`, and `Permissions-Policy`. | **FIXED** |
 | **Missing Compound Database Indexes** | **Low** | High-volume tenant queries performed collection scans as database grew. | Added compound indexes in `Invoice.ts` (`{ userId: 1, createdAt: -1 }`, `{ userId: 1, customer: 1, date: -1 }`) and `Customer.ts` (`{ userId: 1, name: 1 }`). | **FIXED** |
+
+---
 
 ---
 

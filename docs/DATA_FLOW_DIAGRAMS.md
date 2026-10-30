@@ -1,7 +1,7 @@
 # Data Flow Diagrams (DFD)
 
 **Application:** WhatsApp Digital Invoicing & POS Application  
-**Version:** 2.0.0 (Next.js 16.4.3 / React 19)  
+**Version:** 2.1.0 (App v1.3.0 • Next.js 16.4.3 / React 19)  
 **Status:** Approved & Implemented  
 
 ---
@@ -124,4 +124,45 @@ sequenceDiagram
     UI->>SheetJS: Dynamic import("xlsx")
     UI->>SheetJS: Map invoices to rows and calculate SUMMARY row
     UI->>Owner: Download bill_report_[customer_name]_90days.xlsx
+```
+
+---
+
+## 5. DFD Level 2: Direct Server-Side S3 Storage Sub-Process (`uploadFileDirect`)
+
+Detailed sequence showing direct file streaming from browser through Next.js Server Action to AWS S3, bypassing browser CORS restrictions and automatically linking PDF records in MongoDB.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Staff / Store Owner
+    participant Client as POS Client / Booking UI
+    participant Reader as FileReader (Browser)
+    participant Action as uploadFileDirect() Server Action
+    participant Sec as Security Utilities (MIME & Path)
+    participant S3 as AWS S3 Bucket (primebake)
+    participant Service as InvoiceService
+    participant DB as MongoDB
+
+    User->>Client: Generate Bill / Select Photo / Select Logo
+    Client->>Reader: readAsDataURL(fileBlob)
+    Reader-->>Client: base64DataString
+    Client->>Action: uploadFileDirect({ invoiceId, fileBase64, filename, contentType })
+    Action->>Action: getEffectiveUserId() + verify session
+    Action->>Sec: isValidUploadMimeType(contentType)
+    Sec-->>Action: Allowed (image/jpeg, png, webp, pdf)
+    Action->>Sec: sanitizeFilename(filename)
+    Sec-->>Action: safeFilename (stripped ../, null bytes)
+    Action->>Action: Buffer.from(base64Data, 'base64')
+    Action->>S3: PutObjectCommand({ Bucket, Key, Body: buffer, ContentType })
+    S3-->>Action: S3 PutObject Success
+    
+    opt If invoiceId provided & PDF
+        Action->>Service: updatePdfUrl(invoiceId, publicUrl, effectiveUserId)
+        Service->>DB: Invoice.findOneAndUpdate({ _id: invoiceId, userId: effectiveUserId }, { pdfUrl })
+        DB-->>Service: Updated Invoice Document
+    end
+
+    Action-->>Client: { success: true, publicUrl, objectKey }
+    Client-->>User: Display Success / S3 Backup Guaranteed
 ```

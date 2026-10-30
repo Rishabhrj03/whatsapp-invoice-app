@@ -6,6 +6,45 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.3.0] — 2026-10-30
+
+### ⚡ Direct Server-Side S3 Uploads (Zero CORS), Credit Notes & UI Resiliency
+
+#### Added — Direct Server-Side S3 Upload Subsystem (`uploadFileDirect`)
+- **Server-Side File Pipe (`src/app/actions/invoice.ts`)**:
+  - Implemented `uploadFileDirect` server action to upload binary files (base64) directly from Node.js to AWS S3 using AWS SDK v3 `PutObjectCommand`.
+  - **Eliminates Browser CORS & Preflight Failures**: Bypasses browser cross-origin constraints, preflight `OPTIONS` blocks, and network proxy drops that affected direct client-to-S3 presigned PUTs.
+  - **Targeted Folder Organization**: Automatically routes files into designated S3 folders (`invoices/`, `logos/`, `bookings/`).
+  - **Auto-Persistence**: If `invoiceId` is supplied with an invoice PDF upload, automatically links the permanent public URL in the MongoDB invoice document and revalidates cached routes.
+  - **Defense-in-Depth**: Strictly verifies MIME types (`image/jpeg`, `image/png`, `image/webp`, `application/pdf`) and sanitizes filenames against directory traversal (`sanitizeFilename`) before writing to storage.
+- **Client Integration Across Workflows**:
+  - `CreateInvoiceForm.tsx`: Automatically encodes generated PDF receipts to Base64 via `FileReader` and persists them via `uploadFileDirect` with zero client warnings.
+  - `BookingsClient.tsx`: Custom cake reference photos now upload directly through server action.
+  - `SettingsClient.tsx`: Store logo uploads converted to server-side pipeline after client-side image compression.
+
+#### Added — Credit Notes, Refunds & Negative Price Support
+- **Accounting & Price Flexibility**:
+  - Relaxed schema constraints in `src/lib/schemas/index.ts` (`InvoiceItemSchema`, `CreateInvoiceSchema`, `UpdateInvoiceSchema`) to allow negative numbers for item prices and invoice grand totals.
+  - Supports legitimate retail workflows: customer refunds, credit notes, instant line-item discounts, and advance deposit deductions.
+  - Updated client-side validation in `CreateInvoiceForm.tsx` and `EditInvoiceModal.tsx` to permit negative grand totals.
+
+#### Added — Portaled UI Modals & Text Truncation Resiliency
+- **Portaled Item Catalog Modal (`MenuSelector.tsx`)**:
+  - Portaled the `MenuSelector` dialog directly to `document.body` via React 19 `createPortal`.
+  - Solves z-index conflicts, overflow clipping, and positioning bugs when opened within nested flex/grid parent containers.
+  - Added native hover tooltips (`title` attribute) on item cards, allowing staff to read long menu item names without clipping.
+- **Category Overflow Fixes (`CategorySelector.tsx`)**:
+  - Fixed flexbox shrinking and text truncation issues on categories with long names.
+  - Added title tooltips to ensure long category titles remain fully readable.
+
+#### Added — Advanced Transaction Search & Date Range Presets
+- **Fast Filter Bar (`TransactionsClient.tsx` & `/transactions`)**:
+  - Instant multi-field search across customer name, phone number, and invoice IDs.
+  - Quick date filter presets: `Today`, `Yesterday`, `This Week`, `This Month`, and `Custom Range`.
+  - Dynamic KPI cards displaying live total revenue and bill count for filtered results.
+
+---
+
 ## [1.2.0] — 2026-10-29
 
 ### 🎂 Line Item Customization, Real-Time Descriptions & Invoice UX

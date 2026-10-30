@@ -1,7 +1,7 @@
 # Architecture & Design Patterns Specification
 
 **Application:** WhatsApp Digital Invoicing & POS Application  
-**Version:** 2.0.0 (Next.js 16.4.3 / React 19)  
+**Version:** 2.1.0 (App v1.3.0 • Next.js 16.4.3 / React 19)  
 **Status:** Approved & Implemented  
 
 ---
@@ -90,6 +90,27 @@ graph TD
   * Acts as a non-blocking asynchronous event observer across all state-mutating actions (Invoices, Customers, Bookings, Menu, Categories, Coupons, Team, Settings).
   * Automatically stores snapshot details of the actor (`name`, `email`, `role: 'OWNER' | 'STAFF'`), tenant account ID (`effectiveUserId`), timestamp, entity type, and full context payload.
   * Ensures operations are cleanly segregated by account (`tenantId`) and indexed for real-time querying.
+
+### 3.7 Direct Server-Side Storage Gateway Pattern (`uploadFileDirect`)
+* **Problem Addressed:** Direct client-to-S3 presigned PUT requests frequently trigger browser CORS preflight (`OPTIONS`) blocks, require liberal bucket CORS rules, fail behind corporate firewalls/ad-blockers, and cannot enforce server-side business rules before object creation.
+* **Architecture:** Implements a direct server-side storage gateway via Next.js Server Actions:
+  ```
+  Client (Base64) ──[Internal RPC]──> Server Action (uploadFileDirect)
+                                              │
+                       ┌──────────────────────┴──────────────────────┐
+                       ▼                                             ▼
+            MIME & Filename Sanitization                  AWS S3 PutObjectCommand
+            (image/jpeg, png, webp, pdf)                 (Direct Node.js Buffer Stream)
+                       │                                             │
+                       ▼                                             ▼
+            MongoDB Auto-Persistence                     Immutable Public URL
+            (Update Invoice.pdfUrl)                      (s3.ap-south-1.amazonaws.com)
+  ```
+* **Benefits:** Zero browser CORS prerequisites, 100% upload delivery across mobile/desktop, automated path sanitization (`sanitizeFilename`), and transactional invoice PDF link attachment.
+
+### 3.8 React 19 Body-Portaling Pattern (`MenuSelector`)
+* **Problem Addressed:** Rendering modal dialogs or item pickers inside deeply nested flexbox/grid containers risks CSS clipping (`overflow: hidden`), z-index battles, and viewport cutoffs.
+* **Implementation:** The `MenuSelector` component uses `createPortal(content, document.body)` to escape parent container layout constraints, rendering full-screen backdrop and dialogs at the root level while preserving React component state and synthetic event bubbling.
 
 ---
 
