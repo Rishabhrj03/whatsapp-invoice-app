@@ -373,7 +373,9 @@ export default function CreateInvoiceForm({
         const businessName = initialUser?.businessName || "Primebake";
         const customerName = customer?.name || "Customer";
         const totalAmount = `₹${successData.totalAmount.toFixed(2)}`;
-        const invoiceLink = `${window.location.origin}/public/invoice/${invoiceId}`;
+        const origin = window.location.origin;
+        const digitalBillUrl = `${origin}/public/invoice/${invoiceId}`;
+        const directPdfUrl = `${origin}/api/invoices/${invoiceId}/download`;
 
         let itemDetailText = "";
         successData.items.forEach((item: any) => {
@@ -386,19 +388,20 @@ export default function CreateInvoiceForm({
             text = initialUser.whatsappTemplate
                 .replace(/{customer_name}/g, customerName)
                 .replace(/{total_amount}/g, totalAmount)
-                .replace(/{invoice_url}/g, invoiceLink)
+                .replace(/{invoice_url}/g, digitalBillUrl)
                 .replace(/{business_name}/g, businessName)
                 .replace(/{item_list}/g, itemDetailText.trim());
         } else {
             text = `*Invoice from ${businessName}*\n`;
-            text += `Hello ${customerName},\n\n`;
+            text += `Hello ${customerName}, thank you for your order! 🙏\n\n`;
             text += `*Details:*\n${itemDetailText}`;
             if (successData.comment) {
                 text += `\n*Note:* ${successData.comment}\n`;
             }
-            text += `\n*Total Amount:* ${totalAmount}\n`;
-            text += `\n*View & Download Invoice:* ${invoiceLink}\n`;
-            text += `\nThank you for your business!`;
+            text += `\n*Total Amount:* ${totalAmount}\n\n`;
+            text += `📄 *Download Official PDF:* ${directPdfUrl}\n`;
+            text += `📱 *View Digital Bill:* ${digitalBillUrl}\n\n`;
+            text += `Thank you for choosing ${businessName}!`;
         }
 
         const encodedText = encodeURIComponent(text);

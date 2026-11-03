@@ -475,7 +475,7 @@ export default function TransactionsClient({
                                         {inv.customer?.phoneNumber && (
                                             <>
                                                 <a
-                                                    href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}\n\nView Bill: ${typeof window !== 'undefined' ? window.location.origin : ''}/public/invoice/${inv._id}`)}`}
+                                                    href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}\n\n📄 Download PDF: ${typeof window !== 'undefined' ? window.location.origin : ''}/api/invoices/${inv._id}/download\n📱 View Bill: ${typeof window !== 'undefined' ? window.location.origin : ''}/public/invoice/${inv._id}`)}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     onClick={(e) => handleWhatsAppShare(e, inv)}
@@ -590,7 +590,7 @@ export default function TransactionsClient({
                                                     {inv.customer?.phoneNumber && (
                                                         <>
                                                             <a
-                                                                href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}\n\nView Bill: ${typeof window !== 'undefined' ? window.location.origin : ''}/public/invoice/${inv._id}`)}`}
+                                                                href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}\n\n📄 Download PDF: ${typeof window !== 'undefined' ? window.location.origin : ''}/api/invoices/${inv._id}/download\n📱 View Bill: ${typeof window !== 'undefined' ? window.location.origin : ''}/public/invoice/${inv._id}`)}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 onClick={(e) => handleWhatsAppShare(e, inv)}

@@ -17,15 +17,19 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
     const customer = (invoice.customer as any);
     const user = await User.findById(invoice.userId).lean();
+    const businessName = (user as any)?.businessName || "Store";
+    const customerName = customer?.name || "Customer";
+    const amountStr = `₹${invoice.totalAmount.toLocaleString('en-IN')}`;
+    const shortId = id.slice(-6).toUpperCase();
 
     return {
-        title: `Invoice for ${customer?.name || 'Customer'}`,
-        description: `View and download your professional digital bill for ₹${invoice.totalAmount.toLocaleString('en-IN')}.`,
+        title: `Invoice #${shortId} — ${customerName}`,
+        description: `Official Digital Bill from ${businessName} for ${amountStr}. View details or download PDF receipt.`,
         openGraph: {
-            title: `Digital Invoice - ${customer?.name}`,
-            description: `Total: ₹${invoice.totalAmount.toLocaleString('en-IN')} | Professional Bill from ${(user as any)?.businessName || 'Primebake'}`,
+            title: `🧾 Invoice #${shortId} (${amountStr}) — ${businessName}`,
+            description: `Hello ${customerName}, your digital receipt of ${amountStr} from ${businessName} is ready. Tap to view or download.`,
             type: 'website',
-            images: (user as any)?.logoUrl ? [encodeURI((user as any).logoUrl)] : ["/primebake-logo.png"],
+            images: (user as any)?.logoUrl ? [encodeURI((user as any).logoUrl)] : undefined,
         }
     };
 }
