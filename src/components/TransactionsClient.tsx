@@ -178,6 +178,16 @@ export default function TransactionsClient({
         router.push(`${pathname}?${params.toString()}`);
     };
 
+    const getExportUrl = () => {
+        const params = new URLSearchParams();
+        if (searchQuery.trim()) params.set("search", searchQuery.trim());
+        if (datePreset && datePreset !== "all") params.set("datePreset", datePreset);
+        if (startDate) params.set("startDate", startDate);
+        if (endDate) params.set("endDate", endDate);
+        const q = params.toString();
+        return `/api/v1/export-csv${q ? `?${q}` : ""}`;
+    };
+
     const buildTransactionWhatsAppUrls = (inv: any) => {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
         const dateStr = inv.date ? new Date(inv.date).toLocaleDateString('en-IN') : '';
@@ -241,7 +251,21 @@ export default function TransactionsClient({
                         </button>
                     )}
                 </div>
-                <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                    <a
+                        href={getExportUrl()}
+                        download
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50 text-slate-700 hover:text-emerald-800 text-xs md:text-sm font-bold rounded-xl transition-all shadow-sm active:scale-95"
+                        title={isFiltered ? `Export ${totalCount} filtered bills to CSV` : "Export all bills to CSV"}
+                    >
+                        <FileDown size={16} className="text-emerald-600" />
+                        <span>Export CSV</span>
+                        {isFiltered && (
+                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] rounded-full font-black border border-emerald-200">
+                                {totalCount}
+                            </span>
+                        )}
+                    </a>
                     <button
                         onClick={() => setIsAddCustomerOpen(true)}
                         className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs md:text-sm font-bold rounded-xl transition-all shadow-sm active:scale-95"
@@ -377,14 +401,25 @@ export default function TransactionsClient({
                             )}
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={handleResetAllFilters}
-                            className="inline-flex items-center gap-1 text-slate-500 hover:text-red-600 font-bold text-xs transition-colors ml-auto"
-                        >
-                            <RotateCcw size={13} />
-                            <span>Reset All Filters</span>
-                        </button>
+                        <div className="flex items-center gap-2.5 ml-auto">
+                            <a
+                                href={getExportUrl()}
+                                download
+                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-sm shadow-emerald-600/20 active:scale-95"
+                                title="Download these filtered transactions to CSV"
+                            >
+                                <FileDown size={13} />
+                                <span>Export Filtered ({totalCount})</span>
+                            </a>
+                            <button
+                                type="button"
+                                onClick={handleResetAllFilters}
+                                className="inline-flex items-center gap-1 text-slate-500 hover:text-red-600 font-bold text-xs transition-colors"
+                            >
+                                <RotateCcw size={13} />
+                                <span>Reset All</span>
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

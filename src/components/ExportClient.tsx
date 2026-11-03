@@ -50,16 +50,26 @@ export default function ExportClient({ customers, menuItems, invoices }: ExportC
     };
 
     const exportInvoices = () => {
-        const data = invoices.map(inv => ({
-            Invoice_ID: inv._id,
-            Date: new Date(inv.date).toLocaleDateString(),
-            Customer: inv.customer?.name || "Guest",
-            Customer_Phone: inv.customer?.phoneNumber || "",
-            Total_Items: inv.items.length,
-            Payment_Type: inv.paymentType || "Cash",
-            Total_Amount: inv.totalAmount,
-            Status: inv.status
-        }));
+        const data = invoices.map(inv => {
+            const itemsString = (inv.items || [])
+                .map((item: any) => `${item.name}${item.description ? ` [${item.description}]` : ''} (x${item.quantity})`)
+                .join(", ");
+            const recordDate = inv.date || inv.createdAt;
+
+            return {
+                Invoice_ID: inv._id ? String(inv._id).slice(-6).toUpperCase() : "",
+                Full_ID: String(inv._id || ""),
+                Date: recordDate ? new Date(recordDate).toLocaleDateString("en-IN") : "",
+                Time: recordDate ? new Date(recordDate).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "",
+                Customer: inv.customer?.name || "Guest",
+                Customer_Phone: inv.customer?.phoneNumber || "",
+                Items_Ordered: itemsString,
+                Total_Amount: inv.totalAmount,
+                Discount: inv.discountAmount || 0,
+                Payment_Type: inv.paymentType || "Cash",
+                Comment: inv.comment || "",
+            };
+        });
         downloadCSV(data, "Invoices_Transactions");
     };
 

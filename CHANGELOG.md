@@ -24,6 +24,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - **Universal Phone Number Normalization (`src/lib/phone-utils.ts`)**:
   - Standardized phone number normalization across the application (10-digit Indian numbers, leading-0 formats, international codes) ensuring seamless deep-linking without URL errors.
 
+#### Added — Filter-Aware CSV Export for Transactions
+- **Export Filtered Transactions to CSV**:
+  - Added 1-tap **"Export CSV"** button to the Transactions page top bar and active filter summary banner.
+  - Dynamically encodes all active search terms, date presets (`today`, `yesterday`, `week`, `month`), and custom date ranges (`startDate`, `endDate`).
+  - `/api/v1/export-csv` (and `/api/export-csv`) now extracts query parameters and generates tenant-isolated CSVs matching the filtered dataset with intelligent file naming (`transactions_today_2026-11-04.csv`, `transactions_search-Vijay_2026-11-04.csv`).
+  - Extracted shared query builder [`src/lib/transaction-query.ts`](file:///Users/rishabhjoshi/Desktop/Test-Antigravity/whatsapp-invoice-app/src/lib/transaction-query.ts) ensuring 100% filter parity between the UI view and the exported CSV.
+
 ---
 
 ## [1.3.1] — 2026-11-03

@@ -12,12 +12,13 @@ import { getEffectiveUserId } from "@/lib/auth-utils";
 import dbConnect from "@/lib/mongoose";
 import Invoice from "@/models/Invoice";
 import Papa from "papaparse";
+import { buildTransactionFilterQuery } from "@/lib/transaction-query";
 
 export const dynamic = "force-dynamic";
 
 const API_VERSION = "v1";
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
         // Require authentication — CSV export must be tenant-scoped
         const session = await auth();
@@ -28,22 +29,41 @@ export async function GET() {
             );
         }
 
+        const { searchParams } = new URL(request.url);
+        const search = (searchParams.get("search") || "").trim();
+        const datePreset = searchParams.get("datePreset") || undefined;
+        const startDate = searchParams.get("startDate") || undefined;
+        const endDate = searchParams.get("endDate") || undefined;
+
         await dbConnect();
 
-        // Scope to authenticated business owner's tenant
-        const invoices = await Invoice.find({ userId: effectiveUserId })
+        // Scope query to authenticated business owner's tenant with applied filters
+        const query = await buildTransactionFilterQuery({
+            effectiveUserId,
+            search,
+            datePreset,
+            startDate,
+            endDate,
+        });
+
+        const invoices = await Invoice.find(query)
             .populate("customer")
-            .sort({ date: -1 })
+            .sort({ createdAt: -1 })
             .lean();
 
         const csvData = invoices.map((inv: any) => {
             const cust = inv.customer as any;
-            const itemsString = inv.items
+            const itemsString = (inv.items || [])
                 .map((item: any) => `${item.name}${item.description ? ` [${item.description}]` : ''} (x${item.quantity})`)
                 .join(", ");
 
+            const recordDate = inv.date || inv.createdAt;
+
             return {
-                Date: new Date(inv.date).toLocaleDateString("en-IN"),
+                "Invoice ID": inv._id.toString().slice(-6).toUpperCase(),
+                "Full ID": inv._id.toString(),
+                Date: recordDate ? new Date(recordDate).toLocaleDateString("en-IN") : "",
+                Time: recordDate ? new Date(recordDate).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "",
                 "Customer Name": cust ? cust.name : "Guest",
                 "Phone Number": cust ? cust.phoneNumber : "",
                 "Items Ordered": itemsString,
@@ -55,7 +75,20 @@ export async function GET() {
         });
 
         const csvString = Papa.unparse(csvData);
-        const filename = `transactions_${new Date().toISOString().split("T")[0]}.csv`;
+
+        // Generate descriptive filename based on active filters
+        let filterSuffix = "";
+        if (datePreset && datePreset !== "all") {
+            filterSuffix += `_${datePreset}`;
+        } else if (startDate || endDate) {
+            filterSuffix += `_${startDate || "start"}_to_${endDate || "end"}`;
+        }
+        if (search) {
+            const safeSearchTag = search.slice(0, 15).replace(/[^a-zA-Z0-9]/g, "_");
+            filterSuffix += `_search-${safeSearchTag}`;
+        }
+
+        const filename = `transactions${filterSuffix}_${new Date().toISOString().split("T")[0]}.csv`;
 
         const res = new NextResponse(csvString, {
             status: 200,
