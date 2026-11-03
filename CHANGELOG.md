@@ -6,6 +6,27 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.3.1] — 2026-11-03
+
+### 🛡️ S3 Access Security Proxy & Multi-Tenant Dynamic SSR Branding
+
+#### Fixed — S3 AccessDenied Resolution & Public Download Route
+- **Secure Download Proxy (`/api/invoices/[id]/download`)**:
+  - Implemented streaming proxy route that serves invoice PDFs using server-side AWS credentials or generates short-lived presigned URLs.
+  - Resolves AWS S3 `403 AccessDenied` XML errors caused by standard bucket Block Public Access policies.
+  - Replaced raw direct S3 links in customer WhatsApp share text with branded public invoice URLs (`/public/invoice/[id]`).
+
+#### Fixed — Multi-Tenant Dynamic SSR Branding & Tab Icon Flash
+- **Server-Side Dynamic Metadata (`src/app/(dashboard)/layout.tsx`)**:
+  - Added `generateMetadata()` to query the authenticated user's store profile (`businessName` and `logoUrl`) from MongoDB during server-side rendering (SSR).
+  - Browser tab title and favicon now immediately match the active merchant's branding (e.g. `Bakingbros · Invoicing & POS` with custom logo) with zero initial flash of default template assets.
+  - Removed static root icons (`icon.png`, `apple-icon.png`) that previously took precedence over dynamic tenant icons.
+- **Top Header Bar & PDF Generation Hardening**:
+  - Top navigation bar now displays the active merchant's logo across all viewports.
+  - Eliminated hardcoded `"PRIMEBAKE RAW MATERIAL"` subtitle in generated invoice PDFs, replacing it with dynamic business naming (`${bizName.toUpperCase()} • OFFICIAL INVOICE`).
+
+---
+
 ## [1.3.0] — 2026-10-30
 
 ### ⚡ Direct Server-Side S3 Uploads (Zero CORS), Credit Notes & UI Resiliency
