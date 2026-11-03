@@ -3,7 +3,7 @@
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     LayoutDashboard,
     Users,
@@ -75,6 +75,25 @@ export default function DashboardLayoutClient({
     ];
 
     const currentTitle = navLinks.find(l => pathname.startsWith(l.href))?.label || "Workspace";
+
+    // Synchronize browser tab header (title & favicon) to user's business name & logo
+    useEffect(() => {
+        const businessName = user?.businessName || "Primebake";
+        document.title = `${businessName} · ${currentTitle}`;
+
+        if (user?.logoUrl) {
+            const iconLinks = document.querySelectorAll("link[rel*='icon'], link[rel='apple-touch-icon']");
+            iconLinks.forEach((link) => {
+                (link as HTMLLinkElement).href = user.logoUrl!;
+            });
+            if (iconLinks.length === 0) {
+                const newIcon = document.createElement("link");
+                newIcon.rel = "shortcut icon";
+                newIcon.href = user.logoUrl;
+                document.head.appendChild(newIcon);
+            }
+        }
+    }, [user?.businessName, user?.logoUrl, currentTitle]);
 
     const SidebarContent = () => (
         <div className="flex flex-col h-full bg-slate-900 text-slate-200">
@@ -214,13 +233,15 @@ export default function DashboardLayoutClient({
                             <Menu size={22} />
                         </button>
                         <div className="flex items-center gap-2.5">
-                            <img
-                                src={user.logoUrl || "/primebake-logo.png"}
-                                alt={user.businessName || "Primebake"}
-                                className="w-8 h-8 object-contain rounded-lg border border-slate-200 lg:hidden bg-white p-0.5 shadow-sm"
-                            />
-                            <span className="hidden sm:inline-block text-xs font-bold text-slate-400">
-                                {user.businessName || "Primebake"}
+                            {user.logoUrl ? (
+                                <img
+                                    src={user.logoUrl}
+                                    alt={user.businessName || "Store"}
+                                    className="w-7 h-7 object-contain rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm"
+                                />
+                            ) : null}
+                            <span className="hidden sm:inline-block text-xs font-bold text-slate-500">
+                                {user.businessName || "Workspace"}
                             </span>
                             <span className="hidden sm:inline-block text-slate-300">/</span>
                             <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">

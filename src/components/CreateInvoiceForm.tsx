@@ -212,11 +212,12 @@ export default function CreateInvoiceForm({
 
         doc.setFontSize(16);
         doc.setTextColor(30, 41, 59); // Slate-800
-        doc.text(initialUser?.businessName || "Primebake", textX, 19);
+        const bizName = initialUser?.businessName || "Primebake";
+        doc.text(bizName, textX, 19);
 
         doc.setFontSize(9);
         doc.setTextColor(148, 163, 184); // Slate-400
-        doc.text("PRIMEBAKE RAW MATERIAL", textX, 24);
+        doc.text(`${bizName.toUpperCase()} • OFFICIAL INVOICE`, textX, 24);
 
         // Header Divider
         doc.setDrawColor(241, 245, 249); // Slate-100
@@ -600,7 +601,7 @@ export default function CreateInvoiceForm({
                         />
                         <div>
                             <h3 className="text-2xl font-black text-gray-900 tracking-tight">{initialUser?.businessName || "Primebake"}</h3>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">Raw Material & Bakery Supplies</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">Official Invoice & Receipt</p>
                         </div>
                     </div>
                 </div>

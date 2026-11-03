@@ -15,8 +15,11 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://primebake.anewway.in"),
-  title: "Primebake",
-  description: "Primebake — Premium Digital Invoicing & POS Platform",
+  title: {
+    template: "%s · Invoicing & POS",
+    default: "Digital Invoicing & POS",
+  },
+  description: "Premium Digital Invoicing & POS Platform",
   manifest: "/manifest.json",
   openGraph: {
     type: "website",

@@ -13,7 +13,15 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
     const discountAmount = invoice.discountAmount || (subtotal > invoice.totalAmount ? subtotal - invoice.totalAmount : 0);
 
     useEffect(() => {
+        const businessName = user?.businessName || "Invoice";
+        document.title = `${businessName} · Bill #${invoice._id?.slice(-6).toUpperCase() || ''}`;
+
         if (user?.logoUrl) {
+            const iconLinks = document.querySelectorAll("link[rel*='icon'], link[rel='apple-touch-icon']");
+            iconLinks.forEach((link) => {
+                (link as HTMLLinkElement).href = user.logoUrl;
+            });
+
             fetch(user.logoUrl)
                 .then(r => r.blob())
                 .then(blob => {
@@ -23,7 +31,7 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
                 })
                 .catch(e => console.error("Logo fetch err", e));
         }
-    }, [user?.logoUrl]);
+    }, [user?.logoUrl, user?.businessName, invoice._id]);
     const generatePDF = () => {
         const doc = new jsPDF();
         const customer = invoice.customer;
@@ -50,10 +58,10 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
 
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
-        doc.text(user?.businessName || "Primebake", 14, 50);
+        doc.text(user?.businessName || "Store Invoice", 14, 50);
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text("Raw Material & Bakery Supplies", 14, 55);
+        doc.text("Official Invoice & Receipt", 14, 55);
 
         // Customer Info
         doc.setFontSize(12);
@@ -139,8 +147,8 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
                         className="w-16 h-16 object-contain rounded-2xl bg-white border p-1.5 shadow-sm"
                     />
                     <div>
-                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">{user?.businessName || "Primebake"}</h2>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">Raw Material & Bakery Supplies</p>
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">{user?.businessName || "Store Invoice"}</h2>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">Official Invoice & Receipt</p>
                     </div>
                 </div>
 
