@@ -6,7 +6,7 @@ import { fetchAccountMembers } from "@/app/actions/activity";
 import ActivityLogClient from "@/components/ActivityLogClient";
 
 export const metadata = {
-    title: "Activity Log & Audit Trail | Primebake",
+    title: "Activity Log & Audit Trail",
     description: "Account-wide chronological activity log of actions performed by administrators and staff members.",
 };
 
