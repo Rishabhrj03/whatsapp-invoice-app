@@ -37,11 +37,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Fixed flexbox shrinking and text truncation issues on categories with long names.
   - Added title tooltips to ensure long category titles remain fully readable.
 
-#### Added — Advanced Transaction Search & Date Range Presets
-- **Fast Filter Bar (`TransactionsClient.tsx` & `/transactions`)**:
-  - Instant multi-field search across customer name, phone number, and invoice IDs.
-  - Quick date filter presets: `Today`, `Yesterday`, `This Week`, `This Month`, and `Custom Range`.
-  - Dynamic KPI cards displaying live total revenue and bill count for filtered results.
+#### Added — Native WhatsApp PDF Document Delivery & Short-Lived S3 Presigning
+- **`WhatsAppCloudAdapter` (`src/lib/adapters/messaging/WhatsAppCloudAdapter.ts`)**:
+  - Delivers invoice PDFs as native documents directly into customer WhatsApp chats via Meta's Graph API.
+  - Leverages temporary 15-minute S3 presigned URLs (`getPresignedInvoiceDownloadUrl`) via `@aws-sdk/s3-request-presigner`, allowing WhatsApp's media servers to ingest the buffer without exposing public, long-lived URLs.
+  - Ensures maximum customer privacy and permanent offline file retention on the customer's phone storage (file never expires for the customer).
+- **Client-Side Web Share API File Attachment (`CreateInvoiceForm.tsx` & `TransactionsClient.tsx`)**:
+  - Native POS sharing attaches the PDF file directly to WhatsApp using `navigator.share({ files: [file] })` on mobile, tablet, and macOS counter registers without incurring Meta API fees.
+  - Fallback gracefully switches to standard `wa.me` links when file sharing is unavailable.
+- **Direct Download Action (`getInvoiceDownloadUrlAction`)**:
+  - Secure server action to generate short-lived presigned download URLs on demand for verified store owners and staff.
 
 ---
 

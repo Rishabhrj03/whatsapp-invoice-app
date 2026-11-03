@@ -7,13 +7,15 @@
  */
 import type { IMessagingAdapter } from './IMessagingAdapter';
 import { whatsAppWebAdapter } from './WhatsAppWebAdapter';
+import { whatsAppCloudAdapter } from './WhatsAppCloudAdapter';
 import { smsAdapter } from './SMSAdapter';
 
-export type MessagingChannel = 'whatsapp' | 'sms';
+export type MessagingChannel = 'whatsapp' | 'whatsapp-cloud' | 'sms';
 
 export class MessagingAdapterFactory {
     private static registry: Map<MessagingChannel, IMessagingAdapter> = new Map<MessagingChannel, IMessagingAdapter>([
         ['whatsapp' as const, whatsAppWebAdapter as IMessagingAdapter],
+        ['whatsapp-cloud' as const, whatsAppCloudAdapter as IMessagingAdapter],
         ['sms' as const, smsAdapter as IMessagingAdapter],
     ]);
 

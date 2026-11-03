@@ -131,6 +131,7 @@ export interface CustomerReportDTO {
 
 // ─── Messaging ───────────────────────────────────────────────────────────────
 export interface BillMessagePayload {
+    invoiceId?: string;
     customerName: string;
     customerPhone: string;
     businessName: string;
@@ -140,4 +141,6 @@ export interface BillMessagePayload {
     paymentType: PaymentType;
     date: string;
     template?: string;
+    pdfUrl?: string;
 }
+

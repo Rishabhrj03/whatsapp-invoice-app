@@ -71,6 +71,7 @@
 * **FR-08.1 WhatsApp Web Dispatch:** Formats order summary, items, payment method, and public invoice link into `wa.me/[phone]?text=[message]`.
 * **FR-08.2 SMS Text Message Dispatch:** Formats compact bill details into native `sms:[phone]?body=[message]` deep link.
 * **FR-08.3 Adapter Architecture:** Implemented via `IMessagingAdapter` and `MessagingAdapterFactory` for plug-and-play cloud SMS gateways.
+* **FR-08.4 WhatsApp Document Delivery (Native PDF Attachment):** Dispatches the invoice directly as an attached `.pdf` document via `WhatsAppCloudAdapter` (Meta Graph API) using a short-lived (15-minute) S3 presigned URL, or natively on POS devices via the Web Share API (`navigator.share({ files: [file] })`). Ensures zero long-lived public URL exposure and guarantees that the customer holds a permanent copy of their invoice on their device that never expires.
 
 ### FR-09: Public Invoice Portal
 * **FR-09.1 Public Access:** Accessible at `/public/invoice/[id]` without requiring customer login.

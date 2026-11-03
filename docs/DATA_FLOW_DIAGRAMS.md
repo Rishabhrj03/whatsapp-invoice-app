@@ -166,3 +166,43 @@ sequenceDiagram
     Action-->>Client: { success: true, publicUrl, objectKey }
     Client-->>User: Display Success / S3 Backup Guaranteed
 ```
+
+---
+
+## 6. DFD Level 2: WhatsApp Native Document Dispatch Sub-Process
+
+Shows how an invoice PDF is delivered directly as an attached document into the customer's WhatsApp chat using a short-lived (15-min) presigned S3 URL, ensuring maximum customer privacy and permanent offline availability.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cashier as Cashier / Store Staff
+    participant UI as POS UI (CreateInvoice / Transactions)
+    participant Action as sendBillMessage(invoiceId, 'whatsapp-cloud')
+    participant Service as InvoiceService
+    participant Adapter as WhatsAppCloudAdapter
+    participant S3 as AWS S3 (Bucket: primebake)
+    participant Meta as Meta WhatsApp Cloud API
+    actor Customer as Customer (WhatsApp App)
+
+    Cashier->>UI: Click "Attach & Send PDF via WhatsApp"
+    alt Path A: Native Device Share (Counter POS Terminal)
+        UI->>UI: navigator.share({ files: [pdfBlob], title, text })
+        UI->>Customer: Native OS share sheet launches WhatsApp with PDF attached
+        Note over Customer: PDF is immediately stored in customer's WhatsApp media!
+    else Path B: Programmatic Meta Cloud API
+        UI->>Action: sendBillMessage(invoiceId, 'whatsapp-cloud')
+        Action->>Service: generateBillMessageLink(invoiceId, ...)
+        Service->>Adapter: sendBill(payload)
+        Adapter->>S3: getPresignedInvoiceDownloadUrl('invoices/ID.pdf', 900)
+        S3-->>Adapter: 15-Minute Presigned Download URL
+        Adapter->>Meta: POST /v19.0/{phone-id}/messages (type: "document", link: presignedUrl)
+        Meta->>S3: Ingest PDF buffer within 15 minutes
+        S3-->>Meta: Binary PDF stream
+        Meta-->>Customer: Deliver PDF document directly into chat
+        Meta-->>Adapter: { success: true, messageId: wamid... }
+        Adapter-->>Action: ISendResult
+        Action-->>UI: Dispatched successfully
+        Note over S3,Customer: Presigned URL expires after 15m. PDF persists forever in WhatsApp!
+    end
+```

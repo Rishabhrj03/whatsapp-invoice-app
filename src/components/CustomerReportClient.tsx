@@ -237,15 +237,13 @@ export default function CustomerReportClient({ customer, invoices, totalSpend }:
                                                 >
                                                     View Bill
                                                 </Link>
-                                                {inv.pdfUrl && (
-                                                    <a
-                                                        href={inv.pdfUrl}
-                                                        target="_blank"
-                                                        className="inline-flex items-center justify-center min-h-[38px] px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl gap-1 transition-all"
-                                                    >
-                                                        <Download size={12} /> PDF
-                                                    </a>
-                                                )}
+                                                <a
+                                                    href={`/api/invoices/${inv._id}/download`}
+                                                    target="_blank"
+                                                    className="inline-flex items-center justify-center min-h-[38px] px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl gap-1 transition-all"
+                                                >
+                                                    <Download size={12} /> PDF
+                                                </a>
                                             </div>
                                         </div>
 
@@ -342,16 +340,14 @@ export default function CustomerReportClient({ customer, invoices, totalSpend }:
                                                         >
                                                             View →
                                                         </Link>
-                                                        {inv.pdfUrl && (
-                                                            <a
-                                                                href={inv.pdfUrl}
-                                                                target="_blank"
-                                                                onClick={e => e.stopPropagation()}
-                                                                className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
-                                                            >
-                                                                <Download size={10} /> PDF
-                                                            </a>
-                                                        )}
+                                                        <a
+                                                            href={`/api/invoices/${inv._id}/download`}
+                                                            target="_blank"
+                                                            onClick={e => e.stopPropagation()}
+                                                            className="text-[10px] font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+                                                        >
+                                                            <Download size={10} /> PDF
+                                                        </a>
                                                     </div>
                                                 </td>
                                             </tr>

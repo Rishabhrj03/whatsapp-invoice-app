@@ -332,27 +332,29 @@ export default function CreateInvoiceForm({
     const handleDirectShare = async () => {
         if (!successData) return;
 
-        const file = await getInvoiceFile(successData);
-        const customer = customers.find((c) => c._id === successData.customerId);
+        try {
+            const file = await getInvoiceFile(successData);
+            const customer = customers.find((c) => c._id === successData.customerId);
+            const businessName = initialUser?.businessName || "Primebake";
+            const shortId = invoiceId ? invoiceId.slice(-6).toUpperCase() : "";
 
-        const invoiceLink = pdfUrl || `${window.location.origin}/public/invoice/${invoiceId}`;
-        const shareData = {
-            files: [file],
-            title: `Invoice for ${customer?.name}`,
-            text: `Professional invoice for ${customer?.name} - View online: ${invoiceLink}`,
-        };
+            const shareData = {
+                files: [file],
+                title: `Invoice #${shortId} from ${businessName}`,
+                text: `*${businessName}* — Invoice #${shortId} for ₹${successData.totalAmount.toFixed(2)}. PDF receipt attached directly.`,
+            };
 
-        if (navigator.canShare && navigator.canShare(shareData)) {
-            try {
+            if (navigator.canShare && navigator.canShare(shareData)) {
                 await navigator.share(shareData);
                 setHasDownloaded(true);
-            } catch (err) {
-                console.error("Share failed", err);
-                // Fallback to standard WhatsApp link if sharing failed
+            } else {
                 handleWhatsAppSend();
             }
-        } else {
-            handleWhatsAppSend();
+        } catch (err: any) {
+            if (err.name !== 'AbortError') {
+                console.error("Direct document share failed, falling back:", err);
+                handleWhatsAppSend();
+            }
         }
     };
 
@@ -370,7 +372,7 @@ export default function CreateInvoiceForm({
         const businessName = initialUser?.businessName || "Primebake";
         const customerName = customer?.name || "Customer";
         const totalAmount = `₹${successData.totalAmount.toFixed(2)}`;
-        const invoiceLink = pdfUrl || `${window.location.origin}/public/invoice/${invoiceId}`;
+        const invoiceLink = `${window.location.origin}/public/invoice/${invoiceId}`;
 
         let itemDetailText = "";
         successData.items.forEach((item: any) => {
@@ -487,20 +489,23 @@ export default function CreateInvoiceForm({
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 text-left">
-                    {/* Share Directly (Preferred for Mobile) */}
+                    {/* Share Directly as WhatsApp Document (Preferred & Never Expires) */}
                     {canShare && !isGuest && (
-                        <div className="p-5 rounded-2xl border-2 border-blue-600 bg-blue-50/50 relative overflow-hidden group">
-                            <div className="absolute top-2 right-4 bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Recommended</div>
+                        <div className="p-5 rounded-2xl border-2 border-emerald-600 bg-emerald-50/50 relative overflow-hidden group">
+                            <div className="absolute top-2 right-4 bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Recommended</div>
                             <div className="flex items-start gap-4">
-                                <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">1</span>
+                                <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">1</span>
                                 <div className="flex-1">
-                                    <h4 className="font-bold text-gray-800">Share Directly (One-Click)</h4>
-                                    <p className="text-xs text-gray-500 mt-1">This will attach the PDF automatically using your device's native share menu.</p>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h4 className="font-black text-gray-900">Attach PDF Directly to WhatsApp</h4>
+                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md">Permanent & Private</span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 mt-1">Attaches the PDF file directly as a WhatsApp document. The customer stores the document permanently on their phone and it never expires.</p>
                                     <button
                                         onClick={handleDirectShare}
-                                        className="mt-4 w-full flex items-center justify-center gap-2 py-4 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-200 transition-all active:scale-95"
+                                        className="mt-4 w-full flex items-center justify-center gap-2 py-4 px-4 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl font-black text-sm shadow-lg shadow-emerald-200 transition-all active:scale-95"
                                     >
-                                        <Send size={18} /> Share Directly to WhatsApp
+                                        <Send size={18} /> Attach & Send PDF via WhatsApp
                                     </button>
                                 </div>
                             </div>

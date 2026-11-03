@@ -66,6 +66,7 @@ The **WhatsApp Digital Invoicing & POS Application** is a multi-tenant Point-of-
 * **FR-08.1 (WhatsApp Dispatch):** The system shall generate `wa.me` deep links formatting the invoice summary, line items, total amount, and public invoice link.
 * **FR-08.2 (SMS Text Dispatch):** The system shall generate native `sms:` deep links formatted for standard text messaging across mobile and desktop devices.
 * **FR-08.3 (Adapter Extensibility):** The messaging subsystem must use the Adapter and Strategy patterns to enable drop-in integrations with cloud SMS gateways (Twilio, AWS SNS, MSG91).
+* **FR-08.4 (Native WhatsApp Document Delivery):** The system dispatches invoices directly as attached `.pdf` documents via `WhatsAppCloudAdapter` (Meta Graph API) using a short-lived (15-minute) S3 presigned download URL (`getPresignedInvoiceDownloadUrl`), or on counter POS devices via the Web Share API (`navigator.share({ files: [file] })`). Ensures zero permanent public web exposure, maximum privacy, and indefinite offline document availability on the customer's device.
 
 ### 2.9 Public Invoice Portal & Cloud Storage (FR-09)
 * **FR-09.1:** Each invoice shall have a publicly shareable responsive web view at `/public/invoice/[id]` accessible by customers without requiring authentication.

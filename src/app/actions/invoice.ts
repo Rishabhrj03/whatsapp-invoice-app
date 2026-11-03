@@ -178,6 +178,19 @@ export async function updateInvoicePdfUrl(invoiceId: string, pdfUrl: string) {
     }
 }
 
+export async function getInvoiceDownloadUrlAction(invoiceId: string) {
+    try {
+        const effectiveUserId = await getEffectiveUserId();
+        if (!effectiveUserId) return { success: false, error: "Unauthorized" };
+
+        const { getPresignedInvoiceDownloadUrl } = await import("@/lib/s3");
+        const downloadUrl = await getPresignedInvoiceDownloadUrl(`invoices/${invoiceId}.pdf`, 900);
+        return { success: true, downloadUrl };
+    } catch (error: any) {
+        return { success: false, error: error.message || "Failed to generate download URL" };
+    }
+}
+
 export async function getUploadUrl(filename: string, contentType: string) {
     try {
         const session = await auth();

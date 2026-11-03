@@ -176,6 +176,39 @@ export default function TransactionsClient({
         router.push(`${pathname}?${params.toString()}`);
     };
 
+    const handleWhatsAppShare = async (e: React.MouseEvent, inv: any) => {
+        if (!inv.customer?.phoneNumber) return;
+
+        // If native Web Share is supported, try fetching the PDF directly to attach as document
+        if (typeof navigator !== "undefined" && navigator.canShare) {
+            try {
+                const downloadUrl = `/api/invoices/${inv._id}/download`;
+                const res = await fetch(downloadUrl);
+                if (res.ok && res.headers.get("content-type")?.includes("application/pdf")) {
+                    const blob = await res.blob();
+                    const shortId = inv._id.slice(-6).toUpperCase();
+                    const file = new File([blob], `Invoice-${shortId}.pdf`, { type: "application/pdf" });
+                    const shareData = {
+                        files: [file],
+                        title: `Invoice #${shortId}`,
+                        text: `*Invoice #${shortId}*\nTotal: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || "Cash"}\nPDF bill attached directly.`,
+                    };
+                    if (navigator.canShare(shareData)) {
+                        e.preventDefault();
+                        await navigator.share(shareData);
+                        return;
+                    }
+                }
+            } catch (err: any) {
+                if (err.name === "AbortError") {
+                    e.preventDefault();
+                    return;
+                }
+                console.warn("Native document share fallback to wa.me:", err);
+            }
+        }
+    };
+
     const getPaymentBadge = (paymentType: string) => {
         switch (paymentType) {
             case 'Cash':
@@ -442,11 +475,12 @@ export default function TransactionsClient({
                                         {inv.customer?.phoneNumber && (
                                             <>
                                                 <a
-                                                    href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}${inv.pdfUrl ? '\nView PDF: ' + inv.pdfUrl : ''}`)}`}
+                                                    href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}\n\nView Bill: ${typeof window !== 'undefined' ? window.location.origin : ''}/public/invoice/${inv._id}`)}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
+                                                    onClick={(e) => handleWhatsAppShare(e, inv)}
                                                     className="flex items-center justify-center gap-1.5 py-2 px-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] rounded-xl text-xs font-bold transition-colors min-h-[40px]"
-                                                    title="Send over WhatsApp"
+                                                    title="Send PDF document over WhatsApp"
                                                 >
                                                     <MessageCircle size={16} />
                                                     <span className="hidden xs:inline">WhatsApp</span>
@@ -556,11 +590,12 @@ export default function TransactionsClient({
                                                     {inv.customer?.phoneNumber && (
                                                         <>
                                                             <a
-                                                                href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}${inv.pdfUrl ? '\nView PDF: ' + inv.pdfUrl : ''}`)}`}
+                                                                href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}\n\nView Bill: ${typeof window !== 'undefined' ? window.location.origin : ''}/public/invoice/${inv._id}`)}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
+                                                                onClick={(e) => handleWhatsAppShare(e, inv)}
                                                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors"
-                                                                title="Send WhatsApp"
+                                                                title="Send PDF document over WhatsApp"
                                                             >
                                                                 <MessageCircle size={14} /> WhatsApp
                                                             </a>

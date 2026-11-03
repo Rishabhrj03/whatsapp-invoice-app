@@ -17,8 +17,10 @@ graph TD
     Transport -->|Business Orchestration| Services[Service Layer: src/lib/services/]
     Services -->|RBAC Guard / Calculations| Services
     Services -->|Channel Resolution| Factory[MessagingAdapterFactory]
-    Factory -->|Adapter 1| WA[WhatsAppWebAdapter]
-    Factory -->|Adapter 2| SMS[SMSAdapter]
+    Factory -->|Strategy 1| WA[WhatsAppWebAdapter (wa.me)]
+    Factory -->|Strategy 2| WAC[WhatsAppCloudAdapter (Native PDF Document)]
+    Factory -->|Strategy 3| SMS[SMSAdapter (sms:)]
+    WAC -->|15-Min Presigned Link| S3[(Amazon S3)]
     Services -->|Typed Data Operations| Repos[Repository Layer: src/lib/repositories/]
     Repos -->|Singleton Connection| Mongoose[(Mongoose ODM / MongoDB)]
 ```
@@ -66,15 +68,17 @@ graph TD
 
 ### 3.2 Adapter Pattern
 * **Omnichannel Messaging:**  
-  * `WhatsAppWebAdapter`: Translates the internal `BillMessagePayload` into a URL-encoded `wa.me` deep link.
+  * `WhatsAppCloudAdapter`: Dispatches invoices as native `.pdf` document attachments directly into the recipient's WhatsApp chat via Meta's Graph API. Uses a short-lived (15-minute) S3 presigned download URL (`getPresignedInvoiceDownloadUrl`), allowing WhatsApp's media workers to fetch and ingest the file into Meta's CDN without leaving long-lived public S3 objects exposed. Once delivered, the PDF is permanently stored in the customer's phone storage and **never expires for the customer**.
+  * `WhatsAppWebAdapter`: Translates the internal `BillMessagePayload` into a client-side URL-encoded `wa.me` deep link for zero-cost browser-based dispatch.
   * `SMSAdapter`: Translates the payload into an RFC-compliant `sms:` deep link.
+  * **Counter Terminal Native Share (Web Share API)**: `CreateInvoiceForm` and `TransactionsClient` leverage `navigator.share({ files: [pdfFile] })` on mobile/tablet counter registers, enabling cashiers to attach the actual PDF document directly to WhatsApp without incurring Meta API fees.
   * Callers deal exclusively with `IMessagingAdapter.sendBill()`.
 
 ### 3.3 Factory & Strategy Pattern
 * **`MessagingAdapterFactory`:**  
   Maintains a registry of available messaging strategies:
   ```typescript
-  const adapter = MessagingAdapterFactory.getAdapter('whatsapp'); // or 'sms'
+  const adapter = MessagingAdapterFactory.getAdapter('whatsapp-cloud'); // or 'whatsapp' | 'sms'
   await adapter.sendBill(payload);
   ```
   Enables runtime strategy resolution and dynamic third-party adapter registration.

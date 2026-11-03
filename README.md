@@ -18,8 +18,10 @@ A production-grade, multi-tenant Point-of-Sale (POS) and digital billing platfor
   * **Portaled Item Catalog**: `MenuSelector` dialog portaled to `document.body` via React 19 `createPortal` with hover tooltips for full item names.
   * **Line Item Customization Modal**: Dedicated popup to record custom cake flavor, weight, custom notes, and quick preset chips (`Custom Cake`, `Eggless`, `1.5 kg`, `Special Message`).
   * **Credit Notes & Returns**: Full support for negative line-item prices and negative grand totals to handle returns, refund slips, and deposit deductions.
-* **📲 Omnichannel Bill Dispatch**:
-  * Formats clean order summaries into WhatsApp `wa.me` deep links.
+* **📲 Omnichannel Bill Dispatch & WhatsApp Document Delivery**:
+  * **Native PDF Document Delivery (`WhatsAppCloudAdapter`)**: Sends the invoice directly as an attached `.pdf` document via Meta's WhatsApp Cloud API using a 15-minute short-lived S3 presigned URL. S3 objects remain private, and the customer stores the document permanently on their phone—the invoice **never expires for the customer**.
+  * **Counter Terminal Native Share (`Web Share API`)**: POS cashiers on mobile, tablet, or Mac registers can attach the generated PDF directly to WhatsApp with 1 tap via `navigator.share({ files: [file] })` without vendor API fees.
+  * Formats clean order summaries into WhatsApp `wa.me` deep links as fallback.
   * Native SMS text deep links (`sms:`) for non-WhatsApp users.
   * Public client bill receipt portal at `/public/invoice/[id]` with print-ready thermal receipt and PDF generation.
 * **☁️ Zero-CORS Direct Cloud Storage (`uploadFileDirect`)**:

@@ -141,6 +141,7 @@ export class InvoiceService {
         const invoiceUrl = `${appBaseUrl}/public/invoice/${invoice._id}`;
 
         const result = await adapter.sendBill({
+            invoiceId: invoice._id,
             customerName: invoice.customer.name,
             customerPhone: invoice.customer.phoneNumber,
             businessName,
@@ -149,6 +150,7 @@ export class InvoiceService {
             invoiceUrl,
             paymentType: invoice.paymentType,
             date: new Date(invoice.date).toLocaleDateString('en-IN'),
+            pdfUrl: invoice.pdfUrl,
         });
 
         return result;
