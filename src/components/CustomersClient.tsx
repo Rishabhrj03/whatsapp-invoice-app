@@ -7,6 +7,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ConfirmModal from "./ConfirmModal";
 import Pagination from "./Pagination";
+import { normalizeWhatsAppPhone } from "@/lib/phone-utils";
 
 interface CustomerData {
     _id: string;
@@ -280,7 +281,7 @@ export default function CustomersClient({ initialCustomers, currentPage, totalPa
                                         </Link>
                                         {customer.phoneNumber && (
                                             <a
-                                                href={`https://wa.me/${customer.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + customer.phoneNumber.replace(/\D/g, '') : customer.phoneNumber.replace(/\D/g, '')}?text=${encodeURIComponent('Hello ' + customer.name + ', ')}`}
+                                                href={`https://api.whatsapp.com/send?phone=${normalizeWhatsAppPhone(customer.phoneNumber)}&text=${encodeURIComponent('Hello ' + customer.name + ', ')}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center justify-center gap-1.5 py-2 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all min-h-[40px]"
@@ -358,7 +359,7 @@ export default function CustomersClient({ initialCustomers, currentPage, totalPa
                                                     </Link>
                                                     {customer.phoneNumber && (
                                                         <a
-                                                            href={`https://wa.me/${customer.phoneNumber.replace(/\D/g, '').length === 10 ? '91' + customer.phoneNumber.replace(/\D/g, '') : customer.phoneNumber.replace(/\D/g, '')}?text=${encodeURIComponent('Hello ' + customer.name + ', ')}`}
+                                                            href={`https://api.whatsapp.com/send?phone=${normalizeWhatsAppPhone(customer.phoneNumber)}&text=${encodeURIComponent('Hello ' + customer.name + ', ')}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all"

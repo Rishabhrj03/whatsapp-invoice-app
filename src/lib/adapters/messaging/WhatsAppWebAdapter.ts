@@ -7,15 +7,14 @@
  */
 import type { IMessagingAdapter, ISendResult } from './IMessagingAdapter';
 import type { BillMessagePayload } from '@/types/domain';
+import { normalizeWhatsAppPhone } from '@/lib/phone-utils';
 
 export class WhatsAppWebAdapter implements IMessagingAdapter {
-    readonly channel = 'WhatsApp Web (wa.me)';
+    readonly channel = 'WhatsApp Web (api.whatsapp.com)';
 
     /** Normalises an Indian mobile number to international format */
     private formatPhone(raw: string): string {
-        const digits = raw.replace(/\D/g, '');
-        if (digits.length === 10) return `91${digits}`;
-        return digits; // already includes country code
+        return normalizeWhatsAppPhone(raw);
     }
 
     /** Builds the bill text from a template or the default format */
@@ -59,7 +58,7 @@ export class WhatsAppWebAdapter implements IMessagingAdapter {
         }
 
         const message = this.buildMessage(payload);
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+        const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
 
         return { success: true, ref: url };
     }

@@ -10,10 +10,12 @@ interface AppVersionProps {
     className?: string;
 }
 
-const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.3.0";
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.3.2";
 
 const CHANGELOG_SUMMARY = [
-    { version: "1.3.0", date: "Oct 2026", label: "Current", notes: "Direct Server-Side S3 uploads (Zero-CORS), negative line item & total pricing, portaled item selector, and transaction date range presets" },
+    { version: "1.3.2", date: "Nov 2026", label: "Current", notes: "WhatsApp contact selector, eliminated send-to-self bug, popup blocker bypass, and streamlined dispatch hub" },
+    { version: "1.3.1", date: "Nov 2026", label: "Stable", notes: "S3 403 access proxy, dynamic multi-tenant SSR branding & favicons, dynamic PDF business header" },
+    { version: "1.3.0", date: "Oct 2026", label: "Stable", notes: "Direct Server-Side S3 uploads (Zero-CORS), negative line item & total pricing, portaled item selector, and transaction date range presets" },
     { version: "1.2.0", date: "Oct 2026", label: "Stable", notes: "Real-time item descriptions, custom cake customization popup, and invoice item notes" },
     { version: "1.1.0", date: "Oct 2026", label: "Stable", notes: "Activity Log / Audit Trail system, multi-tenant booking isolation, production DB config" },
     { version: "1.0.0", date: "Oct 2026", label: "Stable", notes: "SOLID architecture, RBAC, rate limiting, API v1, responsive UI" },

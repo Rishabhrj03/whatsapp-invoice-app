@@ -6,6 +6,7 @@ import { Plus, Search, Calendar, Clock, MapPin, Truck, AlertCircle, CheckCircle2
 import { createAdvanceBooking, updateBookingStatus, updateAdvanceBookingDetails, completeAdvanceBooking } from "@/app/actions/booking";
 import { getUploadUrl, uploadFileDirect } from "@/app/actions/invoice";
 import Pagination from "./Pagination";
+import { normalizeWhatsAppPhone } from "@/lib/phone-utils";
 
 interface BookingsClientProps {
     initialBookings: any[];
@@ -256,10 +257,13 @@ export default function BookingsClient({ initialBookings, settings, currentPage,
                 if (!editingBooking) {
                     const text = `*New Advance Booking Received*\n\nHello ${payload.customerName},\nYour booking for ${payload.type} on ${payload.deliveryDate} at ${payload.deliveryTime} has been confirmed.\n\n*Total Amount:* ₹${payload.totalAmount}\n*Advance Paid:* ₹${payload.advanceAmount}\n\nThank you!`;
                     const encodedText = encodeURIComponent(text);
-                    let phone = payload.phoneNumber.replace(/\D/g, "");
-                    if (phone.length === 10) phone = `91${phone}`;
+                    const phone = normalizeWhatsAppPhone(payload.phoneNumber);
 
-                    window.open(`https://wa.me/${phone}?text=${encodedText}`, "_blank");
+                    if (phone) {
+                        window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodedText}`, "_blank");
+                    } else {
+                        window.open(`https://api.whatsapp.com/send?text=${encodedText}`, "_blank");
+                    }
                 }
                 setTimeout(() => window.location.reload(), 500);
             } else {

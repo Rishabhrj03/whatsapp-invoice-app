@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 Format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] — 2026-11-04
+
+### 💬 WhatsApp Dispatch Hub, Contact Selector & Reliability Hardening
+
+#### Fixed — WhatsApp Message Routing to Self & Pop-up Blocker Resolution
+- **Removed Web Share API Hijacking**:
+  - Eliminated `navigator.share({ files: [...] })` click interception in `TransactionsClient` and `CreateInvoiceForm` that previously caused macOS/iOS share sheets to open WhatsApp without a recipient parameter (routing bills to the user's personal "Message yourself" chat).
+  - Switched to direct HTML `<a>` links using `https://api.whatsapp.com/send?phone=...` with `target="_blank"`, bypassing browser popup blockers and async event loop timing issues.
+- **Added "Choose Contact on WhatsApp" Selector**:
+  - Implemented direct chat picker integration (`https://api.whatsapp.com/send?text=...`) on both Transactions page (mobile cards & desktop table) and the Invoice Ready modal.
+  - Allows merchants and cashiers to send bills to any contact, driver, accountant, partner, or WhatsApp group with 1 tap.
+- **Redesigned Invoice Ready Screen**:
+  - Removed confusing nested flows ("2 option ka 2 option" and broken "Open & attach" multi-step flow).
+  - Introduced clean, unified **Invoice Dispatch Center**:
+    - Direct Customer WhatsApp dispatch banner with customer name & normalized phone.
+    - One-tap "Choose Contact on WhatsApp" option.
+    - Utility tools: Direct PDF Download, Thermal/Receipt Print Bill, and 1-tap "Copy Bill Message & Links" with visual feedback.
+- **Universal Phone Number Normalization (`src/lib/phone-utils.ts`)**:
+  - Standardized phone number normalization across the application (10-digit Indian numbers, leading-0 formats, international codes) ensuring seamless deep-linking without URL errors.
+
 ---
 
 ## [1.3.1] — 2026-11-03

@@ -20,13 +20,15 @@ import {
     X,
     Filter,
     CalendarDays,
-    RotateCcw
+    RotateCcw,
+    Users
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import AddCustomerModal from "./AddCustomerModal";
 import EditInvoiceModal from "./EditInvoiceModal";
 import Pagination from "./Pagination";
+import { normalizeWhatsAppPhone } from "@/lib/phone-utils";
 
 interface TransactionsClientProps {
     initialInvoices: any[];
@@ -176,37 +178,17 @@ export default function TransactionsClient({
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    const handleWhatsAppShare = async (e: React.MouseEvent, inv: any) => {
-        if (!inv.customer?.phoneNumber) return;
+    const buildTransactionWhatsAppUrls = (inv: any) => {
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        const dateStr = inv.date ? new Date(inv.date).toLocaleDateString('en-IN') : '';
+        const text = `*Bill from your order*\nDate: ${dateStr}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}\n\n📄 Download PDF: ${origin}/api/invoices/${inv._id}/download\n📱 View Bill: ${origin}/public/invoice/${inv._id}`;
+        const encodedText = encodeURIComponent(text);
+        const normalizedPhone = normalizeWhatsAppPhone(inv.customer?.phoneNumber);
 
-        // If native Web Share is supported, try fetching the PDF directly to attach as document
-        if (typeof navigator !== "undefined" && navigator.canShare) {
-            try {
-                const downloadUrl = `/api/invoices/${inv._id}/download`;
-                const res = await fetch(downloadUrl);
-                if (res.ok && res.headers.get("content-type")?.includes("application/pdf")) {
-                    const blob = await res.blob();
-                    const shortId = inv._id.slice(-6).toUpperCase();
-                    const file = new File([blob], `Invoice-${shortId}.pdf`, { type: "application/pdf" });
-                    const shareData = {
-                        files: [file],
-                        title: `Invoice #${shortId}`,
-                        text: `*Invoice #${shortId}*\nTotal: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || "Cash"}\nPDF bill attached directly.`,
-                    };
-                    if (navigator.canShare(shareData)) {
-                        e.preventDefault();
-                        await navigator.share(shareData);
-                        return;
-                    }
-                }
-            } catch (err: any) {
-                if (err.name === "AbortError") {
-                    e.preventDefault();
-                    return;
-                }
-                console.warn("Native document share fallback to wa.me:", err);
-            }
-        }
+        return {
+            customerUrl: normalizedPhone ? `https://api.whatsapp.com/send?phone=${normalizedPhone}&text=${encodedText}` : null,
+            contactPickerUrl: `https://api.whatsapp.com/send?text=${encodedText}`,
+        };
     };
 
     const getPaymentBadge = (paymentType: string) => {
@@ -462,47 +444,63 @@ export default function TransactionsClient({
                                     </div>
 
                                     {/* Touch-Friendly Action Bar */}
-                                    <div className="flex items-center gap-2 pt-1">
+                                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
                                         <Link
                                             href={`/public/invoice/${inv._id}`}
                                             target="_blank"
-                                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors min-h-[40px]"
+                                            className="flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
                                         >
-                                            <span>View Bill</span>
-                                            <ArrowRight size={14} />
+                                            <span>View</span>
+                                            <ArrowRight size={13} />
                                         </Link>
 
-                                        {inv.customer?.phoneNumber && (
-                                            <>
-                                                <a
-                                                    href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}\n\n📄 Download PDF: ${typeof window !== 'undefined' ? window.location.origin : ''}/api/invoices/${inv._id}/download\n📱 View Bill: ${typeof window !== 'undefined' ? window.location.origin : ''}/public/invoice/${inv._id}`)}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => handleWhatsAppShare(e, inv)}
-                                                    className="flex items-center justify-center gap-1.5 py-2 px-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] rounded-xl text-xs font-bold transition-colors min-h-[40px]"
-                                                    title="Send PDF document over WhatsApp"
-                                                >
-                                                    <MessageCircle size={16} />
-                                                    <span className="hidden xs:inline">WhatsApp</span>
-                                                </a>
-                                                <a
-                                                    href={`sms:${inv.customer.phoneNumber.replace(/\D/g,'')}?body=${encodeURIComponent(`Dear ${inv.customer.name || 'Customer'}, your bill of Rs. ${inv.totalAmount} dated ${new Date(inv.date).toLocaleDateString('en-IN')} is ready.`)}`}
-                                                    className="flex items-center justify-center gap-1.5 py-2 px-3 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl text-xs font-bold transition-colors min-h-[40px]"
-                                                    title="Send over SMS"
-                                                >
-                                                    <MessageSquare size={16} />
-                                                    <span className="hidden xs:inline">SMS</span>
-                                                </a>
-                                            </>
-                                        )}
+                                        {(() => {
+                                            const { customerUrl, contactPickerUrl } = buildTransactionWhatsAppUrls(inv);
+                                            return (
+                                                <>
+                                                    {customerUrl && (
+                                                        <a
+                                                            href={customerUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center justify-center gap-1 py-2 px-2.5 bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#128C7E] rounded-xl text-xs font-bold transition-colors min-h-[38px]"
+                                                            title="Send directly to customer on WhatsApp"
+                                                        >
+                                                            <MessageCircle size={15} />
+                                                            <span>WhatsApp</span>
+                                                        </a>
+                                                    )}
+                                                    <a
+                                                        href={contactPickerUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center justify-center gap-1 py-2 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
+                                                        title="Choose contact on WhatsApp"
+                                                    >
+                                                        <Users size={15} />
+                                                        <span>Contact</span>
+                                                    </a>
+                                                    {inv.customer?.phoneNumber && (
+                                                        <a
+                                                            href={`sms:${inv.customer.phoneNumber.replace(/\D/g,'')}?body=${encodeURIComponent(`Dear ${inv.customer.name || 'Customer'}, your bill of Rs. ${inv.totalAmount} dated ${new Date(inv.date).toLocaleDateString('en-IN')} is ready.`)}`}
+                                                            className="flex items-center justify-center gap-1 py-2 px-2.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
+                                                            title="Send over SMS"
+                                                        >
+                                                            <MessageSquare size={15} />
+                                                            <span className="hidden xs:inline">SMS</span>
+                                                        </a>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
 
                                         {isOwner && (
                                             <button
                                                 onClick={() => setEditingInvoice(inv)}
-                                                className="flex items-center justify-center gap-1 py-2 px-3 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl text-xs font-bold transition-colors min-h-[40px]"
+                                                className="flex items-center justify-center gap-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
                                                 title="Edit Bill (Owner only)"
                                             >
-                                                <Edit3 size={15} />
+                                                <Edit3 size={14} />
                                                 <span className="hidden xs:inline">Edit</span>
                                             </button>
                                         )}
@@ -587,27 +585,42 @@ export default function TransactionsClient({
                                                         <ArrowRight size={13} />
                                                     </Link>
 
-                                                    {inv.customer?.phoneNumber && (
-                                                        <>
-                                                            <a
-                                                                href={`https://wa.me/${inv.customer.phoneNumber.replace(/\D/g,'').length === 10 ? '91' + inv.customer.phoneNumber.replace(/\D/g,'') : inv.customer.phoneNumber.replace(/\D/g,'')}?text=${encodeURIComponent(`*Bill from your order*\nDate: ${new Date(inv.date).toLocaleDateString('en-IN')}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}\n\n📄 Download PDF: ${typeof window !== 'undefined' ? window.location.origin : ''}/api/invoices/${inv._id}/download\n📱 View Bill: ${typeof window !== 'undefined' ? window.location.origin : ''}/public/invoice/${inv._id}`)}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                onClick={(e) => handleWhatsAppShare(e, inv)}
-                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors"
-                                                                title="Send PDF document over WhatsApp"
-                                                            >
-                                                                <MessageCircle size={14} /> WhatsApp
-                                                            </a>
-                                                            <a
-                                                                href={`sms:${inv.customer.phoneNumber.replace(/\D/g,'')}?body=${encodeURIComponent(`Dear ${inv.customer.name || 'Customer'}, your bill of Rs. ${inv.totalAmount} dated ${new Date(inv.date).toLocaleDateString('en-IN')} is ready.`)}`}
-                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-bold transition-colors"
-                                                                title="Send Text Message"
-                                                            >
-                                                                <MessageSquare size={14} /> SMS
-                                                            </a>
-                                                        </>
-                                                    )}
+                                                    {(() => {
+                                                        const { customerUrl, contactPickerUrl } = buildTransactionWhatsAppUrls(inv);
+                                                        return (
+                                                            <>
+                                                                {customerUrl && (
+                                                                    <a
+                                                                        href={customerUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors"
+                                                                        title={`Send WhatsApp directly to ${inv.customer.phoneNumber}`}
+                                                                    >
+                                                                        <MessageCircle size={14} /> WhatsApp
+                                                                    </a>
+                                                                )}
+                                                                <a
+                                                                    href={contactPickerUrl}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-lg text-xs font-bold transition-colors"
+                                                                    title="Choose any WhatsApp contact or group to send bill"
+                                                                >
+                                                                    <Users size={14} /> Choose Contact
+                                                                </a>
+                                                                {inv.customer?.phoneNumber && (
+                                                                    <a
+                                                                        href={`sms:${inv.customer.phoneNumber.replace(/\D/g,'')}?body=${encodeURIComponent(`Dear ${inv.customer.name || 'Customer'}, your bill of Rs. ${inv.totalAmount} dated ${new Date(inv.date).toLocaleDateString('en-IN')} is ready.`)}`}
+                                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-bold transition-colors"
+                                                                        title="Send Text Message"
+                                                                    >
+                                                                        <MessageSquare size={14} /> SMS
+                                                                    </a>
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
 
                                                     {isOwner && (
                                                         <button

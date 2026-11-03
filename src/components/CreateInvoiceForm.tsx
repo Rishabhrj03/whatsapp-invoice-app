@@ -6,7 +6,7 @@ import {
     Plus, Trash2, Send, FileDown, Eye, Edit2,
     CheckCircle, UserPlus, ShoppingBag, CreditCard,
     ChevronRight, Calendar, Info, Tag, Check, Printer, ArrowLeft, Minus, Percent,
-    FileText, Edit3, X
+    FileText, Edit3, X, MessageCircle, Users, Copy
 } from "lucide-react";
 // jspdf and jspdf-autotable removed for dynamic import optimization
 import CustomerSelector from "./CustomerSelector";
@@ -15,6 +15,7 @@ import AddCustomerModal from "./AddCustomerModal";
 import CreateCategoryModal from "./CreateCategoryModal";
 import CategorySelector from "./CategorySelector";
 import { useRouter } from "next/navigation";
+import { normalizeWhatsAppPhone } from "@/lib/phone-utils";
 
 export default function CreateInvoiceForm({
     customers: initialCustomers,
@@ -52,6 +53,7 @@ export default function CreateInvoiceForm({
     const [canShare, setCanShare] = useState(false);
     const [currentDate, setCurrentDate] = useState("");
     const [logoBase64, setLogoBase64] = useState<string>("");
+    const [copiedText, setCopiedText] = useState(false);
 
     const openDescriptionModal = (index: number) => {
         setDescriptionModalIndex(index);
@@ -330,55 +332,19 @@ export default function CreateInvoiceForm({
         setHasDownloaded(true);
     };
 
-    const handleDirectShare = async () => {
-        if (!successData) return;
-
-        try {
-            const file = await getInvoiceFile(successData);
-            const customer = customers.find((c) => c._id === successData.customerId);
-            const businessName = initialUser?.businessName || "Primebake";
-            const shortId = invoiceId ? invoiceId.slice(-6).toUpperCase() : "";
-
-            const shareData = {
-                files: [file],
-                title: `Invoice #${shortId} from ${businessName}`,
-                text: `*${businessName}* — Invoice #${shortId} for ₹${successData.totalAmount.toFixed(2)}. PDF receipt attached directly.`,
-            };
-
-            if (navigator.canShare && navigator.canShare(shareData)) {
-                await navigator.share(shareData);
-                setHasDownloaded(true);
-            } else {
-                handleWhatsAppSend();
-            }
-        } catch (err: any) {
-            if (err.name !== 'AbortError') {
-                console.error("Direct document share failed, falling back:", err);
-                handleWhatsAppSend();
-            }
-        }
-    };
-
-    const handleWhatsAppSend = () => {
-        if (!successData) return;
-
-        // If user hasn't downloaded, trigger it now
-        if (!hasDownloaded) {
-            generatePDF(successData);
-        }
+    const buildInvoiceMessage = () => {
+        if (!successData) return "";
 
         const customer = customers.find((c) => c._id === successData.customerId);
-        if (!customer) return;
-
         const businessName = initialUser?.businessName || "Primebake";
         const customerName = customer?.name || "Customer";
-        const totalAmount = `₹${successData.totalAmount.toFixed(2)}`;
-        const origin = window.location.origin;
+        const totalAmount = `₹${Number(successData.totalAmount || 0).toFixed(2)}`;
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
         const digitalBillUrl = `${origin}/public/invoice/${invoiceId}`;
         const directPdfUrl = `${origin}/api/invoices/${invoiceId}/download`;
 
         let itemDetailText = "";
-        successData.items.forEach((item: any) => {
+        successData.items?.forEach((item: any) => {
             const desc = item.description ? ` (${item.description})` : "";
             itemDetailText += `- ${item.name}${desc} x${item.quantity} = ₹${(item.price * item.quantity).toFixed(2)}\n`;
         });
@@ -403,12 +369,7 @@ export default function CreateInvoiceForm({
             text += `📱 *View Digital Bill:* ${digitalBillUrl}\n\n`;
             text += `Thank you for choosing ${businessName}!`;
         }
-
-        const encodedText = encodeURIComponent(text);
-        let phone = customer.phoneNumber.replace(/\D/g, "");
-        if (phone.length === 10) phone = `91${phone}`;
-
-        window.open(`https://wa.me/${phone}?text=${encodedText}`, "_blank");
+        return text;
     };
 
     const handleSubmit = async () => {
@@ -467,110 +428,160 @@ export default function CreateInvoiceForm({
     if (successData) {
         const customer = customers.find((c) => c._id === successData.customerId);
         const isGuest = !successData.customerId || customer?.name?.toLowerCase() === "guest";
+        const normalizedPhone = normalizeWhatsAppPhone(customer?.phoneNumber);
+        const messageText = buildInvoiceMessage();
+        const encodedMessage = encodeURIComponent(messageText);
+        const customerWhatsAppUrl = normalizedPhone ? `https://api.whatsapp.com/send?phone=${normalizedPhone}&text=${encodedMessage}` : null;
+        const chooseContactWhatsAppUrl = `https://api.whatsapp.com/send?text=${encodedMessage}`;
+        const shortId = invoiceId ? invoiceId.slice(-6).toUpperCase() : "";
+
+        const handleCopy = async () => {
+            try {
+                await navigator.clipboard.writeText(messageText);
+                setCopiedText(true);
+                setTimeout(() => setCopiedText(false), 2500);
+            } catch (err) {
+                console.error("Clipboard copy error:", err);
+            }
+        };
+
+        const resetForm = () => {
+            setSuccessData(null);
+            setIsPreview(false);
+            setItems([]);
+            setCustomerId("");
+            setComment("");
+            setHasDownloaded(false);
+            setCopiedText(false);
+        };
 
         return (
-            <div className="bg-white p-6 md:p-12 rounded-3xl shadow-xl border border-green-100 text-center space-y-8 max-w-2xl mx-auto animate-in fade-in zoom-in duration-300 relative">
+            <div className="bg-white p-6 md:p-10 rounded-3xl shadow-xl border border-emerald-100 text-center space-y-6 max-w-2xl mx-auto animate-in fade-in zoom-in duration-300 relative">
                 <button
-                    onClick={() => {
-                        setSuccessData(null);
-                        setIsPreview(false);
-                        setItems([]);
-                        setCustomerId("");
-                        setComment("");
-                        setHasDownloaded(false);
-                    }}
-                    className="absolute top-6 left-6 text-gray-400 hover:text-gray-800 text-xs font-bold flex items-center gap-1 transition-colors"
+                    onClick={resetForm}
+                    className="absolute top-6 left-6 text-gray-400 hover:text-gray-800 text-xs font-bold flex items-center gap-1.5 transition-colors py-1 px-2.5 rounded-lg hover:bg-slate-100"
                 >
-                    <ArrowLeft size={14} /> Go back
+                    <ArrowLeft size={15} /> Back
                 </button>
-                <div className="w-20 h-20 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                    <CheckCircle size={40} />
+
+                {/* Celebration Icon */}
+                <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner border border-emerald-100">
+                    <CheckCircle size={36} />
                 </div>
 
-                <div className="space-y-2">
-                    <h2 className="text-3xl font-black text-gray-900">Invoice Ready!</h2>
-                    <p className="text-gray-500 font-medium">Send the professional PDF bill directly to your customer.</p>
+                {/* Header */}
+                <div className="space-y-1">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100/70 px-3 py-1 rounded-full">
+                        Invoice #{shortId} Ready
+                    </span>
+                    <h2 className="text-3xl font-black text-gray-900 pt-2">
+                        ₹{Number(successData.totalAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </h2>
+                    <p className="text-xs font-semibold text-gray-500">
+                        {isGuest ? (
+                            <span>Guest Customer • Cash Sale</span>
+                        ) : (
+                            <span>{customer?.name} {customer?.phoneNumber ? `(+91 ${customer.phoneNumber.replace(/\D/g, '').slice(-10)})` : ''} • {paymentType}</span>
+                        )}
+                    </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 text-left">
-                    {/* Share Directly as WhatsApp Document (Preferred & Never Expires) */}
-                    {canShare && !isGuest && (
-                        <div className="p-5 rounded-2xl border-2 border-emerald-600 bg-emerald-50/50 relative overflow-hidden group">
-                            <div className="absolute top-2 right-4 bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Recommended</div>
-                            <div className="flex items-start gap-4">
-                                <span className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">1</span>
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <h4 className="font-black text-gray-900">Attach PDF Directly to WhatsApp</h4>
-                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md">Permanent & Private</span>
-                                    </div>
-                                    <p className="text-xs text-gray-600 mt-1">Attaches the PDF file directly as a WhatsApp document. The customer stores the document permanently on their phone and it never expires.</p>
-                                    <button
-                                        onClick={handleDirectShare}
-                                        className="mt-4 w-full flex items-center justify-center gap-2 py-4 px-4 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl font-black text-sm shadow-lg shadow-emerald-200 transition-all active:scale-95"
-                                    >
-                                        <Send size={18} /> Attach & Send PDF via WhatsApp
-                                    </button>
+                {/* Dispatch Options */}
+                <div className="space-y-3 pt-2 text-left">
+                    {/* 1. Direct WhatsApp to Customer (if customer phone available) */}
+                    {customerWhatsAppUrl && (
+                        <a
+                            href={customerWhatsAppUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group flex items-center justify-between p-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-[0.98] border border-emerald-500"
+                        >
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform">
+                                    <MessageCircle size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="font-black text-sm tracking-tight text-white flex items-center gap-2">
+                                        Send to Customer on WhatsApp
+                                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-white/25 rounded-md">Direct</span>
+                                    </h4>
+                                    <p className="text-xs text-emerald-100 font-medium">
+                                        Opens WhatsApp chat with {customer?.name} ({customer?.phoneNumber})
+                                    </p>
                                 </div>
                             </div>
-                        </div>
+                            <ChevronRight size={20} className="text-emerald-200 group-hover:translate-x-1 transition-transform" />
+                        </a>
                     )}
 
-                    {/* Step-by-Step (Backup/Desktop) */}
-                    <div className={`p-5 rounded-2xl border ${!canShare ? 'border-2 border-green-600 bg-green-50/50' : 'border-gray-100 bg-white'} relative`}>
-                        {!canShare && <div className="absolute top-2 right-4 bg-green-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Standard Method</div>}
-                        <div className="flex items-start gap-4">
-                            <span className={`w-8 h-8 rounded-full ${!canShare ? 'bg-green-600' : 'bg-gray-300'} text-white flex items-center justify-center font-bold text-sm`}>
-                                {canShare ? '2' : '1'}
-                            </span>
-                            <div className="flex-1">
-                                <h4 className="font-bold text-gray-800">Manual Flow (Best for Desktop)</h4>
-                                <p className="text-xs text-gray-500 mt-1">WhatsApp links cannot attach local files directly. Please use this two-step process:</p>
-
-                                <div className="mt-4">
-                                    {isGuest ? (
-                                        <button
-                                            onClick={() => printPDF(successData)}
-                                            className="w-full flex items-center justify-center gap-2 py-4 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-200 transition-all active:scale-95"
-                                        >
-                                            <Printer size={18} /> Print Invoice
-                                        </button>
-                                    ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <button
-                                                onClick={() => generatePDF(successData)}
-                                                className="flex items-center justify-center gap-2 py-4 px-4 bg-white border-2 border-gray-200 hover:border-blue-500 text-gray-700 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-sm"
-                                            >
-                                                <FileDown size={18} className="text-blue-500" />
-                                                1. Download PDF
-                                            </button>
-                                            <button
-                                                onClick={handleWhatsAppSend}
-                                                className="flex items-center justify-center gap-2 py-4 px-4 bg-[#25D366] hover:bg-[#22c35e] text-white rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg shadow-green-100"
-                                            >
-                                                <Send size={18} />
-                                                2. Open & Attach
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                                <p className="text-[10px] text-gray-400 mt-3 text-center italic">Tip: Click 'WhatsApp' above to open the chat, then attach the downloaded file manually.</p>
+                    {/* 2. Choose WhatsApp Contact (Vijay Bhai's explicit request) */}
+                    <a
+                        href={chooseContactWhatsAppUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center justify-between p-4 bg-slate-50 hover:bg-emerald-50/50 text-slate-800 hover:text-emerald-900 rounded-2xl border-2 border-slate-200 hover:border-emerald-500 transition-all active:scale-[0.98]"
+                    >
+                        <div className="flex items-center gap-3.5">
+                            <div className="w-11 h-11 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                <Users size={22} />
+                            </div>
+                            <div>
+                                <h4 className="font-black text-sm tracking-tight text-slate-900 group-hover:text-emerald-950">
+                                    Send to Selected Contact on WhatsApp
+                                </h4>
+                                <p className="text-xs text-slate-500 group-hover:text-emerald-700 font-medium">
+                                    Opens WhatsApp chat picker to forward to any contact or group
+                                </p>
                             </div>
                         </div>
+                        <ChevronRight size={20} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
+                    </a>
+
+                    {/* 3. Utility Actions Row: Download PDF, Print, Copy Message */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => generatePDF(successData)}
+                            className="flex items-center justify-center gap-2 py-3 px-3 bg-white border border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 text-slate-700 hover:text-blue-700 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95"
+                        >
+                            <FileDown size={16} className="text-blue-600" />
+                            <span>Download PDF</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => printPDF(successData)}
+                            className="flex items-center justify-center gap-2 py-3 px-3 bg-white border border-slate-200 hover:border-slate-800 hover:bg-slate-50 text-slate-700 hover:text-slate-900 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95"
+                        >
+                            <Printer size={16} className="text-slate-600" />
+                            <span>Print Bill</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handleCopy}
+                            className={`flex items-center justify-center gap-2 py-3 px-3 border rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95 ${copiedText ? 'bg-emerald-50 border-emerald-500 text-emerald-800' : 'bg-white border-slate-200 hover:border-slate-400 text-slate-700'}`}
+                        >
+                            {copiedText ? (
+                                <>
+                                    <Check size={16} className="text-emerald-600" />
+                                    <span>Copied!</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Copy size={16} className="text-slate-500" />
+                                    <span>Copy Bill Text</span>
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
 
-                <div className="pt-4">
+                {/* Footer Next Order */}
+                <div className="pt-2 border-t border-slate-100">
                     <button
-                        onClick={() => {
-                            setSuccessData(null);
-                            setIsPreview(false);
-                            setItems([]);
-                            setCustomerId("");
-                            setComment("");
-                            setHasDownloaded(false);
-                        }}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-bold flex items-center justify-center gap-2 mx-auto transition-colors"
+                        onClick={resetForm}
+                        className="w-full py-3.5 px-4 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95"
                     >
                         <Plus size={16} /> Create Another Invoice
                     </button>
