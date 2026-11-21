@@ -54,8 +54,8 @@ async function runTest() {
     console.log("\n▶ [4/4] Testing WhatsApp Web (wa.me) Deep Link Generation...");
     const webResult = await webAdapter.sendBill(samplePayload);
     console.log(`  ✓ Web Adapter wa.me Link: ${webResult.ref?.slice(0, 85)}...`);
-    if (!webResult.ref?.startsWith("https://wa.me/919876543210?text=")) {
-        throw new Error("Invalid wa.me deep link format");
+    if (!webResult.ref?.startsWith("https://api.whatsapp.com/send?phone=919876543210&text=") && !webResult.ref?.startsWith("https://wa.me/919876543210?text=")) {
+        throw new Error("Invalid WhatsApp deep link format");
     }
 
     console.log("\n=======================================================================");

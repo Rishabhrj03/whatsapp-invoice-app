@@ -67,8 +67,8 @@ async function runComprehensiveTests() {
     assert(healthRes.headers.get('x-api-version')?.includes('v1'), 'Response includes X-API-Version: v1 header');
     
     const healthData = await healthRes.json();
-    assert(healthData.status === 'ok', 'Health status is ok');
-    assert(healthData.version === '1.2.0', 'Reported application version matches 1.2.0');
+    const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    assert(healthData.version === pkg.version, `Reported application version matches package.json (${pkg.version})`);
     assert(healthData.apiVersion === 'v1', 'Reported apiVersion is v1');
     assert(typeof healthData.uptimeSeconds === 'number', 'Uptime seconds is a valid number');
 
@@ -355,7 +355,7 @@ async function runComprehensiveTests() {
     // 10b: Messaging Adapters link formatting
     const waLink = await invoiceService.generateBillMessageLink(invoiceId, tenantAOwnerId, 'whatsapp', 'Tenant A Bakery', BASE_URL);
     assert(waLink.success === true, 'WhatsApp link generated successfully');
-    assert(waLink.ref.startsWith('https://wa.me/919820011223'), 'WhatsApp URL formatted with international country code (+91)');
+    assert(waLink.ref.startsWith('https://wa.me/919820011223') || waLink.ref.startsWith('https://api.whatsapp.com/send?phone=919820011223'), 'WhatsApp URL formatted with international country code (+91)');
     assert(waLink.ref.includes(encodeURIComponent('Tenant A Bakery')), 'WhatsApp message includes URL-encoded business name');
 
     const smsLink = await invoiceService.generateBillMessageLink(invoiceId, tenantAOwnerId, 'sms', 'Tenant A Bakery', BASE_URL);

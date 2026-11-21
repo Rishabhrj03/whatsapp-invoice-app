@@ -18,18 +18,29 @@ if (fs.existsSync('.env.local')) {
     });
 }
 
+import { MongoMemoryServer } from 'mongodb-memory-server';
 import { activityLogService } from '../src/lib/services/ActivityLogService.js';
 import ActivityLog from '../src/models/ActivityLog.js';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/primebake-prod';
+let mongodInstance = null;
 
 async function runTest() {
     console.log('╔═══════════════════════════════════════════════════════════════════════╗');
     console.log('║               ACTIVITY LOG / AUDIT TRAIL TEST SUITE                   ║');
     console.log('╚═══════════════════════════════════════════════════════════════════════╝\n');
 
-    await mongoose.connect(MONGODB_URI);
-    console.log('✓ Connected to MongoDB');
+    try {
+        await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 2000 });
+        console.log('✓ Connected to MongoDB');
+    } catch (err) {
+        console.log('ℹ Local MongoDB not responding, spinning up in-memory test database...');
+        mongodInstance = await MongoMemoryServer.create();
+        const uri = mongodInstance.getUri();
+        process.env.MONGODB_URI = uri;
+        await mongoose.connect(uri);
+        console.log(`✓ In-Memory MongoDB Connected successfully (${uri})`);
+    }
 
     const tenantAId = new mongoose.Types.ObjectId();
     const tenantBId = new mongoose.Types.ObjectId();

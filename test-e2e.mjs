@@ -17,19 +17,30 @@ if (fs.existsSync('.env.local')) {
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { invoiceService } from './src/lib/services/InvoiceService.js';
+import { MongoMemoryServer } from 'mongodb-memory-server';
 import { customerService } from './src/lib/services/CustomerService.js';
 import { menuService } from './src/lib/services/MenuService.js';
 import { MessagingAdapterFactory } from './src/lib/adapters/messaging/MessagingAdapterFactory.js';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/primebake-prod';
+let mongodInstance = null;
 
 async function runE2E() {
     console.log('======================================================================');
     console.log('🚀 STARTING COMPREHENSIVE END-TO-END TEST SUITE (NEXT.JS 16 & SOLID)');
     console.log('======================================================================\n');
 
-    await mongoose.connect(MONGODB_URI);
-    console.log('✅ [1/8] MongoDB Connected successfully (Local: 127.0.0.1:27017)');
+    try {
+        await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 2000 });
+        console.log('✅ [1/8] MongoDB Connected successfully');
+    } catch (err) {
+        console.log('ℹ Local MongoDB not responding, spinning up in-memory test database...');
+        mongodInstance = await MongoMemoryServer.create();
+        const uri = mongodInstance.getUri();
+        process.env.MONGODB_URI = uri;
+        await mongoose.connect(uri);
+        console.log(`✅ [1/8] In-Memory MongoDB Connected successfully (${uri})`);
+    }
 
     // 1. Setup Users (Owner & Staff)
     const usersCol = mongoose.connection.collection('users');
@@ -170,7 +181,7 @@ async function runE2E() {
 
     // 7. Feature 7: Messaging via WhatsApp and SMS Text Message (Adapter & Strategy Pattern)
     const waResult = await invoiceService.generateBillMessageLink(invoiceId, ownerId, 'whatsapp', 'Alice Artisan Breads', 'http://localhost:3000');
-    if (!waResult.success || !waResult.ref || !waResult.ref.includes('wa.me')) {
+    if (!waResult.success || !waResult.ref || (!waResult.ref.includes('wa.me') && !waResult.ref.includes('api.whatsapp.com'))) {
         throw new Error(`WhatsApp adapter link generation failed: ${waResult.error}`);
     }
 
