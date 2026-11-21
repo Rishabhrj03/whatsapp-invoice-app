@@ -11,6 +11,9 @@ const nextConfig = {
     env: {
         NEXT_PUBLIC_APP_VERSION: version,
     },
+    experimental: {
+        agentUpgrade: "security",
+    },
     async headers() {
         return [
             {
