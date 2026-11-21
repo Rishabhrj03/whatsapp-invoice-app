@@ -38,6 +38,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Right-aligned totals summary block at `X=196mm` preventing text overlap or truncation.
   - Automatically renders prominent diagonal `CANCELLED` watermark and red status indicator badge on cancelled invoice PDFs.
 
+#### Added — Edited Record Tracking & Visual Marking
+- **Database & Audit Trail Schema**:
+  - Added `isEdited: boolean`, `editedAt: Date`, `editedBy: ObjectId`, and `editCount: number` to `Invoice` schema and `InvoiceDTO`.
+  - Enriched `INVOICE_UPDATED` activity log events with edit counts, timestamps, and operator IDs.
+- **Visual "Edited" Badges in UI**:
+  - Added purple `Edited` badge on desktop table status column and mobile transaction cards with hover tooltips showing revision count and last edited timestamp.
+  - Displayed "Revised Bill" pill in public digital invoice view (`/public/invoice/[id]`).
+- **PDF & CSV Export Indicator**:
+  - PDF generator automatically prints `(Edited)` alongside the invoice number and includes `Status: Revised (Edited <date>)` and `REVISED / EDITED INVOICE` banner on modified bills.
+  - Added `Edited?` and `Edited Date` columns to CSV export (`/api/v1/export-csv`).
+
 ## [1.3.2] — 2026-11-04
 
 ### 💬 WhatsApp Dispatch Hub, Contact Selector & Reliability Hardening

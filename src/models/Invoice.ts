@@ -25,6 +25,10 @@ export interface IInvoice extends Document {
     createdBy?: mongoose.Types.ObjectId;
     cancelledAt?: Date;
     cancelledBy?: mongoose.Types.ObjectId;
+    isEdited?: boolean;
+    editedAt?: Date;
+    editedBy?: mongoose.Types.ObjectId;
+    editCount?: number;
     createdAt: Date;
 }
 
@@ -52,6 +56,10 @@ const InvoiceSchema = new Schema<IInvoice>(
         createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Useful for STAFF tracking
         cancelledAt: { type: Date, required: false },
         cancelledBy: { type: Schema.Types.ObjectId, ref: 'User', required: false },
+        isEdited: { type: Boolean, default: false },
+        editedAt: { type: Date, required: false },
+        editedBy: { type: Schema.Types.ObjectId, ref: 'User', required: false },
+        editCount: { type: Number, default: 0 },
     },
     { timestamps: true }
 );

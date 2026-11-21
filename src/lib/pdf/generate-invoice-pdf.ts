@@ -24,6 +24,8 @@ export interface GenerateInvoicePdfData {
     comment?: string;
     date: string | Date;
     status?: string;
+    isEdited?: boolean;
+    editedAt?: string | Date;
     customer?: PdfInvoiceCustomer | null;
 }
 
@@ -118,6 +120,11 @@ export function buildInvoicePdfDoc(options: GenerateInvoicePdfOptions): jsPDF {
         doc.setFontSize(11);
         doc.setTextColor(225, 29, 72); // Rose-600
         doc.text("STATUS: CANCELLED (VOID)", 196, 20, { align: "right" });
+    } else if (invoice.isEdited) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(126, 34, 206); // Purple-700
+        doc.text("REVISED / EDITED INVOICE", 196, 20, { align: "right" });
     } else {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
@@ -166,7 +173,7 @@ export function buildInvoicePdfDoc(options: GenerateInvoicePdfOptions): jsPDF {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text(`Invoice #${billId}`, 196, 46, { align: "right" });
+    doc.text(`Invoice #${billId}${invoice.isEdited ? " (Edited)" : ""}`, 196, 46, { align: "right" });
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
@@ -174,15 +181,27 @@ export function buildInvoicePdfDoc(options: GenerateInvoicePdfOptions): jsPDF {
     doc.text(`Date: ${formattedDate} at ${formattedTime}`, 196, 51, { align: "right" });
     doc.text(`Mode: ${invoice.paymentType || "Cash"}`, 196, 56, { align: "right" });
 
+    let nextRightY = 61;
     if (isCancelled) {
         doc.setFont("helvetica", "bold");
         doc.setTextColor(225, 29, 72);
-        doc.text("Payment: Voided / Cancelled", 196, 61, { align: "right" });
+        doc.text("Payment: Voided / Cancelled", 196, nextRightY, { align: "right" });
+        nextRightY += 5;
+    } else if (invoice.isEdited) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(126, 34, 206); // Purple-700
+        const editDate = invoice.editedAt ? new Date(invoice.editedAt) : null;
+        const formattedEditDate = editDate
+            ? editDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })
+            : formattedDate;
+        doc.text(`Status: Revised (Edited ${formattedEditDate})`, 196, nextRightY, { align: "right" });
+        nextRightY += 5;
     }
 
     // ── 4. ITEMS TABLE (jspdf-autotable) ───────────────────────────────────────
     // Calculate startY safely below whichever header column is taller
-    const tableStartY = Math.max(nextCustomerY + 4, 68);
+    const tableStartY = Math.max(nextCustomerY + 4, nextRightY + 2, 68);
 
     const tableRows = (invoice.items || []).map((item, index) => {
         const itemText = item.description

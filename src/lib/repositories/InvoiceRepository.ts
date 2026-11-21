@@ -44,6 +44,10 @@ function serializeInvoice(doc: any): InvoiceDTO {
         createdBy: doc.createdBy?.toString(),
         cancelledAt: doc.cancelledAt instanceof Date ? doc.cancelledAt.toISOString() : doc.cancelledAt,
         cancelledBy: doc.cancelledBy?.toString(),
+        isEdited: !!doc.isEdited,
+        editedAt: doc.editedAt instanceof Date ? doc.editedAt.toISOString() : doc.editedAt,
+        editedBy: doc.editedBy?.toString(),
+        editCount: doc.editCount ?? (doc.isEdited ? 1 : 0),
         createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : doc.createdAt,
     };
 }
@@ -100,9 +104,22 @@ class InvoiceRepository implements IRepository<InvoiceDTO, CreateInvoiceInput> {
         return serializeInvoice(doc.toObject());
     }
 
-    async update(id: string, data: Partial<UpdateInvoiceInput> & { userId?: string }): Promise<InvoiceDTO | null> {
+    async update(
+        id: string,
+        data: Partial<UpdateInvoiceInput> & { userId?: string },
+        editMeta?: { editedBy?: string }
+    ): Promise<InvoiceDTO | null> {
         await dbConnect();
-        const updated = await InvoiceModel.findByIdAndUpdate(id, data, { returnDocument: 'after' }).populate('customer').lean();
+        const updatePayload: any = {
+            ...data,
+            isEdited: true,
+            editedAt: new Date(),
+            $inc: { editCount: 1 },
+        };
+        if (editMeta?.editedBy) {
+            updatePayload.editedBy = new mongoose.Types.ObjectId(editMeta.editedBy);
+        }
+        const updated = await InvoiceModel.findByIdAndUpdate(id, updatePayload, { returnDocument: 'after' }).populate('customer').lean();
         return updated ? serializeInvoice(updated) : null;
     }
 

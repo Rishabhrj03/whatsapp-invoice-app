@@ -89,8 +89,10 @@ export class InvoiceService {
         // 1. Archive the pre-edit PDF to S3: invoices/edited/${id}_${timestamp}.pdf
         await archiveInvoicePdf(invoiceId, 'edited');
 
-        // 2. Persist updated changes in MongoDB
-        const updated = await invoiceRepository.update(invoiceId, data);
+        // 2. Persist updated changes in MongoDB with edit tracking metadata
+        const updated = await invoiceRepository.update(invoiceId, data, {
+            editedBy: ctx.authUserId,
+        });
         if (!updated) {
             return { success: false, error: 'Failed to update invoice' };
         }
@@ -108,6 +110,8 @@ export class InvoiceService {
                     comment: updated.comment,
                     date: updated.date,
                     status: updated.status,
+                    isEdited: updated.isEdited,
+                    editedAt: updated.editedAt,
                     customer: updated.customer,
                 },
                 business: {

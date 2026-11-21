@@ -576,7 +576,16 @@ export default function TransactionsClient({
                                             <p className={`text-base font-black ${inv.status === 'Cancelled' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
                                                 ₹{inv.totalAmount.toLocaleString("en-IN")}
                                             </p>
-                                            <div className="flex items-center justify-end gap-1 mt-0.5">
+                                            <div className="flex items-center justify-end gap-1 mt-0.5 flex-wrap">
+                                                {inv.isEdited && (
+                                                    <span
+                                                        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200"
+                                                        title={`Edited ${inv.editCount ? `(${inv.editCount}x)` : ''}${inv.editedAt ? ` on ${new Date(inv.editedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}`}
+                                                    >
+                                                        <Edit3 size={9} className="text-purple-600" />
+                                                        <span>Edited</span>
+                                                    </span>
+                                                )}
                                                 {(() => {
                                                     const badge = getInvoiceStatusBadge(inv.status);
                                                     return (
@@ -749,15 +758,26 @@ export default function TransactionsClient({
                                                 </p>
                                             </td>
                                             <td className="px-6 py-4 text-center whitespace-nowrap">
-                                                {(() => {
-                                                    const badge = getInvoiceStatusBadge(inv.status);
-                                                    return (
-                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${badge.className}`}>
-                                                            <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
-                                                            <span>{badge.label}</span>
+                                                <div className="flex flex-col items-center justify-center gap-1">
+                                                    {(() => {
+                                                        const badge = getInvoiceStatusBadge(inv.status);
+                                                        return (
+                                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${badge.className}`}>
+                                                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                                                                <span>{badge.label}</span>
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                    {inv.isEdited && (
+                                                        <span
+                                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200/80 shadow-2xs"
+                                                            title={`Edited ${inv.editCount ? `(${inv.editCount}x)` : ''}${inv.editedAt ? ` on ${new Date(inv.editedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}`}
+                                                        >
+                                                            <Edit3 size={9} className="text-purple-600" />
+                                                            <span>Edited</span>
                                                         </span>
-                                                    );
-                                                })()}
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span 

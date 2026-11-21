@@ -43,6 +43,10 @@ export interface InvoiceDTO {
     createdBy?: string;
     cancelledAt?: string;
     cancelledBy?: string;
+    isEdited?: boolean;
+    editedAt?: string;
+    editedBy?: string;
+    editCount?: number;
     createdAt: string;
 }
 

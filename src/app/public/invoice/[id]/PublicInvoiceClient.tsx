@@ -43,6 +43,8 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
                 comment: invoice.comment,
                 date: invoice.date,
                 status: invoice.status,
+                isEdited: invoice.isEdited,
+                editedAt: invoice.editedAt,
                 customer: invoice.customer,
             },
             business: {
@@ -85,8 +87,15 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
                     <div className="md:text-right space-y-2">
                         <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Date Issued</div>
                         <p className="text-xl font-black text-gray-800 tracking-tight">{new Date(invoice.date).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 text-[10px] font-black rounded-full uppercase tracking-tighter">
-                            Status: Paid
+                        <div className="flex items-center md:justify-end gap-1.5 flex-wrap">
+                            {invoice.isEdited && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-black rounded-full uppercase tracking-tighter">
+                                    Revised Bill
+                                </span>
+                            )}
+                            <div className={`inline-flex items-center gap-2 px-3 py-1 ${invoice.status === 'Cancelled' ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-green-50 text-green-600 border border-green-200'} text-[10px] font-black rounded-full uppercase tracking-tighter`}>
+                                Status: {invoice.status || 'Paid'}
+                            </div>
                         </div>
                     </div>
                 </div>

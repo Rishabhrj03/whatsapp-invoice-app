@@ -88,6 +88,8 @@ export async function GET(
                         comment: populatedInvoice.comment,
                         date: populatedInvoice.date || populatedInvoice.createdAt,
                         status: populatedInvoice.status,
+                        isEdited: populatedInvoice.isEdited,
+                        editedAt: populatedInvoice.editedAt,
                         customer: populatedInvoice.customer as any,
                     },
                     business: {

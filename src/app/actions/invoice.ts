@@ -108,6 +108,9 @@ export async function updateInvoice(invoiceId: string, data: unknown): Promise<U
                 totalAmount: result.invoice.totalAmount,
                 paymentType: result.invoice.paymentType,
                 comment: result.invoice.comment,
+                isEdited: true,
+                editCount: result.invoice.editCount,
+                editedAt: result.invoice.editedAt,
             },
         });
 

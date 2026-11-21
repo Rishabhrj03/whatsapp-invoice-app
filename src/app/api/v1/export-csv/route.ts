@@ -72,6 +72,8 @@ export async function GET(request: Request) {
                 "Total Amount (₹)": inv.totalAmount,
                 "Discount (₹)": inv.discountAmount || 0,
                 Status: inv.status || "Paid",
+                "Edited?": inv.isEdited ? "Yes" : "No",
+                "Edited Date": inv.editedAt ? new Date(inv.editedAt).toLocaleString("en-IN") : "",
                 "Payment Type": inv.paymentType || "Cash",
                 Comment: inv.comment || "",
             };
