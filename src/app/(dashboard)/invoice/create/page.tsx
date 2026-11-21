@@ -24,7 +24,7 @@ export default async function CreateInvoicePage() {
 
     const [customers, menuItems, categories, couponsRes] = await Promise.all([
         Customer.find({ userId: effectiveUserId }).sort({ name: 1 }),
-        MenuEntry.find({ userId: effectiveUserId }).sort({ name: 1 }),
+        MenuEntry.find({ userId: effectiveUserId, isAvailable: { $ne: false } }).sort({ name: 1 }),
         Category.find({ userId: effectiveUserId }).sort({ name: 1 }),
         getCoupons()
     ]);

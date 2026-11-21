@@ -108,6 +108,7 @@ export interface MenuItemDTO {
     price: number;
     description?: string;
     category?: string;
+    isAvailable?: boolean;
     userId: string;
 }
 
@@ -116,6 +117,7 @@ export interface CreateMenuItemInput {
     price: number;
     description?: string;
     category?: string;
+    isAvailable?: boolean;
 }
 
 export interface CategoryDTO {

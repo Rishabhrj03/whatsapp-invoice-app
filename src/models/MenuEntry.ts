@@ -5,6 +5,7 @@ export interface IMenuEntry extends Document {
     price: number;
     description?: string;
     category?: string;
+    isAvailable?: boolean;
     userId: mongoose.Types.ObjectId;
     createdBy?: mongoose.Types.ObjectId;
     createdAt: Date;
@@ -16,6 +17,7 @@ const MenuEntrySchema = new Schema<IMenuEntry>(
         price: { type: Number, required: true },
         description: { type: String, required: false },
         category: { type: String, required: false },
+        isAvailable: { type: Boolean, default: true, index: true },
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: false },
     },

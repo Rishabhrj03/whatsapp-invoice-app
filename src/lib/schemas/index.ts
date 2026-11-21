@@ -54,6 +54,7 @@ export const CreateMenuItemSchema = z.object({
     price: z.number().nonnegative('Price must be ≥ 0'),
     description: z.string().max(500).optional(),
     category: z.string().optional(),
+    isAvailable: z.boolean().optional().default(true),
 });
 
 export const UpdateMenuItemSchema = CreateMenuItemSchema.partial().required({ name: true, price: true });

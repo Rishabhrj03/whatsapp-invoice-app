@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { createMenuEntry, deleteMenuEntry, importMenuItemsFromCSV, deleteMultipleMenuEntries, updateMenuEntry } from "@/app/actions/menu";
+import { createMenuEntry, deleteMenuEntry, importMenuItemsFromCSV, deleteMultipleMenuEntries, updateMenuEntry, toggleMenuItemAvailability, bulkUpdateMenuItemAvailability } from "@/app/actions/menu";
 import { deleteCategory, updateCategory } from "@/app/actions/category";
-import { Trash2, PlusCircle, Tag, IndianRupee, FileText, LayoutGrid, CheckCircle2, ArrowLeft, Upload, FileUp, Loader2, Pencil, CopyPlus } from "lucide-react";
+import { Trash2, PlusCircle, Tag, IndianRupee, FileText, LayoutGrid, CheckCircle2, ArrowLeft, Upload, FileUp, Loader2, Pencil, CopyPlus, Eye, EyeOff } from "lucide-react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import ConfirmModal from "./ConfirmModal";
 import CSVMappingModal from "./CSVMappingModal";
@@ -14,15 +14,17 @@ interface MenuClientProps {
     initialMenuItems: any[];
     initialCategories?: any[];
     initialTab: "items" | "categories";
+    initialAvailability?: string;
     currentPage: number;
     totalItemPages: number;
     totalCategoryPages: number;
 }
 
-export default function MenuClient({ initialMenuItems, initialCategories = [], initialTab, currentPage, totalItemPages, totalCategoryPages }: MenuClientProps) {
+export default function MenuClient({ initialMenuItems, initialCategories = [], initialTab, initialAvailability = "all", currentPage, totalItemPages, totalCategoryPages }: MenuClientProps) {
     const [menuItems, setMenuItems] = useState(initialMenuItems);
     const [categories, setCategories] = useState(initialCategories);
     const [activeTab, setActiveTab] = useState<"items" | "categories">(initialTab);
+    const [availabilityFilter, setAvailabilityFilter] = useState<string>(initialAvailability || "all");
     const [view, setView] = useState<"list" | "add" | "edit">("list");
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
@@ -55,6 +57,10 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
         setActiveTab(initialTab);
     }, [initialTab]);
 
+    useEffect(() => {
+        setAvailabilityFilter(initialAvailability || "all");
+    }, [initialAvailability]);
+
     const handleTabChange = (newTab: "items" | "categories") => {
         setActiveTab(newTab);
         const params = new URLSearchParams(searchParams.toString());
@@ -71,6 +77,56 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
         router.push(`${pathname}?${params.toString()}`);
     };
 
+    const handleAvailabilityFilter = (status: string) => {
+        setAvailabilityFilter(status);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("page", "1");
+        params.set("tab", "items");
+        if (status === "all") {
+            params.delete("availability");
+        } else {
+            params.set("availability", status);
+        }
+        router.push(`${pathname}?${params.toString()}`);
+    };
+
+    const handleToggleAvailability = async (item: any) => {
+        const newStatus = item.isAvailable === false ? true : false;
+        // Optimistic update
+        setMenuItems(prev => prev.map(m => m._id === item._id ? { ...m, isAvailable: newStatus } : m));
+        try {
+            const res = await toggleMenuItemAvailability(item._id.toString(), newStatus);
+            if (!res.success) {
+                // Revert optimistic update
+                setMenuItems(prev => prev.map(m => m._id === item._id ? { ...m, isAvailable: !newStatus } : m));
+                alert(res.error || "Failed to update item availability");
+            } else {
+                router.refresh();
+            }
+        } catch (err) {
+            setMenuItems(prev => prev.map(m => m._id === item._id ? { ...m, isAvailable: !newStatus } : m));
+            alert("Network error updating item availability");
+        }
+    };
+
+    const handleBulkToggleAvailability = async (targetStatus: boolean) => {
+        if (selectedIds.length === 0) return;
+        setLoading(true);
+        try {
+            const res = await bulkUpdateMenuItemAvailability(selectedIds, targetStatus);
+            if (res.success) {
+                setMenuItems(prev => prev.map(m => selectedIds.includes(m._id.toString()) ? { ...m, isAvailable: targetStatus } : m));
+                setSelectedIds([]);
+                router.refresh();
+            } else {
+                alert(res.error || "Failed to update selected items");
+            }
+        } catch (err) {
+            alert("Network error updating items");
+        }
+        setLoading(false);
+    };
+
     const handleAddFromScratch = () => {
         setEditingItem(null);
         setPrefillItem(null);
@@ -85,6 +141,7 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
             price: item.price,
             category: item.category || "",
             description: item.description || "",
+            isAvailable: item.isAvailable !== false,
             sourceName: item.name,
         });
         setView("add");
@@ -97,6 +154,11 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
             (form.elements.namedItem("price") as HTMLInputElement).value = editingItem.price !== undefined ? String(editingItem.price) : "";
             (form.elements.namedItem("category") as HTMLSelectElement).value = editingItem.category || "";
             (form.elements.namedItem("description") as HTMLTextAreaElement).value = editingItem.description || "";
+            const isAvail = editingItem.isAvailable !== false;
+            const availRadios = form.elements.namedItem("isAvailable") as RadioNodeList;
+            if (availRadios) {
+                availRadios.value = isAvail ? "true" : "false";
+            }
         }
     }, [view, editingItem]);
 
@@ -107,6 +169,10 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
             (form.elements.namedItem("price") as HTMLInputElement).value = prefillItem?.price !== undefined ? String(prefillItem.price) : "";
             (form.elements.namedItem("category") as HTMLSelectElement).value = prefillItem?.category || "";
             (form.elements.namedItem("description") as HTMLTextAreaElement).value = prefillItem?.description || "";
+            const availRadios = form.elements.namedItem("isAvailable") as RadioNodeList;
+            if (availRadios) {
+                availRadios.value = "true";
+            }
         }
     }, [view, prefillItem]);
 
@@ -516,18 +582,40 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                                 </div>
                             </div>
                             <div className="space-y-1.5">
-                                <label htmlFor="description" className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Description</label>
-                                <div className="relative">
-                                    <FileText className="absolute left-4 top-4 text-gray-400" size={18} />
-                                    <textarea
-                                        id="description"
-                                        name="description"
-                                        rows={3}
-                                        placeholder="Ingredients or details..."
-                                        className="block w-full pl-12 pr-5 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all text-sm text-black"
-                                    ></textarea>
+                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Availability Status</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <label className="flex items-center gap-3 p-3.5 border rounded-2xl cursor-pointer transition-all border-emerald-200 bg-emerald-50/30 hover:bg-emerald-50/60 has-[:checked]:border-emerald-500 has-[:checked]:ring-2 has-[:checked]:ring-emerald-400">
+                                        <input
+                                            type="radio"
+                                            name="isAvailable"
+                                            value="true"
+                                            defaultChecked={editingItem ? editingItem.isAvailable !== false : true}
+                                            className="text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                                        />
+                                        <div>
+                                            <span className="block text-xs font-black text-emerald-950">Available</span>
+                                            <span className="block text-[10px] text-emerald-700">Ready for billing</span>
+                                        </div>
+                                    </label>
+                                    <label className="flex items-center gap-3 p-3.5 border rounded-2xl cursor-pointer transition-all border-amber-200 bg-amber-50/30 hover:bg-amber-50/60 has-[:checked]:border-amber-500 has-[:checked]:ring-2 has-[:checked]:ring-amber-400">
+                                        <input
+                                            type="radio"
+                                            name="isAvailable"
+                                            value="false"
+                                            defaultChecked={editingItem ? editingItem.isAvailable === false : false}
+                                            className="text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                                        />
+                                        <div>
+                                            <span className="block text-xs font-black text-amber-950">Unavailable</span>
+                                            <span className="block text-[10px] text-amber-700">Disabled from billing</span>
+                                        </div>
+                                    </label>
                                 </div>
+                                <p className="text-[11px] text-gray-400 px-1">
+                                    Unavailable items are temporarily or permanently disabled and won&apos;t appear when creating new invoices, preserving your transaction history.
+                                </p>
                             </div>
+
                             <button
                                 type="submit"
                                 disabled={loading}
@@ -548,17 +636,59 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
             ) : (
                 <div className="animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-6 border-b border-gray-50 flex items-center justify-between">
-                            <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
-                                {activeTab === "items" ? (
-                                    <><LayoutGrid className="text-orange-500" size={20} /> Item Catalog</>
-                                ) : (
-                                    <><Tag className="text-orange-500" size={20} /> Categories</>
-                                )}
-                            </h2>
-                            <span className="bg-orange-50 text-orange-600 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider">
-                                {activeTab === "items" ? `${menuItems.length} Products` : `${categories.length} Categories`}
-                            </span>
+                        <div className="p-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
+                                    {activeTab === "items" ? (
+                                        <><LayoutGrid className="text-orange-500" size={20} /> Item Catalog</>
+                                    ) : (
+                                        <><Tag className="text-orange-500" size={20} /> Categories</>
+                                    )}
+                                </h2>
+                                <span className="bg-orange-50 text-orange-600 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider">
+                                    {activeTab === "items" ? `${menuItems.length} Products` : `${categories.length} Categories`}
+                                </span>
+                            </div>
+
+                            {activeTab === "items" && (
+                                <div className="flex items-center gap-1.5 bg-gray-100/70 p-1 rounded-xl">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleAvailabilityFilter("all")}
+                                        className={`px-3 py-1.5 text-xs font-black rounded-lg transition-all ${
+                                            availabilityFilter === "all"
+                                                ? "bg-white text-gray-900 shadow-sm"
+                                                : "text-gray-500 hover:text-gray-900"
+                                        }`}
+                                    >
+                                        All
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleAvailabilityFilter("available")}
+                                        className={`px-3 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
+                                            availabilityFilter === "available"
+                                                ? "bg-white text-emerald-700 shadow-sm"
+                                                : "text-gray-500 hover:text-emerald-700"
+                                        }`}
+                                    >
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                        Available
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleAvailabilityFilter("unavailable")}
+                                        className={`px-3 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
+                                            availabilityFilter === "unavailable"
+                                                ? "bg-white text-amber-700 shadow-sm"
+                                                : "text-gray-500 hover:text-amber-700"
+                                        }`}
+                                    >
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                        Unavailable
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         <div className="overflow-x-auto">
                             {activeTab === "items" ? (
@@ -575,13 +705,16 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                                             </th>
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product Info</th>
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Category</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Price</th>
                                             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right px-10">Manage</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
-                                        {menuItems.map((item) => (
-                                            <tr key={item._id.toString()} className={`hover:bg-orange-50/20 transition-colors group ${selectedIds.includes(item._id.toString()) ? 'bg-orange-50/30' : ''}`}>
+                                        {menuItems.map((item) => {
+                                            const isAvail = item.isAvailable !== false;
+                                            return (
+                                            <tr key={item._id.toString()} className={`hover:bg-orange-50/20 transition-colors group ${selectedIds.includes(item._id.toString()) ? 'bg-orange-50/30' : ''} ${!isAvail ? 'bg-gray-50/40 opacity-80' : ''}`}>
                                                 <td className="px-6 py-5 text-center">
                                                     <input
                                                         type="checkbox"
@@ -592,11 +725,18 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                                                 </td>
                                                 <td className="px-6 py-5">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="min-w-[40px] h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md">
+                                                        <div className={`min-w-[40px] h-10 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md ${isAvail ? 'bg-gradient-to-br from-orange-400 to-red-500' : 'bg-gray-400'}`}>
                                                             {item.name.charAt(0).toUpperCase()}
                                                         </div>
                                                         <div>
-                                                            <p className="text-sm font-bold text-gray-900">{item.name}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className={`text-sm font-bold ${!isAvail ? 'text-gray-500 line-through decoration-gray-300' : 'text-gray-900'}`}>{item.name}</p>
+                                                                {!isAvail && (
+                                                                    <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-amber-100 text-amber-800">
+                                                                        Unavailable
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             {item.description && (
                                                                 <p className="text-[10px] text-gray-400 font-medium truncate max-w-[200px]">
                                                                     {item.description}
@@ -614,11 +754,37 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                                                         <span className="text-gray-300 text-[10px] italic">Universal</span>
                                                     )}
                                                 </td>
+                                                <td className="px-6 py-5 text-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleToggleAvailability(item)}
+                                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black transition-all ${
+                                                            isAvail
+                                                                ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 shadow-sm"
+                                                                : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 shadow-sm"
+                                                        }`}
+                                                        title={isAvail ? "Item is active. Click to disable (Mark Unavailable)" : "Item is disabled. Click to enable (Mark Available)"}
+                                                    >
+                                                        <span className={`w-2 h-2 rounded-full ${isAvail ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+                                                        {isAvail ? "Available" : "Unavailable"}
+                                                    </button>
+                                                </td>
                                                 <td className="px-6 py-5 text-right font-black text-gray-900 text-sm">
                                                     ₹{parseFloat(item.price).toFixed(2)}
                                                 </td>
                                                 <td className="px-6 py-5 text-right px-10">
                                                     <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => handleToggleAvailability(item)}
+                                                            className={`p-2.5 rounded-xl transition-all ${
+                                                                isAvail
+                                                                    ? "text-gray-400 hover:text-amber-600 hover:bg-amber-50"
+                                                                    : "text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
+                                                            }`}
+                                                            title={isAvail ? "Disable item (Temporarily not available)" : "Enable item (Available for billing)"}
+                                                        >
+                                                            {isAvail ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                        </button>
                                                         <button
                                                             onClick={() => handleAppendAfter(item)}
                                                             className="p-2.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-all"
@@ -643,10 +809,11 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))}
+                                            );
+                                        })}
                                         {menuItems.length === 0 && (
                                             <tr>
-                                                <td colSpan={5} className="px-6 py-20 text-center">
+                                                <td colSpan={6} className="px-6 py-20 text-center">
                                                     <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                                         <LayoutGrid className="text-gray-200" size={40} />
                                                     </div>
@@ -809,25 +976,42 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
 
             {selectedIds.length > 0 && (
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 animate-in slide-in-from-bottom-8 duration-500">
-                    <div className="bg-gray-900 border border-white/10 px-8 py-5 rounded-[2rem] shadow-2xl backdrop-blur-xl flex items-center gap-8 ring-1 ring-white/20">
+                    <div className="bg-gray-900 border border-white/10 px-6 sm:px-8 py-4 sm:py-5 rounded-[2rem] shadow-2xl backdrop-blur-xl flex flex-wrap items-center gap-4 sm:gap-6 ring-1 ring-white/20">
                         <div className="flex flex-col">
                             <span className="text-white font-black text-sm tracking-tight">{selectedIds.length} items selected</span>
-                            <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Bulk Actions Available</span>
+                            <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Bulk Actions</span>
                         </div>
-                        <div className="h-8 w-px bg-white/10" />
-                        <div className="flex items-center gap-3">
+                        <div className="h-8 w-px bg-white/10 hidden sm:block" />
+                        <div className="flex items-center gap-2">
                             <button
-                                onClick={() => setSelectedIds([])}
-                                className="px-5 py-2.5 text-gray-400 hover:text-white text-xs font-black transition-colors"
+                                onClick={() => handleBulkToggleAvailability(true)}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-950/20 transition-all active:scale-95"
+                                title="Mark selected items as available for billing"
                             >
-                                Deselect
+                                <CheckCircle2 size={15} />
+                                Make Available
+                            </button>
+                            <button
+                                onClick={() => handleBulkToggleAvailability(false)}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-black shadow-lg shadow-amber-950/20 transition-all active:scale-95"
+                                title="Mark selected items as unavailable (disabled from billing)"
+                            >
+                                <EyeOff size={15} />
+                                Disable
                             </button>
                             <button
                                 onClick={() => setIsBulkDeleteModalOpen(true)}
-                                className="flex items-center gap-2 px-6 py-2.5 bg-red-500 hover:bg-red-400 text-white rounded-xl text-xs font-black shadow-lg shadow-red-900/20 transition-all active:scale-95"
+                                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black shadow-lg shadow-red-950/20 transition-all active:scale-95"
+                                title="Delete selected items permanently"
                             >
-                                <Trash2 size={16} />
-                                Delete Selected
+                                <Trash2 size={15} />
+                                Delete
+                            </button>
+                            <button
+                                onClick={() => setSelectedIds([])}
+                                className="px-3 py-2 text-gray-400 hover:text-white text-xs font-black transition-colors"
+                            >
+                                Deselect
                             </button>
                         </div>
                     </div>

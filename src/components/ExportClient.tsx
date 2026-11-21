@@ -42,7 +42,8 @@ export default function ExportClient({ customers, menuItems, invoices }: ExportC
     const exportMenu = () => {
         const data = menuItems.map(m => ({
             Name: m.name,
-            Category: m.category,
+            Category: m.category || "",
+            Status: m.isAvailable !== false ? "Available" : "Unavailable",
             Price: m.price,
             Description: m.description || ""
         }));

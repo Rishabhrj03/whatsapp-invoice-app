@@ -23,11 +23,13 @@ export async function createMenuEntry(formData: FormData): Promise<MenuEntryResp
             return { success: false, error: "Unauthorized" };
         }
 
+        const isAvailableVal = formData.get("isAvailable");
         const rawData = {
             name: formData.get("name") as string,
             price: parseFloat(formData.get("price") as string),
             description: (formData.get("description") as string) || undefined,
             category: (formData.get("category") as string) || undefined,
+            isAvailable: isAvailableVal !== null ? isAvailableVal === "true" : true,
         };
 
         const result = await menuService.createMenuItem(rawData, effectiveUserId, session.user.id);
@@ -47,10 +49,12 @@ export async function createMenuEntry(formData: FormData): Promise<MenuEntryResp
                 name: rawData.name,
                 price: rawData.price,
                 category: rawData.category,
+                isAvailable: rawData.isAvailable,
             },
         });
 
         revalidatePath("/menu");
+        revalidatePath("/invoice/create");
         return { success: true, menuItem: result.menuItem };
     } catch (error: any) {
         console.error("Failed to create menu entry:", error);
@@ -66,12 +70,16 @@ export async function updateMenuEntry(id: string, formData: FormData): Promise<M
             return { success: false, error: "Unauthorized" };
         }
 
-        const rawData = {
+        const isAvailableVal = formData.get("isAvailable");
+        const rawData: any = {
             name: formData.get("name") as string,
             price: parseFloat(formData.get("price") as string),
             description: (formData.get("description") as string) || undefined,
             category: (formData.get("category") as string) || undefined,
         };
+        if (isAvailableVal !== null && isAvailableVal !== undefined) {
+            rawData.isAvailable = isAvailableVal === "true";
+        }
 
         const result = await menuService.updateMenuItem(id, rawData, effectiveUserId);
         if (!result.success || !result.menuItem) {
@@ -90,10 +98,12 @@ export async function updateMenuEntry(id: string, formData: FormData): Promise<M
                 name: rawData.name,
                 price: rawData.price,
                 category: rawData.category,
+                isAvailable: rawData.isAvailable,
             },
         });
 
         revalidatePath("/menu");
+        revalidatePath("/invoice/create");
         return { success: true, menuItem: result.menuItem };
     } catch (error: any) {
         console.error("Failed to update menu entry:", error);
@@ -187,5 +197,67 @@ export async function importMenuItemsFromCSV(items: any[]): Promise<ImportMenuRe
     } catch (error: any) {
         console.error("Failed to import menu items:", error);
         return { success: false, error: error.message || "Failed to import menu items" };
+    }
+}
+
+export async function toggleMenuItemAvailability(id: string, isAvailable: boolean): Promise<MenuEntryResponse> {
+    try {
+        const effectiveUserId = await getEffectiveUserId();
+        const user = await getCurrentUser();
+        if (!effectiveUserId || !user) {
+            return { success: false, error: "Unauthorized" };
+        }
+
+        const result = await menuService.updateMenuItem(id, { isAvailable }, effectiveUserId);
+        if (!result.success || !result.menuItem) {
+            return { success: false, error: result.error || "Failed to update item availability" };
+        }
+
+        // Audit Trail: Record availability toggle
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'MENU_ITEM_UPDATED',
+            entityType: 'MENU_ITEM',
+            entityId: id,
+            description: `${isAvailable ? 'Enabled (Available)' : 'Disabled (Unavailable)'} menu item "${result.menuItem.name}"`,
+            metadata: { isAvailable },
+        });
+
+        revalidatePath("/menu");
+        revalidatePath("/invoice/create");
+        return { success: true, menuItem: result.menuItem };
+    } catch (error: any) {
+        console.error("Failed to toggle menu item availability:", error);
+        return { success: false, error: error.message || "Failed to toggle item availability" };
+    }
+}
+
+export async function bulkUpdateMenuItemAvailability(ids: string[], isAvailable: boolean): Promise<{ success: boolean; count?: number; error?: string }> {
+    try {
+        const effectiveUserId = await getEffectiveUserId();
+        const user = await getCurrentUser();
+        if (!effectiveUserId || !user) {
+            return { success: false, error: "Unauthorized" };
+        }
+
+        const count = await menuService.bulkUpdateAvailability(ids, effectiveUserId, isAvailable);
+
+        // Audit Trail: Record bulk availability update
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'MENU_ITEM_UPDATED',
+            entityType: 'MENU_ITEM',
+            description: `Bulk marked ${count} menu items as ${isAvailable ? 'Available' : 'Unavailable'}`,
+            metadata: { count, ids, isAvailable },
+        });
+
+        revalidatePath("/menu");
+        revalidatePath("/invoice/create");
+        return { success: true, count };
+    } catch (error: any) {
+        console.error("Failed to bulk update availability:", error);
+        return { success: false, error: error.message || "Failed to bulk update availability" };
     }
 }

@@ -95,6 +95,10 @@ export class MenuService {
     async deleteMultipleItems(ids: string[], effectiveUserId: string): Promise<number> {
         return menuRepository.deleteItems(ids, effectiveUserId);
     }
+
+    async bulkUpdateAvailability(ids: string[], effectiveUserId: string, isAvailable: boolean): Promise<number> {
+        return menuRepository.bulkUpdateAvailability(ids, effectiveUserId, isAvailable);
+    }
 }
 
 export const menuService = new MenuService();

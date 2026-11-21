@@ -14,6 +14,7 @@ function serializeMenuItem(doc: any): MenuItemDTO {
         price: doc.price,
         description: doc.description ?? undefined,
         category: doc.category ?? undefined,
+        isAvailable: doc.isAvailable !== false,
         userId: doc.userId?.toString(),
     };
 }
@@ -85,6 +86,12 @@ class MenuRepository {
         await dbConnect();
         const res = await MenuEntryModel.insertMany(items);
         return res.length;
+    }
+
+    async bulkUpdateAvailability(ids: string[], userId: string, isAvailable: boolean): Promise<number> {
+        await dbConnect();
+        const res = await MenuEntryModel.updateMany({ _id: { $in: ids }, userId }, { $set: { isAvailable } });
+        return res.modifiedCount;
     }
 
     // ─── Categories ───────────────────────────────────────────────────────────

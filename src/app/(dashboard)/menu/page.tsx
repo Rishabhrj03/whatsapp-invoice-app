@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function MenuPage({ searchParams }: { searchParams: Promise<{ tab?: string; page?: string }> }) {
+export default async function MenuPage({ searchParams }: { searchParams: Promise<{ tab?: string; page?: string; availability?: string }> }) {
     await dbConnect();
     const effectiveUserId = await getEffectiveUserId();
     if (!effectiveUserId) {
@@ -17,11 +17,17 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
 
     const resolvedSearchParams = await searchParams;
     const tab = (resolvedSearchParams.tab as "items" | "categories") || "items";
+    const availability = resolvedSearchParams.availability || "all";
     const page = parseInt(resolvedSearchParams.page || "1", 10);
     const limit = 10;
     const skip = (page - 1) * limit;
 
-    const itemsQuery = { userId: effectiveUserId };
+    const itemsQuery: any = { userId: effectiveUserId };
+    if (availability === "available") {
+        itemsQuery.isAvailable = { $ne: false };
+    } else if (availability === "unavailable") {
+        itemsQuery.isAvailable = false;
+    }
     const catQuery = { userId: effectiveUserId };
 
     const itemsSkip = tab === "items" ? skip : 0;
@@ -39,6 +45,7 @@ export default async function MenuPage({ searchParams }: { searchParams: Promise
             initialMenuItems={JSON.parse(JSON.stringify(menuItems))}
             initialCategories={JSON.parse(JSON.stringify(categories))}
             initialTab={tab}
+            initialAvailability={availability}
             currentPage={page}
             totalItemPages={Math.ceil(totalItems / limit) || 1}
             totalCategoryPages={Math.ceil(totalCategories / limit) || 1}
