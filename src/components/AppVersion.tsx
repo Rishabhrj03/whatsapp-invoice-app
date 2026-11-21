@@ -10,10 +10,11 @@ interface AppVersionProps {
     className?: string;
 }
 
-const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.3.3";
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.3.4";
 
 const CHANGELOG_SUMMARY = [
-    { version: "1.3.3", date: "Nov 2026", label: "Current", notes: "Transaction cancellation & audit trail, Paid/Unpaid/Cancelled status column & filters, S3 edited/cancelled PDF archiving & immediate cache-busted regeneration, pixel-perfect right-aligned PDF alignment" },
+    { version: "1.3.4", date: "Nov 2026", label: "Current", notes: "feat(menu): add item availability toggle (disable/enable) without deletion, bulk actions, and bill creation filtering; fix(menu): resolve pagination desync and add append-after ite" },
+    { version: "1.3.3", date: "Nov 2026", label: "Stable", notes: "Transaction cancellation & audit trail, Paid/Unpaid/Cancelled status column & filters, S3 edited/cancelled PDF archiving & immediate cache-busted regeneration, pixel-perfect right-aligned PDF alignment" },
     { version: "1.3.2", date: "Nov 2026", label: "Stable", notes: "WhatsApp contact selector, eliminated send-to-self bug, popup blocker bypass, and streamlined dispatch hub" },
     { version: "1.3.1", date: "Nov 2026", label: "Stable", notes: "S3 403 access proxy, dynamic multi-tenant SSR branding & favicons, dynamic PDF business header" },
     { version: "1.3.0", date: "Oct 2026", label: "Stable", notes: "Direct Server-Side S3 uploads (Zero-CORS), negative line item & total pricing, portaled item selector, and transaction date range presets" },

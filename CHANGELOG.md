@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.3.4] — 2026-11-21
+
+### 🚀 Production Release v1.3.4 (Stable Patch)
+
+- feat(menu): add item availability toggle (disable/enable) without deletion, bulk actions, and bill creation filtering
+- fix(menu): resolve pagination desync and add append-after item workflow with reactive prop sync
+- feat(transactions): add Transaction Status filter and multi-version S3 PDF revision tracking
+- feat(invoices): add edit record tracking, audit metadata, and visual 'Edited' indicators across UI, PDF, and CSV exports
+- feat(transactions): add transaction cancellation, status tracking, S3 PDF archival & regeneration, and pixel-perfect PDF alignment
+- feat(export): enable filter-based CSV export on transactions with date preset and search parity
+- fix(whatsapp): resolve send-to-self bug, add contact selector option, and streamline invoice dispatch hub
+- feat(messaging): add 1-tap direct PDF download link and rich WhatsApp OpenGraph card preview with zero extra cost
+- fix(ssr): add generateMetadata to dashboard layout to serve dynamic title and icon from SSR without initial flash
+- fix(branding): dynamically sync browser tab title, favicon, and header to user business name and logo
+- feat(invoicing): fix S3 AccessDenied errors, add secure PDF download proxy, and support WhatsApp document dispatch
+- feat: release v1.3.0 with direct server-side S3 uploads, credit notes, and portaled UI components
+- feat: add direct server-side S3 upload for invoices, images, logos and photos to bypass browser CORS
+- fix: allow negative grand total and fix dropdown text truncation overflow
+- fix: allow negative line item prices, portal MenuSelector to body with tooltips, set S3 bucket to primebake invoices folder
+- feat(invoice): release v1.2.0 - add line item customization modal, plus button on Select Menu Item, and invoice description box
+- fix(transactions): fix customer name/phone search and add comprehensive date filter bar with presets and custom ranges
+- fix(ui): add direct bill discount field, invoice preview/public discount rows, and staff store branding resolution
+- fix(metadata): replace favicon.ico and add OpenGraph/Twitter social cards with Primebake logo
+- feat(branding): rebrand tenant to Primebake with official logo badge, metadata, and headers
+- fix(auth): replace return null with redirect('/login') across all dashboard pages and validate dbUser in layout to prevent blank screen
+- fix(ui): resolve Next.js 16 plain object serialization and date hydration mismatches across dashboard routes
+- fix(ci): direct next build in vercel.json and define engines in package.json
+- fix(npm): silence legacy cache-dir env warning on Vercel via loglevel=error in .npmrc
+- docs: add Senior Security Engineer Threat & Hardening Audit Report
+- fix(security): resolve all warnings, harden regex against ReDoS, secure S3 uploads, and add HTTP security headers
+
 All notable changes to this project will be documented in this file.
 Format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
