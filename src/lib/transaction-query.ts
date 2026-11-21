@@ -25,8 +25,13 @@ export async function buildTransactionFilterQuery(params: TransactionFilterParam
     if (status && status !== "all") {
         const normStatus = status.toLowerCase();
         if (normStatus === "paid") {
-            // Legacy records have 'Sent' or null for completed POS sales
-            andConditions.push({ status: { $in: ["Paid", "Sent", null] } });
+            // Legacy records have 'Sent', null, or missing status for completed POS sales
+            andConditions.push({
+                $or: [
+                    { status: { $in: ["Paid", "Sent", null] } },
+                    { status: { $exists: false } }
+                ]
+            });
         } else if (normStatus === "unpaid") {
             andConditions.push({ status: "Unpaid" });
         } else if (normStatus === "cancelled") {

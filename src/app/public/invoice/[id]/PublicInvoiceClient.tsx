@@ -45,6 +45,7 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
                 status: invoice.status,
                 isEdited: invoice.isEdited,
                 editedAt: invoice.editedAt,
+                editCount: invoice.editCount,
                 customer: invoice.customer,
             },
             business: {

@@ -26,6 +26,7 @@ export interface GenerateInvoicePdfData {
     status?: string;
     isEdited?: boolean;
     editedAt?: string | Date;
+    editCount?: number;
     customer?: PdfInvoiceCustomer | null;
 }
 
@@ -124,7 +125,10 @@ export function buildInvoicePdfDoc(options: GenerateInvoicePdfOptions): jsPDF {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
         doc.setTextColor(126, 34, 206); // Purple-700
-        doc.text("REVISED / EDITED INVOICE", 196, 20, { align: "right" });
+        const revBanner = invoice.editCount && invoice.editCount > 1
+            ? `REVISED INVOICE (REV #${invoice.editCount})`
+            : "REVISED / EDITED INVOICE";
+        doc.text(revBanner, 196, 20, { align: "right" });
     } else {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
@@ -173,7 +177,10 @@ export function buildInvoicePdfDoc(options: GenerateInvoicePdfOptions): jsPDF {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text(`Invoice #${billId}${invoice.isEdited ? " (Edited)" : ""}`, 196, 46, { align: "right" });
+    const revTag = invoice.isEdited
+        ? (invoice.editCount && invoice.editCount > 1 ? ` (Rev #${invoice.editCount})` : " (Edited)")
+        : "";
+    doc.text(`Invoice #${billId}${revTag}`, 196, 46, { align: "right" });
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9.5);
@@ -195,7 +202,8 @@ export function buildInvoicePdfDoc(options: GenerateInvoicePdfOptions): jsPDF {
         const formattedEditDate = editDate
             ? editDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })
             : formattedDate;
-        doc.text(`Status: Revised (Edited ${formattedEditDate})`, 196, nextRightY, { align: "right" });
+        const revDetailSuffix = invoice.editCount && invoice.editCount > 1 ? ` • Rev #${invoice.editCount}` : "";
+        doc.text(`Status: Revised (Edited ${formattedEditDate}${revDetailSuffix})`, 196, nextRightY, { align: "right" });
         nextRightY += 5;
     }
 

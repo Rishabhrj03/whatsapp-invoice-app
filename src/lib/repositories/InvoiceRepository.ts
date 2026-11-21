@@ -48,6 +48,16 @@ function serializeInvoice(doc: any): InvoiceDTO {
         editedAt: doc.editedAt instanceof Date ? doc.editedAt.toISOString() : doc.editedAt,
         editedBy: doc.editedBy?.toString(),
         editCount: doc.editCount ?? (doc.isEdited ? 1 : 0),
+        editHistory: Array.isArray(doc.editHistory)
+            ? doc.editHistory.map((rec: any) => ({
+                revisionNumber: rec.revisionNumber,
+                editedAt: rec.editedAt instanceof Date ? rec.editedAt.toISOString() : rec.editedAt,
+                editedBy: rec.editedBy?.toString(),
+                previousTotal: rec.previousTotal,
+                newTotal: rec.newTotal,
+                archivedPdfKey: rec.archivedPdfKey,
+            }))
+            : undefined,
         createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : doc.createdAt,
     };
 }
@@ -107,17 +117,36 @@ class InvoiceRepository implements IRepository<InvoiceDTO, CreateInvoiceInput> {
     async update(
         id: string,
         data: Partial<UpdateInvoiceInput> & { userId?: string },
-        editMeta?: { editedBy?: string }
+        editMeta?: { 
+            editedBy?: string; 
+            revisionNumber?: number; 
+            previousTotal?: number; 
+            newTotal?: number; 
+            archivedPdfKey?: string;
+        }
     ): Promise<InvoiceDTO | null> {
         await dbConnect();
+        const editDate = new Date();
         const updatePayload: any = {
             ...data,
             isEdited: true,
-            editedAt: new Date(),
+            editedAt: editDate,
             $inc: { editCount: 1 },
         };
         if (editMeta?.editedBy) {
             updatePayload.editedBy = new mongoose.Types.ObjectId(editMeta.editedBy);
+        }
+        if (editMeta?.revisionNumber) {
+            updatePayload.$push = {
+                editHistory: {
+                    revisionNumber: editMeta.revisionNumber,
+                    editedAt: editDate,
+                    editedBy: editMeta.editedBy ? new mongoose.Types.ObjectId(editMeta.editedBy) : undefined,
+                    previousTotal: editMeta.previousTotal,
+                    newTotal: editMeta.newTotal,
+                    archivedPdfKey: editMeta.archivedPdfKey,
+                }
+            };
         }
         const updated = await InvoiceModel.findByIdAndUpdate(id, updatePayload, { returnDocument: 'after' }).populate('customer').lean();
         return updated ? serializeInvoice(updated) : null;

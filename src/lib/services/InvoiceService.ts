@@ -86,12 +86,18 @@ export class InvoiceService {
             return { success: false, error: 'Invoice not found or access denied' };
         }
 
-        // 1. Archive the pre-edit PDF to S3: invoices/edited/${id}_${timestamp}.pdf
-        await archiveInvoicePdf(invoiceId, 'edited');
+        const revisionNumber = (existing.editCount || 0) + 1;
 
-        // 2. Persist updated changes in MongoDB with edit tracking metadata
+        // 1. Archive the pre-edit PDF to S3: invoices/edited/${id}_rev${rev}_${timestamp}.pdf
+        const archiveRes = await archiveInvoicePdf(invoiceId, 'edited', revisionNumber);
+
+        // 2. Persist updated changes in MongoDB with edit tracking metadata & revision history
         const updated = await invoiceRepository.update(invoiceId, data, {
             editedBy: ctx.authUserId,
+            revisionNumber,
+            previousTotal: existing.totalAmount,
+            newTotal: data.totalAmount,
+            archivedPdfKey: archiveRes.archivedKey,
         });
         if (!updated) {
             return { success: false, error: 'Failed to update invoice' };
@@ -112,6 +118,7 @@ export class InvoiceService {
                     status: updated.status,
                     isEdited: updated.isEdited,
                     editedAt: updated.editedAt,
+                    editCount: updated.editCount,
                     customer: updated.customer,
                 },
                 business: {

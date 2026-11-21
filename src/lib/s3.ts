@@ -44,12 +44,14 @@ export async function getPresignedInvoiceDownloadUrl(
  */
 export async function archiveInvoicePdf(
     invoiceId: string,
-    folder: 'edited' | 'cancelled'
+    folder: 'edited' | 'cancelled',
+    revisionNumber?: number
 ): Promise<{ success: boolean; archivedKey?: string; error?: string }> {
     const bucket = process.env.AWS_S3_BUCKET_NAME || "primebake";
     const sourceKey = `invoices/${invoiceId}.pdf`;
     const timestamp = Date.now();
-    const destinationKey = `invoices/${folder}/${invoiceId}_${timestamp}.pdf`;
+    const revSuffix = revisionNumber ? `_rev${revisionNumber}` : '';
+    const destinationKey = `invoices/${folder}/${invoiceId}${revSuffix}_${timestamp}.pdf`;
 
     try {
         const copyCommand = new CopyObjectCommand({

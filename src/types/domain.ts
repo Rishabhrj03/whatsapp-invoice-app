@@ -47,7 +47,17 @@ export interface InvoiceDTO {
     editedAt?: string;
     editedBy?: string;
     editCount?: number;
+    editHistory?: InvoiceEditRecordDTO[];
     createdAt: string;
+}
+
+export interface InvoiceEditRecordDTO {
+    revisionNumber: number;
+    editedAt: string;
+    editedBy?: string;
+    previousTotal?: number;
+    newTotal?: number;
+    archivedPdfKey?: string;
 }
 
 export interface CreateInvoiceInput {

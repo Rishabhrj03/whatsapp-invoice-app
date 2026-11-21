@@ -90,6 +90,7 @@ export async function GET(
                         status: populatedInvoice.status,
                         isEdited: populatedInvoice.isEdited,
                         editedAt: populatedInvoice.editedAt,
+                        editCount: populatedInvoice.editCount,
                         customer: populatedInvoice.customer as any,
                     },
                     business: {

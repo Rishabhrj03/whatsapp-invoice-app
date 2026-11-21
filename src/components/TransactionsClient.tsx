@@ -399,18 +399,18 @@ export default function TransactionsClient({
                     </div>
                 </div>
 
-                {/* Status Filter Row */}
+                {/* Transaction Status Filter Row */}
                 <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-xs font-black text-slate-500 uppercase tracking-wider">
+                    <div className="flex items-center gap-2 text-xs font-black text-slate-700 uppercase tracking-wider">
                         <Filter size={15} className="text-blue-600" />
-                        <span>Filter By Status:</span>
+                        <span>Transaction Status:</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                         {[
-                            { id: 'all', label: 'All Statuses' },
-                            { id: 'paid', label: 'Paid' },
-                            { id: 'unpaid', label: 'Unpaid' },
-                            { id: 'cancelled', label: 'Cancelled' },
+                            { id: 'all', label: 'All', activeClass: 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-900 ring-offset-1', dot: 'bg-slate-400' },
+                            { id: 'paid', label: 'Paid', activeClass: 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/25 ring-2 ring-emerald-600 ring-offset-1', dot: 'bg-emerald-500' },
+                            { id: 'unpaid', label: 'Unpaid', activeClass: 'bg-amber-600 text-white shadow-sm shadow-amber-500/25 ring-2 ring-amber-600 ring-offset-1', dot: 'bg-amber-500' },
+                            { id: 'cancelled', label: 'Cancelled', activeClass: 'bg-rose-600 text-white shadow-sm shadow-rose-500/25 ring-2 ring-rose-600 ring-offset-1', dot: 'bg-rose-500' },
                         ].map((s) => {
                             const isActive = statusFilter === s.id;
                             return (
@@ -418,13 +418,14 @@ export default function TransactionsClient({
                                     key={s.id}
                                     type="button"
                                     onClick={() => handleStatusChange(s.id)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                         isActive
-                                            ? 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-900 ring-offset-1'
+                                            ? s.activeClass
                                             : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                                     }`}
                                 >
-                                    {s.label}
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : s.dot}`} />
+                                    <span>{s.label}</span>
                                 </button>
                             );
                         })}
@@ -494,12 +495,18 @@ export default function TransactionsClient({
                                 </span>
                             )}
                             {statusFilter !== 'all' && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 font-bold border border-purple-200">
-                                    <span>Status: {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}</span>
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold border ${
+                                    statusFilter === 'paid'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : statusFilter === 'unpaid'
+                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                                }`}>
+                                    <span>Transaction Status: {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}</span>
                                     <button
                                         type="button"
                                         onClick={() => handleStatusChange('all')}
-                                        className="hover:text-purple-900 p-0.5"
+                                        className="hover:opacity-75 p-0.5"
                                         title="Clear status filter"
                                     >
                                         <X size={12} />
@@ -583,7 +590,7 @@ export default function TransactionsClient({
                                                         title={`Edited ${inv.editCount ? `(${inv.editCount}x)` : ''}${inv.editedAt ? ` on ${new Date(inv.editedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}`}
                                                     >
                                                         <Edit3 size={9} className="text-purple-600" />
-                                                        <span>Edited</span>
+                                                        <span>Edited{inv.editCount && inv.editCount > 1 ? ` (${inv.editCount}x)` : ''}</span>
                                                     </span>
                                                 )}
                                                 {(() => {
@@ -774,7 +781,7 @@ export default function TransactionsClient({
                                                             title={`Edited ${inv.editCount ? `(${inv.editCount}x)` : ''}${inv.editedAt ? ` on ${new Date(inv.editedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}`}
                                                         >
                                                             <Edit3 size={9} className="text-purple-600" />
-                                                            <span>Edited</span>
+                                                            <span>Edited{inv.editCount && inv.editCount > 1 ? ` (${inv.editCount}x)` : ''}</span>
                                                         </span>
                                                     )}
                                                 </div>

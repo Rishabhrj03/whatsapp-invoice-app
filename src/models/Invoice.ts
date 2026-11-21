@@ -10,6 +10,15 @@ export interface IInvoiceItem {
     description?: string;
 }
 
+export interface IInvoiceEditRecord {
+    revisionNumber: number;
+    editedAt: Date;
+    editedBy?: mongoose.Types.ObjectId;
+    previousTotal?: number;
+    newTotal?: number;
+    archivedPdfKey?: string;
+}
+
 export interface IInvoice extends Document {
     customer: mongoose.Types.ObjectId | ICustomer;
     items: IInvoiceItem[];
@@ -29,6 +38,7 @@ export interface IInvoice extends Document {
     editedAt?: Date;
     editedBy?: mongoose.Types.ObjectId;
     editCount?: number;
+    editHistory?: IInvoiceEditRecord[];
     createdAt: Date;
 }
 
@@ -39,6 +49,18 @@ const InvoiceItemSchema = new Schema<IInvoiceItem>({
     quantity: { type: Number, required: true, default: 1 },
     description: { type: String, required: false },
 });
+
+const InvoiceEditRecordSchema = new Schema<IInvoiceEditRecord>(
+    {
+        revisionNumber: { type: Number, required: true },
+        editedAt: { type: Date, default: Date.now },
+        editedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+        previousTotal: { type: Number },
+        newTotal: { type: Number },
+        archivedPdfKey: { type: String },
+    },
+    { _id: false }
+);
 
 const InvoiceSchema = new Schema<IInvoice>(
     {
@@ -60,6 +82,7 @@ const InvoiceSchema = new Schema<IInvoice>(
         editedAt: { type: Date, required: false },
         editedBy: { type: Schema.Types.ObjectId, ref: 'User', required: false },
         editCount: { type: Number, default: 0 },
+        editHistory: [InvoiceEditRecordSchema],
     },
     { timestamps: true }
 );
