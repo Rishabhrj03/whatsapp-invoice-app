@@ -39,8 +39,11 @@ function serializeInvoice(doc: any): InvoiceDTO {
         pdfUrl: doc.pdfUrl,
         comment: doc.comment,
         date: doc.date instanceof Date ? doc.date.toISOString() : doc.date,
-        status: doc.status ?? 'Sent',
+        status: doc.status ?? 'Paid',
         userId: doc.userId?.toString(),
+        createdBy: doc.createdBy?.toString(),
+        cancelledAt: doc.cancelledAt instanceof Date ? doc.cancelledAt.toISOString() : doc.cancelledAt,
+        cancelledBy: doc.cancelledBy?.toString(),
         createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : doc.createdAt,
     };
 }
@@ -90,7 +93,7 @@ class InvoiceRepository implements IRepository<InvoiceDTO, CreateInvoiceInput> {
             comment: dto.comment,
             paymentType: dto.paymentType,
             date: new Date(),
-            status: 'Sent',
+            status: dto.status || 'Paid',
             userId: dto.userId,
             createdBy: dto.createdBy,
         });
@@ -99,7 +102,21 @@ class InvoiceRepository implements IRepository<InvoiceDTO, CreateInvoiceInput> {
 
     async update(id: string, data: Partial<UpdateInvoiceInput> & { userId?: string }): Promise<InvoiceDTO | null> {
         await dbConnect();
-        const updated = await InvoiceModel.findByIdAndUpdate(id, data, { returnDocument: 'after' }).lean();
+        const updated = await InvoiceModel.findByIdAndUpdate(id, data, { returnDocument: 'after' }).populate('customer').lean();
+        return updated ? serializeInvoice(updated) : null;
+    }
+
+    async cancel(id: string, cancelledBy: string): Promise<InvoiceDTO | null> {
+        await dbConnect();
+        const updated = await InvoiceModel.findByIdAndUpdate(
+            id,
+            {
+                status: 'Cancelled',
+                cancelledAt: new Date(),
+                cancelledBy: new mongoose.Types.ObjectId(cancelledBy),
+            },
+            { returnDocument: 'after' }
+        ).populate('customer').lean();
         return updated ? serializeInvoice(updated) : null;
     }
 
@@ -118,7 +135,7 @@ class InvoiceRepository implements IRepository<InvoiceDTO, CreateInvoiceInput> {
     async aggregateRevenue(userId: string): Promise<number> {
         await dbConnect();
         const result = await InvoiceModel.aggregate([
-            { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+            { $match: { userId: new mongoose.Types.ObjectId(userId), status: { $ne: 'Cancelled' } } },
             { $group: { _id: null, total: { $sum: '$totalAmount' } } },
         ]);
         return result[0]?.total ?? 0;

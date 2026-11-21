@@ -1,10 +1,8 @@
 "use client";
 
 import { Eye, FileDown, Printer } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-
 import { useState, useEffect } from "react";
+import { buildInvoicePdfDoc } from "@/lib/pdf/generate-invoice-pdf";
 
 export default function PublicInvoiceClient({ invoice, user }: { invoice: any; user?: any }) {
     const [logoBase64, setLogoBase64] = useState<string>("");
@@ -32,105 +30,28 @@ export default function PublicInvoiceClient({ invoice, user }: { invoice: any; u
                 .catch(e => console.error("Logo fetch err", e));
         }
     }, [user?.logoUrl, user?.businessName, invoice._id]);
+
     const generatePDF = () => {
-        const doc = new jsPDF();
-        const customer = invoice.customer;
-
-        // Header
-        doc.setFontSize(24);
-        doc.setTextColor(37, 99, 235); // Blue-600
-        doc.text("INVOICE", 105, 20, { align: "center" });
-
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Invoice ID: ${invoice._id}`, 105, 30, { align: "center" });
-        doc.text(`Date: ${new Date(invoice.date).toLocaleDateString()}`, 105, 35, { align: "center" });
-
-        // Business Info
-        if (logoBase64) {
-            try {
-                const format = user?.logoUrl?.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
-                doc.addImage(logoBase64, format, 160, 10, 30, 30);
-            } catch (e) {
-                console.error("Failed to add logo to PDF:", e);
-            }
-        }
-
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text(user?.businessName || "Store Invoice", 14, 50);
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text("Official Invoice & Receipt", 14, 55);
-
-        // Customer Info
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text("Bill To:", 14, 75);
-        doc.setFontSize(11);
-        doc.text(customer?.name || "Customer", 14, 82);
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(customer?.phoneNumber || "", 14, 88);
-        doc.text(customer?.address || "", 14, 94);
-
-        // Table
-        const tableData = invoice.items.map((item: any, index: number) => [
-            index + 1,
-            item.description ? `${item.name}\n${item.description}` : item.name,
-            `₹${item.price.toFixed(2)}`,
-            item.quantity,
-            `₹${(item.price * item.quantity).toFixed(2)}`,
-        ]);
-
-        autoTable(doc, {
-            startY: 105,
-            head: [["#", "Item", "Unit Price", "Quantity", "Total"]],
-            body: tableData,
-            theme: "grid",
-            headStyles: { fillColor: [37, 99, 235] },
-            styles: { fontSize: 9 },
+        const doc = buildInvoicePdfDoc({
+            invoice: {
+                _id: invoice._id,
+                items: invoice.items,
+                totalAmount: invoice.totalAmount,
+                discountAmount: invoice.discountAmount,
+                couponCode: invoice.couponCode,
+                paymentType: invoice.paymentType,
+                comment: invoice.comment,
+                date: invoice.date,
+                status: invoice.status,
+                customer: invoice.customer,
+            },
+            business: {
+                name: user?.businessName || "Primebake",
+                logoBase64: logoBase64 || undefined,
+            },
         });
 
-        const subtotal = invoice.items.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
-        const discountAmount = invoice.discountAmount || (subtotal > invoice.totalAmount ? subtotal - invoice.totalAmount : 0);
-
-        const finalY = (doc as any).lastAutoTable.finalY + 15;
-
-        // Totals
-        const rupeeSymbol = "Rs. ";
-        let currentY = finalY;
-
-        doc.setFontSize(11);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Subtotal:`, 140, currentY);
-        doc.text(`${rupeeSymbol}${subtotal.toFixed(2)}`, 190, currentY, { align: "right" });
-
-        if (discountAmount > 0) {
-            currentY += 6;
-            doc.setTextColor(220, 38, 38);
-            const discountLabel = invoice.couponCode ? `Discount (${invoice.couponCode}):` : `Discount:`;
-            doc.text(discountLabel, 140, currentY);
-            doc.text(`-${rupeeSymbol}${discountAmount.toFixed(2)}`, 190, currentY, { align: "right" });
-        }
-
-        currentY += 8;
-        doc.setFontSize(15);
-        doc.setTextColor(37, 99, 235);
-        doc.text(`Grand Total:`, 140, currentY);
-        doc.text(`${rupeeSymbol}${invoice.totalAmount.toFixed(2)}`, 190, currentY, { align: "right" });
-
-        // Notes
-        if (invoice.comment) {
-            doc.setFontSize(12);
-            doc.setTextColor(0, 0, 0);
-            doc.text("Notes:", 14, finalY);
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text(invoice.comment, 14, finalY + 7);
-        }
-
-        doc.save(`Invoice_${customer?.name.replace(/\s+/g, "_")}.pdf`);
+        doc.save(`Invoice_${invoice.customer?.name?.replace(/\s+/g, "_") || "bill"}_${invoice._id.slice(-6).toUpperCase()}.pdf`);
     };
 
     return (

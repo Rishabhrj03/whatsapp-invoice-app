@@ -20,9 +20,11 @@ export interface IInvoice extends Document {
     pdfUrl?: string;
     comment?: string;
     date: Date;
-    status: 'Draft' | 'Sent' | 'Paid';
+    status: 'Draft' | 'Sent' | 'Paid' | 'Unpaid' | 'Cancelled';
     userId: mongoose.Types.ObjectId;
     createdBy?: mongoose.Types.ObjectId;
+    cancelledAt?: Date;
+    cancelledBy?: mongoose.Types.ObjectId;
     createdAt: Date;
 }
 
@@ -45,9 +47,11 @@ const InvoiceSchema = new Schema<IInvoice>(
         pdfUrl: { type: String, required: false },
         comment: { type: String, required: false },
         date: { type: Date, default: Date.now },
-        status: { type: String, enum: ['Draft', 'Sent', 'Paid'], default: 'Draft' },
+        status: { type: String, enum: ['Draft', 'Sent', 'Paid', 'Unpaid', 'Cancelled'], default: 'Paid' },
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: false }, // Useful for STAFF tracking
+        cancelledAt: { type: Date, required: false },
+        cancelledBy: { type: Schema.Types.ObjectId, ref: 'User', required: false },
     },
     { timestamps: true }
 );

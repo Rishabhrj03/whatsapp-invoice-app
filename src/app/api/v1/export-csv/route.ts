@@ -34,6 +34,7 @@ export async function GET(request: Request) {
         const datePreset = searchParams.get("datePreset") || undefined;
         const startDate = searchParams.get("startDate") || undefined;
         const endDate = searchParams.get("endDate") || undefined;
+        const status = searchParams.get("status") || undefined;
 
         await dbConnect();
 
@@ -44,6 +45,7 @@ export async function GET(request: Request) {
             datePreset,
             startDate,
             endDate,
+            status,
         });
 
         const invoices = await Invoice.find(query)
@@ -69,6 +71,7 @@ export async function GET(request: Request) {
                 "Items Ordered": itemsString,
                 "Total Amount (₹)": inv.totalAmount,
                 "Discount (₹)": inv.discountAmount || 0,
+                Status: inv.status || "Paid",
                 "Payment Type": inv.paymentType || "Cash",
                 Comment: inv.comment || "",
             };
@@ -78,6 +81,9 @@ export async function GET(request: Request) {
 
         // Generate descriptive filename based on active filters
         let filterSuffix = "";
+        if (status && status !== "all") {
+            filterSuffix += `_status-${status}`;
+        }
         if (datePreset && datePreset !== "all") {
             filterSuffix += `_${datePreset}`;
         } else if (startDate || endDate) {

@@ -22,6 +22,7 @@ interface EditInvoiceModalProps {
 export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: EditInvoiceModalProps) {
     const [items, setItems] = useState<InvoiceItem[]>([]);
     const [paymentType, setPaymentType] = useState<'Cash' | 'Card' | 'UPI'>('Cash');
+    const [status, setStatus] = useState<'Paid' | 'Unpaid' | 'Cancelled'>('Paid');
     const [discountAmount, setDiscountAmount] = useState(0);
     const [comment, setComment] = useState('');
     const [loading, setLoading] = useState(false);
@@ -37,6 +38,8 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
                 description: it.description || '',
             })) || []);
             setPaymentType(invoice.paymentType || 'Cash');
+            const initialStatus = invoice.status === 'Sent' ? 'Paid' : (invoice.status || 'Paid');
+            setStatus(initialStatus);
             setDiscountAmount(invoice.discountAmount || 0);
             setComment(invoice.comment || '');
             setSuccess(false);
@@ -74,6 +77,7 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
             totalAmount: total,
             discountAmount,
             comment,
+            status,
         });
         setLoading(false);
         if (res.success) {
@@ -111,7 +115,63 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
 
                 {/* Body */}
                 <div className="overflow-y-auto flex-1 p-8 space-y-6">
-                    {/* Items */}
+                    {/* Status Selection */}
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Invoice Status</label>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setStatus('Paid')}
+                                className={`flex-1 py-2.5 rounded-2xl text-xs font-bold border-2 transition-all ${status === 'Paid'
+                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm'
+                                    : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                                    }`}
+                            >
+                                Paid
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setStatus('Unpaid')}
+                                className={`flex-1 py-2.5 rounded-2xl text-xs font-bold border-2 transition-all ${status === 'Unpaid'
+                                    ? 'border-amber-500 bg-amber-50 text-amber-700 shadow-sm'
+                                    : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                                    }`}
+                            >
+                                Unpaid
+                            </button>
+                            {status === 'Cancelled' && (
+                                <button
+                                    type="button"
+                                    onClick={() => setStatus('Cancelled')}
+                                    className="flex-1 py-2.5 rounded-2xl text-xs font-bold border-2 border-rose-500 bg-rose-50 text-rose-700 shadow-sm"
+                                >
+                                    Cancelled
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Payment Type */}
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Payment Type</label>
+                        <div className="flex gap-3">
+                            {(['Cash', 'Card', 'UPI'] as const).map(type => (
+                                <button
+                                    key={type}
+                                    type="button"
+                                    onClick={() => setPaymentType(type)}
+                                    className={`flex-1 py-3 rounded-2xl text-sm font-bold border-2 transition-all ${paymentType === type
+                                        ? type === 'Cash' ? 'border-green-500 bg-green-50 text-green-700'
+                                            : type === 'Card' ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                : 'border-purple-500 bg-purple-50 text-purple-700'
+                                        : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                                        }`}
+                                >
+                                    {type}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Items</h3>
@@ -173,27 +233,6 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
                                         <Trash2 size={16} />
                                     </button>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Payment Type */}
-                    <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Payment Type</label>
-                        <div className="flex gap-3">
-                            {(['Cash', 'Card', 'UPI'] as const).map(type => (
-                                <button
-                                    key={type}
-                                    onClick={() => setPaymentType(type)}
-                                    className={`flex-1 py-3 rounded-2xl text-sm font-bold border-2 transition-all ${paymentType === type
-                                        ? type === 'Cash' ? 'border-green-500 bg-green-50 text-green-700'
-                                            : type === 'Card' ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                : 'border-purple-500 bg-purple-50 text-purple-700'
-                                        : 'border-gray-200 text-gray-400 hover:border-gray-300'
-                                        }`}
-                                >
-                                    {type}
-                                </button>
                             ))}
                         </div>
                     </div>

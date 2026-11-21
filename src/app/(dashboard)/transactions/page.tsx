@@ -17,6 +17,7 @@ export default async function TransactionsPage({
         datePreset?: string;
         startDate?: string;
         endDate?: string;
+        status?: string;
     }> 
 }) {
     await dbConnect();
@@ -35,6 +36,7 @@ export default async function TransactionsPage({
     const startDateParam = resolvedSearchParams.startDate || "";
     const endDateParam = resolvedSearchParams.endDate || "";
     const datePreset = resolvedSearchParams.datePreset || (startDateParam || endDateParam ? "custom" : "all");
+    const statusParam = resolvedSearchParams.status || "all";
 
     // Standardized filter query
     const query = await buildTransactionFilterQuery({
@@ -43,6 +45,7 @@ export default async function TransactionsPage({
         datePreset,
         startDate: startDateParam,
         endDate: endDateParam,
+        status: statusParam,
     });
 
     const skip = (page - 1) * limit;
@@ -78,6 +81,7 @@ export default async function TransactionsPage({
                 initialStartDate={startDateParam}
                 initialEndDate={endDateParam}
                 initialPreset={datePreset}
+                initialStatus={statusParam}
                 userRole={userRole}
             />
         </div>

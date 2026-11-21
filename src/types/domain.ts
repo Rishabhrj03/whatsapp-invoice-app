@@ -16,7 +16,7 @@ export interface AuthUser {
 
 // ─── Invoice ─────────────────────────────────────────────────────────────────
 export type PaymentType = 'Cash' | 'Card' | 'UPI';
-export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid';
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Unpaid' | 'Cancelled';
 
 export interface InvoiceItemDTO {
     menuEntryId?: string;
@@ -40,6 +40,9 @@ export interface InvoiceDTO {
     date: string;          // ISO string after serialization
     status: InvoiceStatus;
     userId: string;
+    createdBy?: string;
+    cancelledAt?: string;
+    cancelledBy?: string;
     createdAt: string;
 }
 
@@ -51,6 +54,7 @@ export interface CreateInvoiceInput {
     couponCode?: string;
     comment?: string;
     paymentType: PaymentType;
+    status?: InvoiceStatus;
 }
 
 export interface UpdateInvoiceInput {
@@ -60,6 +64,7 @@ export interface UpdateInvoiceInput {
     discountAmount?: number;
     couponCode?: string;
     comment?: string;
+    status?: InvoiceStatus;
 }
 
 // ─── Customer ────────────────────────────────────────────────────────────────

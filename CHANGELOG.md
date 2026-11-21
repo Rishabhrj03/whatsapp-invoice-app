@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 Format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] — 2026-11-21
+
+### 🛡️ Transaction Lifecycle & Archival Engine, Status Filters, Dynamic Regeneration & Pixel-Perfect PDF
+
+#### Added — Soft Cancellation & Comprehensive Audit Trail
+- **Non-Destructive Transaction Cancellation**:
+  - Implemented secure `cancelInvoice` workflow allowing authorized business owners to cancel transactions with full data preservation.
+  - Excludes cancelled transactions from active revenue metrics and analytics in `InvoiceRepository.aggregateRevenue`.
+  - Added safety confirmation modal with bill summary, warning, and owner password/confirmation check.
+  - Emits immutable `INVOICE_CANCELLED` audit trail event in `ActivityLogService` recording timestamp, operator identity, and role.
+
+#### Added — Transaction Status Tracking & Filtering
+- **Status Column on Desktop & Mobile Cards**:
+  - Added color-coded status badges: `Paid` (emerald/green), `Unpaid` (amber/orange), `Cancelled` (rose/red), `Draft` (slate).
+  - Status toggle (`Paid` vs `Unpaid`) in `EditInvoiceModal` allowing immediate status adjustments upon customer payment collection.
+- **Server-Side Status Filtering & CSV Export**:
+  - Added filter chips (`All Statuses`, `Paid`, `Unpaid`, `Cancelled`) with URL search parameter persistence (`status=paid`, etc.).
+  - Added `Status` column to CSV export (`/api/v1/export-csv`) reflecting active filters and appends status indicators to download filenames.
+
+#### Fixed — Stale S3 PDF Link & Pre-Edit / Cancellation Archiving
+- **Automatic S3 PDF Archival (`invoices/edited/` & `invoices/cancelled/`)**:
+  - Before an invoice modification is committed, existing S3 PDF is archived to `invoices/edited/${id}_${timestamp}.pdf`.
+  - When a transaction is cancelled, active S3 PDF is archived to `invoices/cancelled/${id}_${timestamp}.pdf`.
+- **Immediate Cache-Busted PDF Regeneration**:
+  - Automatically regenerates fresh PDF buffer immediately upon edit and uploads to `invoices/${id}.pdf` with `Cache-Control: no-cache, no-store, must-revalidate`.
+  - Download route (`/api/invoices/[id]/download`) issues zero-cache response headers and includes on-demand generation fallback if S3 object is missing or stale.
+
+#### Fixed — Misaligned PDF Alignment on Transaction Downloads
+- **Standardized Multi-Environment PDF Generator (`src/lib/pdf/generate-invoice-pdf.ts`)**:
+  - Unified PDF generation engine running identically in browser and Node.js server environments.
+  - Standardized exact column coordinate geometry: `#` (12mm, center), `Item Description` (remainder, left), `Unit Price` (28mm, right), `Qty` (18mm, center), `Total` (32mm, right) ending precisely at right margin `X=196mm`.
+  - Right-aligned totals summary block at `X=196mm` preventing text overlap or truncation.
+  - Automatically renders prominent diagonal `CANCELLED` watermark and red status indicator badge on cancelled invoice PDFs.
+
 ## [1.3.2] — 2026-11-04
 
 ### 💬 WhatsApp Dispatch Hub, Contact Selector & Reliability Hardening

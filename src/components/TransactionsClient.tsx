@@ -21,7 +21,10 @@ import {
     Filter,
     CalendarDays,
     RotateCcw,
-    Users
+    Users,
+    Ban,
+    AlertOctagon,
+    Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
@@ -29,6 +32,7 @@ import AddCustomerModal from "./AddCustomerModal";
 import EditInvoiceModal from "./EditInvoiceModal";
 import Pagination from "./Pagination";
 import { normalizeWhatsAppPhone } from "@/lib/phone-utils";
+import { cancelInvoice } from "@/app/actions/invoice";
 
 interface TransactionsClientProps {
     initialInvoices: any[];
@@ -39,6 +43,7 @@ interface TransactionsClientProps {
     initialStartDate?: string;
     initialEndDate?: string;
     initialPreset?: string;
+    initialStatus?: string;
     userRole?: string;
 }
 
@@ -51,6 +56,7 @@ export default function TransactionsClient({
     initialStartDate = "",
     initialEndDate = "",
     initialPreset = "all",
+    initialStatus = "all",
     userRole,
 }: TransactionsClientProps) {
     const router = useRouter();
@@ -61,10 +67,13 @@ export default function TransactionsClient({
     const [datePreset, setDatePreset] = useState(initialPreset);
     const [startDate, setStartDate] = useState(initialStartDate);
     const [endDate, setEndDate] = useState(initialEndDate);
+    const [statusFilter, setStatusFilter] = useState(initialStatus);
     const [isCustomDateOpen, setIsCustomDateOpen] = useState(initialPreset === "custom" || !!(initialStartDate || initialEndDate));
     
     const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState<any>(null);
+    const [cancellingInvoice, setCancellingInvoice] = useState<any>(null);
+    const [isCancelling, setIsCancelling] = useState(false);
     const [invoices, setInvoices] = useState(initialInvoices);
 
     const isOwner = userRole === 'OWNER';
@@ -77,6 +86,10 @@ export default function TransactionsClient({
     useEffect(() => {
         setSearchQuery(initialSearch);
     }, [initialSearch]);
+
+    useEffect(() => {
+        setStatusFilter(initialStatus || "all");
+    }, [initialStatus]);
 
     useEffect(() => {
         setDatePreset(initialPreset || (initialStartDate || initialEndDate ? "custom" : "all"));
@@ -163,13 +176,48 @@ export default function TransactionsClient({
         router.push(`${pathname}?${params.toString()}`);
     };
 
+    const handleStatusChange = (newStatus: string) => {
+        setStatusFilter(newStatus);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("page", "1");
+        if (newStatus === "all") {
+            params.delete("status");
+        } else {
+            params.set("status", newStatus);
+        }
+        router.push(`${pathname}?${params.toString()}`);
+    };
+
     const handleResetAllFilters = () => {
         setSearchQuery("");
         setDatePreset("all");
         setStartDate("");
         setEndDate("");
+        setStatusFilter("all");
         setIsCustomDateOpen(false);
         router.push(pathname);
+    };
+
+    const handleConfirmCancel = async () => {
+        if (!cancellingInvoice) return;
+        setIsCancelling(true);
+        try {
+            const res = await cancelInvoice(cancellingInvoice._id);
+            if (res.success && res.invoice) {
+                setInvoices(prev => prev.map(inv =>
+                    inv._id === cancellingInvoice._id
+                        ? { ...inv, status: 'Cancelled' }
+                        : inv
+                ));
+                setCancellingInvoice(null);
+            } else {
+                alert(res.error || "Failed to cancel transaction.");
+            }
+        } catch (err: any) {
+            alert(err.message || "Failed to cancel transaction.");
+        } finally {
+            setIsCancelling(false);
+        }
     };
 
     const handlePageChange = (newPage: number) => {
@@ -184,6 +232,7 @@ export default function TransactionsClient({
         if (datePreset && datePreset !== "all") params.set("datePreset", datePreset);
         if (startDate) params.set("startDate", startDate);
         if (endDate) params.set("endDate", endDate);
+        if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
         const q = params.toString();
         return `/api/v1/export-csv${q ? `?${q}` : ""}`;
     };
@@ -201,6 +250,30 @@ export default function TransactionsClient({
         };
     };
 
+    const getInvoiceStatusBadge = (status?: string) => {
+        const s = (status || 'Paid').toLowerCase();
+        if (s === 'cancelled') {
+            return {
+                label: 'Cancelled',
+                className: 'bg-rose-50 text-rose-700 border-rose-200/80',
+                dot: 'bg-rose-500',
+            };
+        }
+        if (s === 'unpaid') {
+            return {
+                label: 'Unpaid',
+                className: 'bg-amber-50 text-amber-700 border-amber-200/80',
+                dot: 'bg-amber-500',
+            };
+        }
+        // Paid or legacy 'Sent'
+        return {
+            label: 'Paid',
+            className: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+            dot: 'bg-emerald-500',
+        };
+    };
+
     const getPaymentBadge = (paymentType: string) => {
         switch (paymentType) {
             case 'Cash':
@@ -214,7 +287,13 @@ export default function TransactionsClient({
         }
     };
 
-    const isFiltered = Boolean(initialSearch || (datePreset && datePreset !== "all") || initialStartDate || initialEndDate);
+    const isFiltered = Boolean(
+        initialSearch ||
+        (datePreset && datePreset !== "all") ||
+        initialStartDate ||
+        initialEndDate ||
+        (statusFilter && statusFilter !== "all")
+    );
 
     const getPresetLabel = (preset: string) => {
         switch (preset) {
@@ -320,6 +399,38 @@ export default function TransactionsClient({
                     </div>
                 </div>
 
+                {/* Status Filter Row */}
+                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-xs font-black text-slate-500 uppercase tracking-wider">
+                        <Filter size={15} className="text-blue-600" />
+                        <span>Filter By Status:</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {[
+                            { id: 'all', label: 'All Statuses' },
+                            { id: 'paid', label: 'Paid' },
+                            { id: 'unpaid', label: 'Unpaid' },
+                            { id: 'cancelled', label: 'Cancelled' },
+                        ].map((s) => {
+                            const isActive = statusFilter === s.id;
+                            return (
+                                <button
+                                    key={s.id}
+                                    type="button"
+                                    onClick={() => handleStatusChange(s.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                        isActive
+                                            ? 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-900 ring-offset-1'
+                                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                    }`}
+                                >
+                                    {s.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
                 {/* Custom Date Range Picker Drawer */}
                 {isCustomDateOpen && (
                     <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
@@ -377,6 +488,19 @@ export default function TransactionsClient({
                                         onClick={handleClearSearch}
                                         className="hover:text-blue-900 p-0.5"
                                         title="Remove search filter"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </span>
+                            )}
+                            {statusFilter !== 'all' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 font-bold border border-purple-200">
+                                    <span>Status: {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleStatusChange('all')}
+                                        className="hover:text-purple-900 p-0.5"
+                                        title="Clear status filter"
                                     >
                                         <X size={12} />
                                     </button>
@@ -449,12 +573,23 @@ export default function TransactionsClient({
                                             </div>
                                         </div>
                                         <div className="text-right flex-shrink-0">
-                                            <p className="text-base font-black text-slate-900">
+                                            <p className={`text-base font-black ${inv.status === 'Cancelled' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
                                                 ₹{inv.totalAmount.toLocaleString("en-IN")}
                                             </p>
-                                            <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border mt-0.5 ${getPaymentBadge(inv.paymentType || "Cash")}`}>
-                                                {inv.paymentType || "Cash"}
-                                            </span>
+                                            <div className="flex items-center justify-end gap-1 mt-0.5">
+                                                {(() => {
+                                                    const badge = getInvoiceStatusBadge(inv.status);
+                                                    return (
+                                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${badge.className}`}>
+                                                            <span className={`w-1 h-1 rounded-full ${badge.dot}`} />
+                                                            <span>{badge.label}</span>
+                                                        </span>
+                                                    );
+                                                })()}
+                                                <span className={`inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${getPaymentBadge(inv.paymentType || "Cash")}`}>
+                                                    {inv.paymentType || "Cash"}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -483,11 +618,23 @@ export default function TransactionsClient({
                                         <Link
                                             href={`/public/invoice/${inv._id}`}
                                             target="_blank"
-                                            className="flex-1 min-w-[70px] flex items-center justify-center gap-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
+                                            className="flex-1 min-w-[65px] flex items-center justify-center gap-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
+                                            title="View Digital Invoice"
                                         >
                                             <span>View</span>
                                             <ArrowRight size={13} />
                                         </Link>
+
+                                        <a
+                                            href={`/api/invoices/${inv._id}/download`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-center gap-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
+                                            title="Download PDF"
+                                        >
+                                            <FileDown size={14} className="text-slate-600" />
+                                            <span>PDF</span>
+                                        </a>
 
                                         {(() => {
                                             const { customerUrl, contactPickerUrl } = buildTransactionWhatsAppUrls(inv);
@@ -529,15 +676,25 @@ export default function TransactionsClient({
                                             );
                                         })()}
 
-                                        {isOwner && (
-                                            <button
-                                                onClick={() => setEditingInvoice(inv)}
-                                                className="flex items-center justify-center gap-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
-                                                title="Edit Bill (Owner only)"
-                                            >
-                                                <Edit3 size={14} />
-                                                <span className="hidden xs:inline">Edit</span>
-                                            </button>
+                                        {isOwner && inv.status !== 'Cancelled' && (
+                                            <>
+                                                <button
+                                                    onClick={() => setEditingInvoice(inv)}
+                                                    className="flex items-center justify-center gap-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
+                                                    title="Edit Bill (Owner only)"
+                                                >
+                                                    <Edit3 size={14} />
+                                                    <span className="hidden xs:inline">Edit</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => setCancellingInvoice(inv)}
+                                                    className="flex items-center justify-center gap-1 py-2 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
+                                                    title="Cancel Transaction"
+                                                >
+                                                    <Ban size={14} />
+                                                    <span className="hidden xs:inline">Cancel</span>
+                                                </button>
+                                            </>
                                         )}
                                     </div>
                                 </div>
@@ -551,6 +708,7 @@ export default function TransactionsClient({
                                     <tr className="bg-slate-50/80 border-b border-slate-100">
                                         <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider">Date & Time</th>
                                         <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider">Customer</th>
+                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Status</th>
                                         <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Items</th>
                                         <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Payment</th>
                                         <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-right">Amount</th>
@@ -590,6 +748,17 @@ export default function TransactionsClient({
                                                     {inv.customer?.phoneNumber || "No phone"}
                                                 </p>
                                             </td>
+                                            <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                {(() => {
+                                                    const badge = getInvoiceStatusBadge(inv.status);
+                                                    return (
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${badge.className}`}>
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                                                            <span>{badge.label}</span>
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </td>
                                             <td className="px-6 py-4 text-center">
                                                 <span 
                                                     className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold cursor-default hover:bg-slate-200 transition-colors"
@@ -604,9 +773,20 @@ export default function TransactionsClient({
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <p className="text-sm font-black text-slate-900">
-                                                    ₹{inv.totalAmount.toLocaleString("en-IN")}
-                                                </p>
+                                                {inv.status === 'Cancelled' ? (
+                                                    <div>
+                                                        <p className="text-sm font-black text-slate-400 line-through">
+                                                            ₹{inv.totalAmount.toLocaleString("en-IN")}
+                                                        </p>
+                                                        <span className="text-[10px] font-bold text-rose-600 uppercase">
+                                                            Cancelled
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm font-black text-slate-900">
+                                                        ₹{inv.totalAmount.toLocaleString("en-IN")}
+                                                    </p>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-right whitespace-nowrap">
                                                 <div className="flex items-center justify-end gap-1.5">
@@ -619,6 +799,16 @@ export default function TransactionsClient({
                                                         <span>View</span>
                                                         <ArrowRight size={13} />
                                                     </Link>
+
+                                                    <a
+                                                        href={`/api/invoices/${inv._id}/download`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                                                        title="Download Official PDF"
+                                                    >
+                                                        <FileDown size={14} className="text-slate-600" /> PDF
+                                                    </a>
 
                                                     {(() => {
                                                         const { customerUrl, contactPickerUrl } = buildTransactionWhatsAppUrls(inv);
@@ -657,14 +847,23 @@ export default function TransactionsClient({
                                                         );
                                                     })()}
 
-                                                    {isOwner && (
-                                                        <button
-                                                            onClick={() => setEditingInvoice(inv)}
-                                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg text-xs font-bold transition-colors"
-                                                            title="Edit Bill (Owner only)"
-                                                        >
-                                                            <Edit3 size={14} /> Edit
-                                                        </button>
+                                                    {isOwner && inv.status !== 'Cancelled' && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => setEditingInvoice(inv)}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg text-xs font-bold transition-colors"
+                                                                title="Edit Bill (Owner only)"
+                                                            >
+                                                                <Edit3 size={14} /> Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setCancellingInvoice(inv)}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition-colors"
+                                                                title="Cancel Transaction (Owner only)"
+                                                            >
+                                                                <Ban size={14} /> Cancel
+                                                            </button>
+                                                        </>
                                                     )}
                                                 </div>
                                             </td>
@@ -731,6 +930,91 @@ export default function TransactionsClient({
                         setEditingInvoice(null);
                     }}
                 />
+            )}
+
+            {/* Safety Confirmation Modal for Transaction Cancellation */}
+            {cancellingInvoice && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div 
+                        className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-200" 
+                        onClick={() => !isCancelling && setCancellingInvoice(null)} 
+                    />
+                    <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-rose-100 relative overflow-hidden flex flex-col p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-rose-100 text-rose-600 rounded-2xl flex-shrink-0">
+                                <AlertOctagon size={28} />
+                            </div>
+                            <div className="space-y-1">
+                                <h3 className="text-lg font-black text-slate-900">
+                                    Cancel Bill #{cancellingInvoice._id.slice(-6).toUpperCase()}?
+                                </h3>
+                                <p className="text-xs text-slate-500 font-medium">
+                                    Owner Action • This transaction will be soft-cancelled and preserved with full audit logs.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Bill Details Summary Card */}
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2 text-xs">
+                            <div className="flex justify-between text-slate-600">
+                                <span>Customer:</span>
+                                <span className="font-bold text-slate-900">{cancellingInvoice.customer?.name || "Guest Customer"}</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                                <span>Date:</span>
+                                <span className="font-bold text-slate-900">{new Date(cancellingInvoice.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600">
+                                <span>Payment Mode:</span>
+                                <span className="font-bold text-slate-900">{cancellingInvoice.paymentType || "Cash"}</span>
+                            </div>
+                            <div className="flex justify-between text-slate-600 pt-2 border-t border-slate-200 text-sm">
+                                <span className="font-bold">Total Amount:</span>
+                                <span className="font-black text-rose-600">₹{cancellingInvoice.totalAmount.toLocaleString("en-IN")}</span>
+                            </div>
+                        </div>
+
+                        {/* Notice */}
+                        <div className="p-3.5 bg-rose-50/60 border border-rose-200 rounded-xl text-[11px] text-rose-800 space-y-1">
+                            <p className="font-bold">What happens when you cancel:</p>
+                            <ul className="list-disc list-inside space-y-0.5 text-rose-700">
+                                <li>The pre-cancellation invoice PDF is archived to S3 (<code className="font-mono text-[10px]">invoices/cancelled/</code>).</li>
+                                <li>The active bill PDF is regenerated with a bold <strong>CANCELLED</strong> watermark.</li>
+                                <li>This amount (₹{cancellingInvoice.totalAmount}) is excluded from revenue calculations.</li>
+                            </ul>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <button
+                                type="button"
+                                disabled={isCancelling}
+                                onClick={() => setCancellingInvoice(null)}
+                                className="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all disabled:opacity-50"
+                            >
+                                Keep Bill
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isCancelling}
+                                onClick={handleConfirmCancel}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs shadow-md shadow-rose-600/25 transition-all active:scale-95 disabled:opacity-50"
+                            >
+                                {isCancelling ? (
+                                    <>
+                                        <Loader2 size={14} className="animate-spin" />
+                                        <span>Cancelling Bill...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Ban size={14} />
+                                        <span>Confirm & Cancel Bill</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

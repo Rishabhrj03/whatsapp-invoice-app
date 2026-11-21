@@ -71,6 +71,10 @@ export async function createInvoice(data: unknown): Promise<CreateInvoiceRespons
     }
 }
 
+export type CancelInvoiceResponse =
+    | { success: true; invoice: any; error?: undefined }
+    | { success: false; error: string; invoice?: undefined };
+
 export async function updateInvoice(invoiceId: string, data: unknown): Promise<UpdateInvoiceResponse> {
     try {
         const session = await auth();
@@ -85,6 +89,7 @@ export async function updateInvoice(invoiceId: string, data: unknown): Promise<U
             effectiveUserId,
             authUserId: session.user.id,
             userRole: user.role,
+            businessName: user.businessName || "Primebake",
         });
 
         if (!result.success || !result.invoice) {
@@ -113,6 +118,52 @@ export async function updateInvoice(invoiceId: string, data: unknown): Promise<U
     } catch (error: any) {
         console.error("Failed to update invoice:", error);
         return { success: false, error: error.message || "Failed to update invoice" };
+    }
+}
+
+export async function cancelInvoice(invoiceId: string): Promise<CancelInvoiceResponse> {
+    try {
+        const session = await auth();
+        const effectiveUserId = await getEffectiveUserId();
+        const user = await getCurrentUser();
+
+        if (!session?.user?.id || !effectiveUserId || !user) {
+            return { success: false, error: "Unauthorized" };
+        }
+
+        const result = await invoiceService.cancelInvoice(invoiceId, {
+            effectiveUserId,
+            authUserId: session.user.id,
+            userRole: user.role,
+            businessName: user.businessName || "Primebake",
+        });
+
+        if (!result.success || !result.invoice) {
+            return { success: false, error: result.error || "Failed to cancel invoice" };
+        }
+
+        // Audit Trail: Record cancellation
+        await activityLogService.logActivity({
+            tenantId: effectiveUserId,
+            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            action: 'INVOICE_CANCELLED',
+            entityType: 'INVOICE',
+            entityId: invoiceId,
+            description: `Cancelled Bill #${invoiceId.slice(-6).toUpperCase()} (Amount: ₹${result.invoice.totalAmount})`,
+            metadata: {
+                totalAmount: result.invoice.totalAmount,
+                paymentType: result.invoice.paymentType,
+                cancelledAt: result.invoice.cancelledAt,
+            },
+        });
+
+        revalidatePath("/transactions");
+        revalidatePath("/dashboard");
+
+        return { success: true, invoice: result.invoice };
+    } catch (error: any) {
+        console.error("Failed to cancel invoice:", error);
+        return { success: false, error: error.message || "Failed to cancel invoice" };
     }
 }
 

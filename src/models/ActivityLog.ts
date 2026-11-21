@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export type ActivityActionType =
     | 'INVOICE_CREATED'
     | 'INVOICE_UPDATED'
+    | 'INVOICE_CANCELLED'
     | 'INVOICE_DELETED'
     | 'CUSTOMER_CREATED'
     | 'CUSTOMER_UPDATED'

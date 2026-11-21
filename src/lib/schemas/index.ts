@@ -22,6 +22,7 @@ export const CreateInvoiceSchema = z.object({
     couponCode: z.string().optional(),
     comment: z.string().max(500).optional(),
     paymentType: z.enum(['Cash', 'Card', 'UPI']).default('Cash'),
+    status: z.enum(['Draft', 'Sent', 'Paid', 'Unpaid', 'Cancelled']).optional().default('Paid'),
 });
 
 export const UpdateInvoiceSchema = z.object({
@@ -31,6 +32,7 @@ export const UpdateInvoiceSchema = z.object({
     discountAmount: z.number().nonnegative().optional().default(0),
     couponCode: z.string().optional(),
     comment: z.string().max(500).optional(),
+    status: z.enum(['Draft', 'Sent', 'Paid', 'Unpaid', 'Cancelled']).optional(),
 });
 
 // ─── Customer ────────────────────────────────────────────────────────────────

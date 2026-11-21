@@ -184,10 +184,7 @@ export default function CreateInvoiceForm({
     };
 
     const getInvoiceFile = async (data: any): Promise<File> => {
-        const { default: jsPDF } = await import("jspdf");
-        const { default: autoTable } = await import("jspdf-autotable");
-
-        const doc = new jsPDF();
+        const { buildInvoicePdfDoc } = await import("@/lib/pdf/generate-invoice-pdf");
         const customer = customers.find((c) => c._id === data.customerId);
 
         // Fetch logo on demand if not already base64 (to avoid blocking mount)
@@ -200,105 +197,31 @@ export default function CreateInvoiceForm({
             }
         }
 
-        // Header / Branding
-        let textX = 14;
-        if (currentLogoBase64) {
-            try {
-                const format = initialUser?.logoUrl?.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
-                doc.addImage(currentLogoBase64, format, 14, 12, 16, 16);
-                textX = 34; // Shift text right
-            } catch (e) {
-                console.error("Failed adding logo to PDF:", e);
-            }
-        }
-
-        doc.setFontSize(16);
-        doc.setTextColor(30, 41, 59); // Slate-800
-        const bizName = initialUser?.businessName || "Primebake";
-        doc.text(bizName, textX, 19);
-
-        doc.setFontSize(9);
-        doc.setTextColor(148, 163, 184); // Slate-400
-        doc.text(`${bizName.toUpperCase()} • OFFICIAL INVOICE`, textX, 24);
-
-        // Header Divider
-        doc.setDrawColor(241, 245, 249); // Slate-100
-        doc.setLineWidth(0.5);
-        doc.line(14, 32, 196, 32);
-
-        // Customer Info & Date Alignment
-        doc.setFontSize(10);
-        doc.setTextColor(100, 116, 139); // Slate-500
-        doc.text("BILLING TO", 14, 42);
-
-        doc.text("INVOICE DATE", 196, 42, { align: "right" });
-
-        doc.setFontSize(12);
-        doc.setTextColor(15, 23, 42); // Slate-900
-        doc.text(customer?.name || "Customer", 14, 49);
-
-        doc.setFontSize(11);
-        doc.setTextColor(15, 23, 42);
-        doc.text(currentDate, 196, 49, { align: "right" });
-
-        doc.setFontSize(10);
-        doc.setTextColor(100, 116, 139);
-        doc.text(customer?.phoneNumber || "", 14, 55);
-        doc.text(customer?.address || "", 14, 61);
-
-        // Table
-        const tableData = data.items.map((item: any, index: number) => [
-            index + 1,
-            item.description ? `${item.name}\n${item.description}` : item.name,
-            `Rs. ${item.price.toFixed(2)}`,
-            item.quantity,
-            `Rs. ${(item.price * item.quantity).toFixed(2)}`,
-        ]);
-
-        autoTable(doc, {
-            startY: 72,
-            head: [["#", "Item", "Unit Price", "Quantity", "Total"]],
-            body: tableData,
-            theme: "striped",
-            headStyles: { fillColor: [37, 99, 235] }, // Blue-600
+        const doc = buildInvoicePdfDoc({
+            invoice: {
+                _id: data._id || "NEW",
+                items: data.items,
+                totalAmount: data.totalAmount,
+                discountAmount: data.discountAmount,
+                couponCode: data.couponCode,
+                paymentType: data.paymentType,
+                comment: data.comment,
+                date: new Date(),
+                status: 'Paid',
+                customer: customer ? {
+                    name: customer.name,
+                    phoneNumber: customer.phoneNumber,
+                    address: customer.address,
+                } : null,
+            },
+            business: {
+                name: initialUser?.businessName || "Primebake",
+                logoBase64: currentLogoBase64,
+            },
         });
 
-        const finalY = (doc as any).lastAutoTable.finalY + 10;
-        const subtotal = data.items.reduce((acc: number, item: any) => acc + item.price * item.quantity, 0);
-
-        // Totals
-        doc.setFontSize(11);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Subtotal: Rs. ${subtotal.toFixed(2)}`, 140, finalY);
-
-        let currentY = finalY;
-
-        if (data.discountAmount && data.discountAmount > 0) {
-            currentY += 6;
-            doc.setTextColor(220, 38, 38); // Red for discount
-            doc.text(`Discount: -Rs. ${data.discountAmount.toFixed(2)}`, 140, currentY);
-        }
-
-        currentY += 8;
-        doc.setFontSize(13);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Total: Rs. ${data.totalAmount.toFixed(2)}`, 140, currentY);
-
-        // Notes
-        if (data.comment) {
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.text("Notes:", 14, finalY);
-            doc.text(data.comment, 14, finalY + 5);
-        }
-
-        // Footer
-        doc.setFontSize(10);
-        doc.setTextColor(150, 150, 150);
-        doc.text("Thank you for your business!", 105, 285, { align: "center" });
-
         const blob = doc.output("blob");
-        const filename = `invoice_${customer?.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
+        const filename = `invoice_${customer?.name?.replace(/\s+/g, "_") || "customer"}_${Date.now()}.pdf`;
         return new File([blob], filename, { type: "application/pdf" });
     };
 

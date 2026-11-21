@@ -8,19 +8,33 @@ export interface TransactionFilterParams {
     datePreset?: string;
     startDate?: string;
     endDate?: string;
+    status?: string;
 }
 
 /**
- * Builds a standardized MongoDB query for transactions based on search and date filter parameters.
+ * Builds a standardized MongoDB query for transactions based on search, date, and status filter parameters.
  * Shared between TransactionsPage and ExportCsvRoute for 100% filter parity.
  */
 export async function buildTransactionFilterQuery(params: TransactionFilterParams) {
-    const { effectiveUserId, search = "", datePreset, startDate, endDate } = params;
+    const { effectiveUserId, search = "", datePreset, startDate, endDate, status } = params;
 
     const query: any = { userId: effectiveUserId };
     const andConditions: any[] = [];
 
-    // 1. DATE FILTER LOGIC
+    // 1. STATUS FILTER LOGIC
+    if (status && status !== "all") {
+        const normStatus = status.toLowerCase();
+        if (normStatus === "paid") {
+            // Legacy records have 'Sent' or null for completed POS sales
+            andConditions.push({ status: { $in: ["Paid", "Sent", null] } });
+        } else if (normStatus === "unpaid") {
+            andConditions.push({ status: "Unpaid" });
+        } else if (normStatus === "cancelled") {
+            andConditions.push({ status: "Cancelled" });
+        }
+    }
+
+    // 2. DATE FILTER LOGIC
     let dateStart: Date | null = null;
     let dateEnd: Date | null = null;
 
@@ -79,7 +93,7 @@ export async function buildTransactionFilterQuery(params: TransactionFilterParam
         });
     }
 
-    // 2. SEARCH FILTER LOGIC (Customer Name, Phone, Guest, Bill ID, Payment Mode)
+    // 3. SEARCH FILTER LOGIC (Customer Name, Phone, Guest, Bill ID, Payment Mode, Status)
     const trimmedSearch = search.trim();
     if (trimmedSearch) {
         const safeSearch = escapeRegex(trimmedSearch);
@@ -123,6 +137,16 @@ export async function buildTransactionFilterQuery(params: TransactionFilterParam
 
         if (['cash', 'card', 'upi'].includes(trimmedSearch.toLowerCase())) {
             searchOrConditions.push({ paymentType: { $regex: `^${safeSearch}$`, $options: "i" } });
+        }
+
+        if (['paid', 'unpaid', 'cancelled'].includes(trimmedSearch.toLowerCase())) {
+            if (trimmedSearch.toLowerCase() === 'paid') {
+                searchOrConditions.push({ status: { $in: ['Paid', 'Sent', null] } });
+            } else if (trimmedSearch.toLowerCase() === 'unpaid') {
+                searchOrConditions.push({ status: 'Unpaid' });
+            } else if (trimmedSearch.toLowerCase() === 'cancelled') {
+                searchOrConditions.push({ status: 'Cancelled' });
+            }
         }
 
         if (searchOrConditions.length > 0) {

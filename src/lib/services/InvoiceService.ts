@@ -13,6 +13,9 @@ import { MessagingAdapterFactory, MessagingChannel } from '@/lib/adapters/messag
 import { CreateInvoiceSchema, UpdateInvoiceSchema, CreateInvoiceInput, UpdateInvoiceInput } from '@/lib/schemas';
 import type { InvoiceDTO, CustomerDTO } from '@/types/domain';
 
+import { archiveInvoicePdf, uploadInvoicePdfBuffer } from '@/lib/s3';
+import { generateInvoicePdfBuffer } from '@/lib/pdf/generate-invoice-pdf';
+
 export interface CreateInvoiceContext {
     effectiveUserId: string;
     authUserId: string;
@@ -22,6 +25,7 @@ export interface UpdateInvoiceContext {
     effectiveUserId: string;
     authUserId: string;
     userRole: string;
+    businessName?: string;
 }
 
 export class InvoiceService {
@@ -55,7 +59,8 @@ export class InvoiceService {
     }
 
     /**
-     * OWNER/ROOT-only: edit a past invoice's items, amounts, or payment method
+     * OWNER/ROOT-only: edit a past invoice's items, amounts, or payment method.
+     * Archives existing PDF to invoices/edited/ and updates invoices/${id}.pdf with new PDF.
      */
     async updateInvoice(
         invoiceId: string,
@@ -81,12 +86,108 @@ export class InvoiceService {
             return { success: false, error: 'Invoice not found or access denied' };
         }
 
+        // 1. Archive the pre-edit PDF to S3: invoices/edited/${id}_${timestamp}.pdf
+        await archiveInvoicePdf(invoiceId, 'edited');
+
+        // 2. Persist updated changes in MongoDB
         const updated = await invoiceRepository.update(invoiceId, data);
         if (!updated) {
             return { success: false, error: 'Failed to update invoice' };
         }
 
+        // 3. Regenerate fresh pixel-perfect PDF and update S3 active link (invoices/${id}.pdf)
+        try {
+            const newPdfBuffer = generateInvoicePdfBuffer({
+                invoice: {
+                    _id: updated._id,
+                    items: updated.items,
+                    totalAmount: updated.totalAmount,
+                    discountAmount: updated.discountAmount,
+                    couponCode: updated.couponCode,
+                    paymentType: updated.paymentType,
+                    comment: updated.comment,
+                    date: updated.date,
+                    status: updated.status,
+                    customer: updated.customer,
+                },
+                business: {
+                    name: ctx.businessName || "Primebake",
+                },
+            });
+
+            const uploadRes = await uploadInvoicePdfBuffer(invoiceId, newPdfBuffer);
+            if (uploadRes.success && uploadRes.publicUrl) {
+                await invoiceRepository.updatePdfUrl(invoiceId, uploadRes.publicUrl);
+                updated.pdfUrl = uploadRes.publicUrl;
+            }
+        } catch (pdfErr: any) {
+            console.error("Failed regenerating PDF on invoice update:", pdfErr);
+        }
+
         return { success: true, invoice: updated };
+    }
+
+    /**
+     * Cancel an existing transaction.
+     * Archives current PDF to invoices/cancelled/ and updates active PDF with CANCELLED watermark.
+     */
+    async cancelInvoice(
+        invoiceId: string,
+        ctx: UpdateInvoiceContext
+    ): Promise<{ success: boolean; invoice?: InvoiceDTO; error?: string }> {
+        // Enforce RBAC: Only OWNER can cancel finalized bills
+        if (ctx.userRole !== 'OWNER') {
+            return { success: false, error: 'Forbidden: Only the store owner can cancel transactions.' };
+        }
+
+        const existing = await invoiceRepository.findById(invoiceId);
+        if (!existing || existing.userId !== ctx.effectiveUserId) {
+            return { success: false, error: 'Invoice not found or access denied' };
+        }
+
+        if (existing.status === 'Cancelled') {
+            return { success: false, error: 'This transaction is already cancelled.' };
+        }
+
+        // 1. Move/archive existing PDF on S3 to invoices/cancelled/${id}_${timestamp}.pdf
+        await archiveInvoicePdf(invoiceId, 'cancelled');
+
+        // 2. Mark status as Cancelled with audit timestamp in MongoDB
+        const cancelled = await invoiceRepository.cancel(invoiceId, ctx.authUserId);
+        if (!cancelled) {
+            return { success: false, error: 'Failed to cancel invoice' };
+        }
+
+        // 3. Regenerate PDF with prominent CANCELLED watermark & header, and overwrite invoices/${id}.pdf
+        try {
+            const cancelledPdfBuffer = generateInvoicePdfBuffer({
+                invoice: {
+                    _id: cancelled._id,
+                    items: cancelled.items,
+                    totalAmount: cancelled.totalAmount,
+                    discountAmount: cancelled.discountAmount,
+                    couponCode: cancelled.couponCode,
+                    paymentType: cancelled.paymentType,
+                    comment: cancelled.comment,
+                    date: cancelled.date,
+                    status: 'Cancelled',
+                    customer: cancelled.customer,
+                },
+                business: {
+                    name: ctx.businessName || "Primebake",
+                },
+            });
+
+            const uploadRes = await uploadInvoicePdfBuffer(invoiceId, cancelledPdfBuffer);
+            if (uploadRes.success && uploadRes.publicUrl) {
+                await invoiceRepository.updatePdfUrl(invoiceId, uploadRes.publicUrl);
+                cancelled.pdfUrl = uploadRes.publicUrl;
+            }
+        } catch (pdfErr: any) {
+            console.error("Failed regenerating cancelled PDF on S3:", pdfErr);
+        }
+
+        return { success: true, invoice: cancelled };
     }
 
     /**
