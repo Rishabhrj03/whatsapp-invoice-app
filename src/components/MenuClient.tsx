@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createMenuEntry, deleteMenuEntry, importMenuItemsFromCSV, deleteMultipleMenuEntries, updateMenuEntry } from "@/app/actions/menu";
 import { deleteCategory, updateCategory } from "@/app/actions/category";
-import { Trash2, PlusCircle, Tag, IndianRupee, FileText, LayoutGrid, CheckCircle2, ArrowLeft, Upload, FileUp, Loader2, Pencil } from "lucide-react";
+import { Trash2, PlusCircle, Tag, IndianRupee, FileText, LayoutGrid, CheckCircle2, ArrowLeft, Upload, FileUp, Loader2, Pencil, CopyPlus } from "lucide-react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import ConfirmModal from "./ConfirmModal";
 import CSVMappingModal from "./CSVMappingModal";
@@ -33,12 +33,27 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
     const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
+    const [prefillItem, setPrefillItem] = useState<any>(null);
     const [editingCategory, setEditingCategory] = useState<any>(null);
     const [deleteCategoryModal, setDeleteCategoryModal] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: "" });
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const formRef = useRef<HTMLFormElement>(null);
+
+    // Synchronize client state when page or tab props change from server router navigation
+    useEffect(() => {
+        setMenuItems(initialMenuItems);
+        setSelectedIds([]);
+    }, [initialMenuItems]);
+
+    useEffect(() => {
+        setCategories(initialCategories);
+    }, [initialCategories]);
+
+    useEffect(() => {
+        setActiveTab(initialTab);
+    }, [initialTab]);
 
     const handleTabChange = (newTab: "items" | "categories") => {
         setActiveTab(newTab);
@@ -49,21 +64,51 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
     };
 
     const handlePageChange = (newPage: number) => {
+        setSelectedIds([]);
         const params = new URLSearchParams(searchParams.toString());
         params.set("tab", activeTab);
         params.set("page", newPage.toString());
         router.push(`${pathname}?${params.toString()}`);
     };
 
+    const handleAddFromScratch = () => {
+        setEditingItem(null);
+        setPrefillItem(null);
+        setView("add");
+        if (formRef.current) formRef.current.reset();
+    };
+
+    const handleAppendAfter = (item: any) => {
+        setEditingItem(null);
+        setPrefillItem({
+            name: `${item.name} (Copy)`,
+            price: item.price,
+            category: item.category || "",
+            description: item.description || "",
+            sourceName: item.name,
+        });
+        setView("add");
+    };
+
     useEffect(() => {
         if (view === "edit" && editingItem && formRef.current) {
             const form = formRef.current;
-            (form.elements.namedItem("name") as HTMLInputElement).value = editingItem.name;
-            (form.elements.namedItem("price") as HTMLInputElement).value = editingItem.price;
+            (form.elements.namedItem("name") as HTMLInputElement).value = editingItem.name || "";
+            (form.elements.namedItem("price") as HTMLInputElement).value = editingItem.price !== undefined ? String(editingItem.price) : "";
             (form.elements.namedItem("category") as HTMLSelectElement).value = editingItem.category || "";
             (form.elements.namedItem("description") as HTMLTextAreaElement).value = editingItem.description || "";
         }
     }, [view, editingItem]);
+
+    useEffect(() => {
+        if (view === "add" && formRef.current) {
+            const form = formRef.current;
+            (form.elements.namedItem("name") as HTMLInputElement).value = prefillItem?.name || "";
+            (form.elements.namedItem("price") as HTMLInputElement).value = prefillItem?.price !== undefined ? String(prefillItem.price) : "";
+            (form.elements.namedItem("category") as HTMLSelectElement).value = prefillItem?.category || "";
+            (form.elements.namedItem("description") as HTMLTextAreaElement).value = prefillItem?.description || "";
+        }
+    }, [view, prefillItem]);
 
     const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value.replace(/[^0-9.]/g, "");
@@ -139,12 +184,13 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
         if (view === "edit" && editingItem) {
             const res = await updateMenuEntry(editingItem._id.toString(), formData);
             if (res.success && res.menuItem) {
-                setMenuItems(prev => prev.map(item => item._id === res.menuItem._id ? res.menuItem : item));
+                setMenuItems(prev => prev.map(item => item._id?.toString() === res.menuItem._id?.toString() ? res.menuItem : item));
                 setSuccess(true);
                 setTimeout(() => {
                     setSuccess(false);
                     setView("list");
                     setEditingItem(null);
+                    setPrefillItem(null);
                     router.refresh();
                 }, 1000);
             } else {
@@ -158,6 +204,7 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                 setTimeout(() => {
                     setSuccess(false);
                     setView("list");
+                    setPrefillItem(null);
                     router.refresh();
                 }, 1000);
             } else {
@@ -327,8 +374,7 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                         <button
                             onClick={() => {
                                 if (activeTab === "items") {
-                                    setEditingItem(null);
-                                    setView("add");
+                                    handleAddFromScratch();
                                 } else {
                                     setEditingCategory(null);
                                     setIsCategoryModalOpen(true);
@@ -337,7 +383,7 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                             className="flex-1 md:flex-none flex items-center justify-center gap-2 py-3 px-6 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold shadow-lg shadow-orange-100 transition-all active:scale-95"
                         >
                             {activeTab === "items" ? (
-                                <><PlusCircle size={18} /> Add Menu Item</>
+                                <><PlusCircle size={18} /> Add Item from Scratch</>
                             ) : (
                                 <><PlusCircle size={18} /> Add Category</>
                             )}
@@ -345,7 +391,7 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                     </div>
                 ) : (
                     <button
-                        onClick={() => { setView("list"); setEditingItem(null); }}
+                        onClick={() => { setView("list"); setEditingItem(null); setPrefillItem(null); }}
                         className="flex items-center justify-center gap-2 py-3 px-6 bg-white border border-gray-200 text-gray-600 rounded-2xl font-bold hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
                     >
                         <ArrowLeft size={18} /> Back to Catalog
@@ -389,11 +435,31 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                             </div>
                         )}
 
-                        <div className="flex items-center gap-3 mb-8">
-                            <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl">
-                                {view === "edit" ? <Pencil size={24} /> : <PlusCircle size={24} />}
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-3 rounded-2xl ${prefillItem ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
+                                    {view === "edit" ? <Pencil size={24} /> : prefillItem ? <CopyPlus size={24} /> : <PlusCircle size={24} />}
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-gray-900 tracking-tight">
+                                        {view === "edit" ? "Edit Item Details" : prefillItem ? "Append Item (Based on Existing)" : "Add Item from Scratch"}
+                                    </h2>
+                                    {prefillItem && (
+                                        <p className="text-xs text-blue-600 font-semibold mt-0.5">
+                                            Pre-filled from &ldquo;{prefillItem.name}&rdquo;. Adjust details and save to append to catalog.
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                            <h2 className="text-xl font-black text-gray-900 tracking-tight">{view === "edit" ? "Edit Item Details" : "Item Details"}</h2>
+                            {prefillItem && (
+                                <button
+                                    type="button"
+                                    onClick={handleAddFromScratch}
+                                    className="text-xs text-gray-500 hover:text-orange-600 font-bold underline px-2 py-1"
+                                >
+                                    Reset to Scratch
+                                </button>
+                            )}
                         </div>
 
                         <form ref={formRef} onSubmit={onSubmit} className="space-y-6">
@@ -465,9 +531,16 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-5 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black shadow-xl shadow-orange-100 transition-all active:scale-95 text-sm flex items-center justify-center gap-2"
+                                className={`w-full py-5 px-4 text-white rounded-2xl font-black shadow-xl transition-all active:scale-95 text-sm flex items-center justify-center gap-2 ${
+                                    prefillItem 
+                                        ? "bg-blue-600 hover:bg-blue-700 shadow-blue-100" 
+                                        : "bg-orange-600 hover:bg-orange-700 shadow-orange-100"
+                                }`}
                             >
-                                {loading ? "Saving..." : (view === "edit" ? "Update Menu Item" : "Save Menu Item")}
+                                {loading 
+                                    ? "Saving..." 
+                                    : (view === "edit" ? "Update Menu Item" : prefillItem ? "Append Item to Catalog" : "Save Menu Item")
+                                }
                             </button>
                         </form>
                     </div>
@@ -547,7 +620,14 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                                                 <td className="px-6 py-5 text-right px-10">
                                                     <div className="flex items-center justify-end gap-2">
                                                         <button
-                                                            onClick={() => { setEditingItem(item); setView("edit"); }}
+                                                            onClick={() => handleAppendAfter(item)}
+                                                            className="p-2.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-all"
+                                                            title={`Append item after "${item.name}" (Duplicate with pre-filled category/price)`}
+                                                        >
+                                                            <CopyPlus size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setEditingItem(item); setPrefillItem(null); setView("edit"); }}
                                                             className="p-2.5 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all"
                                                             title="Edit Item"
                                                         >
