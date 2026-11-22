@@ -10,9 +10,27 @@ export type MenuEntryResponse =
     | { success: true; menuItem: any; error?: undefined }
     | { success: false; error: string; menuItem?: undefined };
 
+export type ImportMode = 'append' | 'replace' | 'sync';
+
 export type ImportMenuResponse =
-    | { success: true; count: number; error?: undefined }
-    | { success: false; error: string; count?: undefined };
+    | {
+        success: true;
+        count: number;
+        mode: ImportMode;
+        createdCount?: number;
+        updatedCount?: number;
+        deletedCount?: number;
+        error?: undefined;
+      }
+    | {
+        success: false;
+        error: string;
+        count?: undefined;
+        mode?: undefined;
+        createdCount?: undefined;
+        updatedCount?: undefined;
+        deletedCount?: undefined;
+      };
 
 export async function createMenuEntry(formData: FormData): Promise<MenuEntryResponse> {
     try {
@@ -168,7 +186,7 @@ export async function deleteMultipleMenuEntries(ids: string[]) {
     }
 }
 
-export async function importMenuItemsFromCSV(items: any[]): Promise<ImportMenuResponse> {
+export async function importMenuItemsFromCSV(items: any[], mode: ImportMode = 'append'): Promise<ImportMenuResponse> {
     try {
         const session = await auth();
         const effectiveUserId = await getEffectiveUserId();
@@ -177,10 +195,15 @@ export async function importMenuItemsFromCSV(items: any[]): Promise<ImportMenuRe
             return { success: false, error: "Unauthorized" };
         }
 
-        const result = await menuService.importItems(items, effectiveUserId, session.user.id);
+        const result = await menuService.importItems(items, effectiveUserId, session.user.id, mode);
         if (!result.success || result.count === undefined) {
             return { success: false, error: result.error || "Failed to import menu items" };
         }
+
+        const modeDescription = 
+            mode === 'replace' ? 'from scratch (replaced all existing)' :
+            mode === 'sync' ? `synced (added: ${result.createdCount || 0}, updated: ${result.updatedCount || 0}, deleted: ${result.deletedCount || 0})` :
+            'appended to existing';
 
         // Audit Trail: Record bulk menu import
         await activityLogService.logActivity({
@@ -188,12 +211,25 @@ export async function importMenuItemsFromCSV(items: any[]): Promise<ImportMenuRe
             user: { id: user._id, name: user.name, email: user.email, role: user.role },
             action: 'MENU_ITEMS_IMPORTED',
             entityType: 'MENU_ITEM',
-            description: `Imported ${result.count} items into menu catalog from Excel/CSV`,
-            metadata: { count: result.count },
+            description: `Imported ${result.count} items into menu catalog [${modeDescription}] from Excel/CSV`,
+            metadata: {
+                count: result.count,
+                mode,
+                createdCount: result.createdCount,
+                updatedCount: result.updatedCount,
+                deletedCount: result.deletedCount,
+            },
         });
 
         revalidatePath("/menu");
-        return { success: true, count: result.count };
+        return {
+            success: true,
+            count: result.count,
+            mode,
+            createdCount: result.createdCount,
+            updatedCount: result.updatedCount,
+            deletedCount: result.deletedCount,
+        };
     } catch (error: any) {
         console.error("Failed to import menu items:", error);
         return { success: false, error: error.message || "Failed to import menu items" };

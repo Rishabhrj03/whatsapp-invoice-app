@@ -80,6 +80,12 @@ class MenuRepository {
         return res.deletedCount;
     }
 
+    async deleteAllItemsByUser(userId: string): Promise<number> {
+        await dbConnect();
+        const res = await MenuEntryModel.deleteMany({ userId });
+        return res.deletedCount;
+    }
+
     async bulkCreateItems(
         items: (CreateMenuItemInput & { userId: string; createdBy?: string })[],
     ): Promise<number> {

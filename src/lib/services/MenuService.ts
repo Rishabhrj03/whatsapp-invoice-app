@@ -45,10 +45,19 @@ export class MenuService {
     }
 
     async importItems(
-        items: Array<{ name: string; price: number; description?: string; category?: string }>,
+        items: Array<{ name: string; price: number; description?: string; category?: string; isAvailable?: boolean }>,
         effectiveUserId: string,
-        authUserId: string
-    ): Promise<{ success: boolean; count?: number; error?: string }> {
+        authUserId: string,
+        mode: 'append' | 'replace' | 'sync' = 'append'
+    ): Promise<{
+        success: boolean;
+        count?: number;
+        mode?: 'append' | 'replace' | 'sync';
+        createdCount?: number;
+        updatedCount?: number;
+        deletedCount?: number;
+        error?: string;
+    }> {
         if (!Array.isArray(items) || items.length === 0) {
             return { success: false, error: 'No items provided for import' };
         }
@@ -61,6 +70,7 @@ export class MenuService {
                 price: Number(item.price),
                 description: item.description,
                 category: item.category,
+                isAvailable: item.isAvailable !== false,
             });
             if (parsed.success) {
                 validItems.push(parsed.data);
@@ -77,6 +87,85 @@ export class MenuService {
             await menuRepository.ensureCategoriesExist(categoryNames, effectiveUserId, authUserId);
         }
 
+        // Mode 1: Replace / Add from Scratch — wipes current catalog then imports fresh
+        if (mode === 'replace') {
+            const deletedCount = await menuRepository.deleteAllItemsByUser(effectiveUserId);
+            const count = await menuRepository.bulkCreateItems(
+                validItems.map(item => ({
+                    ...item,
+                    userId: effectiveUserId,
+                    createdBy: authUserId,
+                }))
+            );
+            return {
+                success: true,
+                count,
+                mode: 'replace',
+                createdCount: count,
+                updatedCount: 0,
+                deletedCount,
+            };
+        }
+
+        // Mode 2: Sync / Reconcile — updates matched items, creates new, deletes missing
+        if (mode === 'sync') {
+            const existingItems = await menuRepository.findItemsByUser(effectiveUserId);
+            const existingMap = new Map<string, typeof existingItems[0]>();
+            for (const ex of existingItems) {
+                existingMap.set(ex.name.trim().toLowerCase(), ex);
+            }
+
+            const itemsToCreate: (CreateMenuItemInput & { userId: string; createdBy?: string })[] = [];
+            const matchedIds = new Set<string>();
+            let updatedCount = 0;
+
+            for (const item of validItems) {
+                const key = item.name.trim().toLowerCase();
+                const existing = existingMap.get(key);
+                if (existing) {
+                    matchedIds.add(existing._id);
+                    await menuRepository.updateItem(existing._id, effectiveUserId, {
+                        price: item.price,
+                        category: item.category,
+                        description: item.description,
+                        isAvailable: item.isAvailable !== false,
+                    });
+                    updatedCount++;
+                } else {
+                    itemsToCreate.push({
+                        ...item,
+                        userId: effectiveUserId,
+                        createdBy: authUserId,
+                    });
+                }
+            }
+
+            let createdCount = 0;
+            if (itemsToCreate.length > 0) {
+                createdCount = await menuRepository.bulkCreateItems(itemsToCreate);
+            }
+
+            // Delete existing database records that were not in the imported sheet
+            const idsToDelete = existingItems
+                .filter(ex => !matchedIds.has(ex._id))
+                .map(ex => ex._id);
+
+            let deletedCount = 0;
+            if (idsToDelete.length > 0) {
+                deletedCount = await menuRepository.deleteItems(idsToDelete, effectiveUserId);
+            }
+
+            return {
+                success: true,
+                count: updatedCount + createdCount,
+                mode: 'sync',
+                createdCount,
+                updatedCount,
+                deletedCount,
+            };
+        }
+
+        // Mode 3: Append (Default) — adds after current records
         const count = await menuRepository.bulkCreateItems(
             validItems.map(item => ({
                 ...item,
@@ -85,7 +174,14 @@ export class MenuService {
             }))
         );
 
-        return { success: true, count };
+        return {
+            success: true,
+            count,
+            mode: 'append',
+            createdCount: count,
+            updatedCount: 0,
+            deletedCount: 0,
+        };
     }
 
     async deleteMenuItem(id: string, effectiveUserId: string): Promise<boolean> {

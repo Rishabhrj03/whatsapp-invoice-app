@@ -359,7 +359,7 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
         }
     };
 
-    const handleMappingConfirm = async (mapping: Record<string, string>) => {
+    const handleMappingConfirm = async (mapping: Record<string, string>, mode: "append" | "replace" | "sync" = "append") => {
         if (!csvData) return;
         setIsMappingModalOpen(false);
         setLoading(true);
@@ -387,9 +387,15 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
         }
 
         try {
-            const res = await importMenuItemsFromCSV(itemsToImport);
+            const res = await importMenuItemsFromCSV(itemsToImport, mode);
             if (res.success) {
-                alert(`Successfully imported ${res.count} items!`);
+                if (res.mode === "replace") {
+                    alert(`✅ Catalog Replaced!\nRemoved previous items and imported ${res.count} fresh items from scratch.`);
+                } else if (res.mode === "sync") {
+                    alert(`✅ Catalog Synced & Reconciled!\n• Updated matching items: ${res.updatedCount || 0}\n• Added new items: ${res.createdCount || 0}\n• Deleted missing items: ${res.deletedCount || 0}`);
+                } else {
+                    alert(`✅ Successfully appended ${res.count} items to your catalog!`);
+                }
                 router.refresh();
                 window.location.reload();
             } else {
