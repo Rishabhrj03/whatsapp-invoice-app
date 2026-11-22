@@ -77,6 +77,13 @@ export default function TransactionsClient({
     const [invoices, setInvoices] = useState(initialInvoices);
 
     const isOwner = userRole === 'OWNER';
+    const [origin, setOrigin] = useState<string>("");
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+        setOrigin(window.location.origin);
+    }, []);
 
     // Synchronize local invoices state when server props update from navigation
     useEffect(() => {
@@ -238,9 +245,9 @@ export default function TransactionsClient({
     };
 
     const buildTransactionWhatsAppUrls = (inv: any) => {
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        const dateStr = inv.date ? new Date(inv.date).toLocaleDateString('en-IN') : '';
-        const text = `*Bill from your order*\nDate: ${dateStr}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}\n\n📄 Download PDF: ${origin}/api/invoices/${inv._id}/download\n📱 View Bill: ${origin}/public/invoice/${inv._id}`;
+        const originUrl = origin || '';
+        const dateStr = inv.date ? new Date(inv.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '';
+        const text = `*Bill from your order*\nDate: ${dateStr}\nAmount: ₹${inv.totalAmount}\nPayment: ${inv.paymentType || 'Cash'}${originUrl ? `\n\n📄 Download PDF: ${originUrl}/api/invoices/${inv._id}/download\n📱 View Bill: ${originUrl}/public/invoice/${inv._id}` : ''}`;
         const encodedText = encodeURIComponent(text);
         const normalizedPhone = normalizeWhatsAppPhone(inv.customer?.phoneNumber);
 
@@ -661,6 +668,7 @@ export default function TransactionsClient({
                                                             href={customerUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
+                                                            suppressHydrationWarning
                                                             className="flex items-center justify-center gap-1 py-2 px-2.5 bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#128C7E] rounded-xl text-xs font-bold transition-colors min-h-[38px]"
                                                             title="Send directly to customer on WhatsApp"
                                                         >
@@ -672,6 +680,7 @@ export default function TransactionsClient({
                                                         href={contactPickerUrl}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
+                                                        suppressHydrationWarning
                                                         className="flex items-center justify-center gap-1 py-2 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold transition-colors min-h-[38px]"
                                                         title="Choose contact on WhatsApp"
                                                     >
@@ -846,6 +855,7 @@ export default function TransactionsClient({
                                                                         href={customerUrl}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
+                                                                        suppressHydrationWarning
                                                                         className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition-colors"
                                                                         title={`Send WhatsApp directly to ${inv.customer.phoneNumber}`}
                                                                     >
@@ -856,6 +866,7 @@ export default function TransactionsClient({
                                                                     href={contactPickerUrl}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
+                                                                    suppressHydrationWarning
                                                                     className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-lg text-xs font-bold transition-colors"
                                                                     title="Choose any WhatsApp contact or group to send bill"
                                                                 >
@@ -863,9 +874,10 @@ export default function TransactionsClient({
                                                                 </a>
                                                                 {inv.customer?.phoneNumber && (
                                                                     <a
-                                                                        href={`sms:${inv.customer.phoneNumber.replace(/\D/g,'')}?body=${encodeURIComponent(`Dear ${inv.customer.name || 'Customer'}, your bill of Rs. ${inv.totalAmount} dated ${new Date(inv.date).toLocaleDateString('en-IN')} is ready.`)}`}
+                                                                        href={`sms:${inv.customer.phoneNumber.replace(/\D/g,'')}?body=${encodeURIComponent(`Dear ${inv.customer.name || 'Customer'}, your bill of Rs. ${inv.totalAmount} dated ${new Date(inv.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })} is ready.`)}`}
                                                                         className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-bold transition-colors"
                                                                         title="Send Text Message"
+                                                                        suppressHydrationWarning
                                                                     >
                                                                         <MessageSquare size={14} /> SMS
                                                                     </a>
