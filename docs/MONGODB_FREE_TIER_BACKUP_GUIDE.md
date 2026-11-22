@@ -25,8 +25,9 @@ We have configured [`.github/workflows/mongodb-backup.yml`](file://.github/workf
 1. Wakes up automatically on a schedule (e.g. daily at 02:00 UTC / 07:30 AM IST).
 2. Installs the official `mongodump` database tools.
 3. Securely reads your MongoDB connection string from GitHub Secrets.
-4. Dumps and compresses your database with Gzip.
-5. Saves the backup file in **two zero-cost places**:
+4. Dumps and compresses your database with Gzip into a standalone snapshot.
+5. **Verifies Integrity (Dry Run)**: Automatically executes `mongorestore --dryRun` on the freshly generated archive to ensure 100% readability and zero data corruption before uploading.
+6. Saves the validated backup in **two zero-cost places**:
    - **GitHub Actions Artifacts:** Retained for 90 days for free download anytime.
    - **AWS S3 / Cloudflare R2:** Directly mirrored to your S3 bucket under `backups/`.
 

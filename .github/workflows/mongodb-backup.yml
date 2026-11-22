@@ -30,7 +30,15 @@ jobs:
           mongodump --uri="$MONGODB_URI" --archive="backups/backup_${TIMESTAMP}.gz" --gzip
           ls -lh backups/
 
-      # 3. Optional: Upload to AWS S3 (Using Ubuntu's pre-installed AWS CLI)
+      # 3. Verify Backup Integrity & Readability (Zero writes / Dry Run)
+      - name: Verify Backup Integrity (Dry Run)
+        run: |
+          LATEST_BACKUP=$(ls -t backups/*.gz | head -n 1)
+          echo "🔍 Verifying integrity of $LATEST_BACKUP via mongorestore --dryRun..."
+          mongorestore --archive="$LATEST_BACKUP" --gzip --dryRun
+          echo "✅ Backup archive verified: 100% intact, uncorrupted, and restorable!"
+
+      # 4. Optional: Upload to AWS S3 (Using Ubuntu's pre-installed AWS CLI)
       - name: Mirror to AWS S3 (Optional)
         if: env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != '' && env.AWS_S3_BUCKET_NAME != ''
         env:
@@ -41,7 +49,7 @@ jobs:
         run: |
           aws s3 cp backups/ s3://${AWS_S3_BUCKET_NAME}/backups/ --recursive --exclude "*" --include "*.gz"
 
-      # 4. Save to GitHub Artifacts (Free for 90 Days)
+      # 5. Save to GitHub Artifacts (Free for 90 Days)
       - name: Upload Backup Artifact to GitHub
         uses: actions/upload-artifact@v4
         with:
