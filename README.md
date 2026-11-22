@@ -1,5 +1,10 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Prerequisites
+
+- **Node.js**: $\ge 22.0.0$ (LTS recommended)
+- **npm**: $\ge 10.0.0$
+
 ## Getting Started
 
 First, run the development server:
