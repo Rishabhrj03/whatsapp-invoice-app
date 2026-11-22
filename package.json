@@ -4,7 +4,7 @@
   "description": "WhatsApp-integrated POS & Digital Invoicing Platform for retail, bakeries, and service businesses.",
   "private": true,
   "engines": {
-    "node": ">=26.0.0",
+    "node": "26.x",
     "npm": ">=11.0.0"
   },
   "scripts": {
@@ -63,6 +63,9 @@
   },
   "allowScripts": {
     "core-js": true,
-    "unrs-resolver": true
+    "unrs-resolver": true,
+    "esbuild": true,
+    "mongodb-memory-server": true,
+    "fsevents": true
   }
 }
