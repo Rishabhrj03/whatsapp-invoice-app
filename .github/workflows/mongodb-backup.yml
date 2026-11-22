@@ -32,10 +32,16 @@ jobs:
 
       # 3. Verify Backup Integrity & Readability (Zero writes / Dry Run)
       - name: Verify Backup Integrity (Dry Run)
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: |
           LATEST_BACKUP=$(ls -t backups/*.gz | head -n 1)
-          echo "🔍 Verifying integrity of $LATEST_BACKUP via mongorestore --dryRun..."
-          mongorestore --archive="$LATEST_BACKUP" --gzip --dryRun
+          echo "🔍 [1/2] Verifying archive binary integrity (CRC-32)..."
+          gzip -t "$LATEST_BACKUP"
+          echo "✓ Archive binary verified: 100% valid."
+
+          echo "🔍 [2/2] Verifying collections and BSON schema via mongorestore dry-run..."
+          mongorestore --uri="$MONGODB_URI" --archive="$LATEST_BACKUP" --gzip --dryRun
           echo "✅ Backup archive verified: 100% intact, uncorrupted, and restorable!"
 
       # 4. Optional: Upload to AWS S3 (Using Ubuntu's pre-installed AWS CLI)
