@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.3.5] — 2026-11-22
+
+### 🚀 Production Release v1.3.5 (Stable Patch)
+
+- docs: add comprehensive Vercel deployment and pre-flight verification guide
+- fix(hydration): resolve SSR origin and date hydration warnings in TransactionsClient
+- build: align engine requirements strictly to Node.js >=26.0.0 and npm >=11.0.0
+- build: update engines to node >=22.0.0, npm >=10.0.0, and upgrade @types/node to v26
+- build: configure latest Node.js LTS (v26.13.1) via .nvmrc and bundle tsx devDependency
+- perf(ci): optimize mongodb backup workflow to run zero-dependency mongodump in ~8s
+- feat(ops): add 1-command database restore utility db:restore targeting MongoDB Atlas
+- feat(ops): add zero-cost automated periodic MongoDB backup system with GitHub Actions cron and S3 mirror
+- docs: add enterprise multi-device UI/UX, security architecture, and manual QA audit report
+- feat(menu): add 3 file import modes (scratch, append, sync & reconcile) with full UI & tests
+- fix(menu): safely null-check form elements to resolve cannot set properties of null error
+- docs: add comprehensive QA, security, and systems architecture audit report
+- test: add dev mongo helper and enhance QA test suites with 100% pass rate
+- fix(security): upgrade Next.js from 16.4.3 to 16.4.6 to resolve security advisory
+- chore(build): track release pipeline automation script
+
 ## [1.3.4] — 2026-11-21
 
 ### 🚀 Production Release v1.3.4 (Stable Patch)
