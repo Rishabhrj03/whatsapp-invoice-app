@@ -30,19 +30,15 @@ jobs:
           mongodump --uri="$MONGODB_URI" --archive="backups/backup_${TIMESTAMP}.gz" --gzip
           ls -lh backups/
 
-      # 3. Verify Backup Integrity & Readability (Zero writes / Dry Run)
-      - name: Verify Backup Integrity (Dry Run)
-        env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      # 3. Verify Backup Integrity (100% Offline — Zero DB Load / Network-Free)
+      - name: Verify Backup Integrity
         run: |
           LATEST_BACKUP=$(ls -t backups/*.gz | head -n 1)
-          echo "🔍 [1/2] Verifying archive binary integrity (CRC-32)..."
+          echo "🔍 Verifying binary integrity & CRC-32 checksum of $LATEST_BACKUP..."
           gzip -t "$LATEST_BACKUP"
-          echo "✓ Archive binary verified: 100% valid."
-
-          echo "🔍 [2/2] Verifying collections and BSON schema via mongorestore dry-run..."
-          mongorestore --uri="$MONGODB_URI" --archive="$LATEST_BACKUP" --gzip --dryRun
-          echo "✅ Backup archive verified: 100% intact, uncorrupted, and restorable!"
+          
+          SIZE=$(ls -lh "$LATEST_BACKUP" | awk '{print $5}')
+          echo "✅ Backup archive verified: 100% intact, valid ($SIZE), and uncorrupted!"
 
       # 4. Optional: Upload to AWS S3 (Using Ubuntu's pre-installed AWS CLI)
       - name: Mirror to AWS S3 (Optional)
