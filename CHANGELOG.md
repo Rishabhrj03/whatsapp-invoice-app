@@ -1,0 +1,344 @@
+# Changelog
+
+## [1.3.5] — 2026-11-22
+
+### 🚀 Production Release v1.3.5 (Stable Patch)
+
+- docs: add comprehensive Vercel deployment and pre-flight verification guide
+- fix(hydration): resolve SSR origin and date hydration warnings in TransactionsClient
+- build: align engine requirements strictly to Node.js >=26.0.0 and npm >=11.0.0
+- build: update engines to node >=22.0.0, npm >=10.0.0, and upgrade @types/node to v26
+- build: configure latest Node.js LTS (v26.13.1) via .nvmrc and bundle tsx devDependency
+- perf(ci): optimize mongodb backup workflow to run zero-dependency mongodump in ~8s
+- feat(ops): add 1-command database restore utility db:restore targeting MongoDB Atlas
+- feat(ops): add zero-cost automated periodic MongoDB backup system with GitHub Actions cron and S3 mirror
+- docs: add enterprise multi-device UI/UX, security architecture, and manual QA audit report
+- feat(menu): add 3 file import modes (scratch, append, sync & reconcile) with full UI & tests
+- fix(menu): safely null-check form elements to resolve cannot set properties of null error
+- docs: add comprehensive QA, security, and systems architecture audit report
+- test: add dev mongo helper and enhance QA test suites with 100% pass rate
+- fix(security): upgrade Next.js from 16.4.3 to 16.4.6 to resolve security advisory
+- chore(build): track release pipeline automation script
+
+## [1.3.4] — 2026-11-21
+
+### 🚀 Production Release v1.3.4 (Stable Patch)
+
+- feat(engine): update runtime engines to Node.js >=26.0.0 and npm >=11.0.0 (v26.13.1 LTS), upgrade @types/node to v26, and add tsx devDependency
+- feat(menu): add item availability toggle (disable/enable) without deletion, bulk actions, and bill creation filtering
+- fix(menu): resolve pagination desync and add append-after item workflow with reactive prop sync
+- feat(transactions): add Transaction Status filter and multi-version S3 PDF revision tracking
+- feat(invoices): add edit record tracking, audit metadata, and visual 'Edited' indicators across UI, PDF, and CSV exports
+- feat(transactions): add transaction cancellation, status tracking, S3 PDF archival & regeneration, and pixel-perfect PDF alignment
+- feat(export): enable filter-based CSV export on transactions with date preset and search parity
+- fix(whatsapp): resolve send-to-self bug, add contact selector option, and streamline invoice dispatch hub
+- feat(messaging): add 1-tap direct PDF download link and rich WhatsApp OpenGraph card preview with zero extra cost
+- fix(ssr): add generateMetadata to dashboard layout to serve dynamic title and icon from SSR without initial flash
+- fix(branding): dynamically sync browser tab title, favicon, and header to user business name and logo
+- feat(invoicing): fix S3 AccessDenied errors, add secure PDF download proxy, and support WhatsApp document dispatch
+- feat: release v1.3.0 with direct server-side S3 uploads, credit notes, and portaled UI components
+- feat: add direct server-side S3 upload for invoices, images, logos and photos to bypass browser CORS
+- fix: allow negative grand total and fix dropdown text truncation overflow
+- fix: allow negative line item prices, portal MenuSelector to body with tooltips, set S3 bucket to primebake invoices folder
+- feat(invoice): release v1.2.0 - add line item customization modal, plus button on Select Menu Item, and invoice description box
+- fix(transactions): fix customer name/phone search and add comprehensive date filter bar with presets and custom ranges
+- fix(ui): add direct bill discount field, invoice preview/public discount rows, and staff store branding resolution
+- fix(metadata): replace favicon.ico and add OpenGraph/Twitter social cards with Primebake logo
+- feat(branding): rebrand tenant to Primebake with official logo badge, metadata, and headers
+- fix(auth): replace return null with redirect('/login') across all dashboard pages and validate dbUser in layout to prevent blank screen
+- fix(ui): resolve Next.js 16 plain object serialization and date hydration mismatches across dashboard routes
+- fix(ci): direct next build in vercel.json and define engines in package.json
+- fix(npm): silence legacy cache-dir env warning on Vercel via loglevel=error in .npmrc
+- docs: add Senior Security Engineer Threat & Hardening Audit Report
+- fix(security): resolve all warnings, harden regex against ReDoS, secure S3 uploads, and add HTTP security headers
+
+All notable changes to this project will be documented in this file.
+Format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.3.3] — 2026-11-21
+
+### 🛡️ Transaction Lifecycle & Archival Engine, Status Filters, Dynamic Regeneration & Pixel-Perfect PDF
+
+#### Added — Soft Cancellation & Comprehensive Audit Trail
+- **Non-Destructive Transaction Cancellation**:
+  - Implemented secure `cancelInvoice` workflow allowing authorized business owners to cancel transactions with full data preservation.
+  - Excludes cancelled transactions from active revenue metrics and analytics in `InvoiceRepository.aggregateRevenue`.
+  - Added safety confirmation modal with bill summary, warning, and owner password/confirmation check.
+  - Emits immutable `INVOICE_CANCELLED` audit trail event in `ActivityLogService` recording timestamp, operator identity, and role.
+
+#### Added — Transaction Status Tracking & Filtering
+- **Status Column on Desktop & Mobile Cards**:
+  - Added color-coded status badges: `Paid` (emerald/green), `Unpaid` (amber/orange), `Cancelled` (rose/red), `Draft` (slate).
+  - Status toggle (`Paid` vs `Unpaid`) in `EditInvoiceModal` allowing immediate status adjustments upon customer payment collection.
+- **Server-Side Status Filtering & CSV Export**:
+  - Added filter chips (`All Statuses`, `Paid`, `Unpaid`, `Cancelled`) with URL search parameter persistence (`status=paid`, etc.).
+  - Added `Status` column to CSV export (`/api/v1/export-csv`) reflecting active filters and appends status indicators to download filenames.
+
+#### Fixed — Stale S3 PDF Link & Pre-Edit / Cancellation Archiving
+- **Automatic S3 PDF Archival (`invoices/edited/` & `invoices/cancelled/`)**:
+  - Before an invoice modification is committed, existing S3 PDF is archived to `invoices/edited/${id}_${timestamp}.pdf`.
+  - When a transaction is cancelled, active S3 PDF is archived to `invoices/cancelled/${id}_${timestamp}.pdf`.
+- **Immediate Cache-Busted PDF Regeneration**:
+  - Automatically regenerates fresh PDF buffer immediately upon edit and uploads to `invoices/${id}.pdf` with `Cache-Control: no-cache, no-store, must-revalidate`.
+  - Download route (`/api/invoices/[id]/download`) issues zero-cache response headers and includes on-demand generation fallback if S3 object is missing or stale.
+
+#### Fixed — Misaligned PDF Alignment on Transaction Downloads
+- **Standardized Multi-Environment PDF Generator (`src/lib/pdf/generate-invoice-pdf.ts`)**:
+  - Unified PDF generation engine running identically in browser and Node.js server environments.
+  - Standardized exact column coordinate geometry: `#` (12mm, center), `Item Description` (remainder, left), `Unit Price` (28mm, right), `Qty` (18mm, center), `Total` (32mm, right) ending precisely at right margin `X=196mm`.
+  - Right-aligned totals summary block at `X=196mm` preventing text overlap or truncation.
+  - Automatically renders prominent diagonal `CANCELLED` watermark and red status indicator badge on cancelled invoice PDFs.
+
+#### Added — Edited Record Tracking & Visual Marking
+- **Database & Audit Trail Schema**:
+  - Added `isEdited: boolean`, `editedAt: Date`, `editedBy: ObjectId`, and `editCount: number` to `Invoice` schema and `InvoiceDTO`.
+  - Enriched `INVOICE_UPDATED` activity log events with edit counts, timestamps, and operator IDs.
+- **Visual "Edited" Badges in UI**:
+  - Added purple `Edited` badge on desktop table status column and mobile transaction cards with hover tooltips showing revision count and last edited timestamp.
+  - Displayed "Revised Bill" pill in public digital invoice view (`/public/invoice/[id]`).
+- **PDF & CSV Export Indicator**:
+  - PDF generator automatically prints `(Edited)` alongside the invoice number and includes `Status: Revised (Edited <date>)` and `REVISED / EDITED INVOICE` banner on modified bills.
+  - Added `Edited?` and `Edited Date` columns to CSV export (`/api/v1/export-csv`).
+
+## [1.3.2] — 2026-11-04
+
+### 💬 WhatsApp Dispatch Hub, Contact Selector & Reliability Hardening
+
+#### Fixed — WhatsApp Message Routing to Self & Pop-up Blocker Resolution
+- **Removed Web Share API Hijacking**:
+  - Eliminated `navigator.share({ files: [...] })` click interception in `TransactionsClient` and `CreateInvoiceForm` that previously caused macOS/iOS share sheets to open WhatsApp without a recipient parameter (routing bills to the user's personal "Message yourself" chat).
+  - Switched to direct HTML `<a>` links using `https://api.whatsapp.com/send?phone=...` with `target="_blank"`, bypassing browser popup blockers and async event loop timing issues.
+- **Added "Choose Contact on WhatsApp" Selector**:
+  - Implemented direct chat picker integration (`https://api.whatsapp.com/send?text=...`) on both Transactions page (mobile cards & desktop table) and the Invoice Ready modal.
+  - Allows merchants and cashiers to send bills to any contact, driver, accountant, partner, or WhatsApp group with 1 tap.
+- **Redesigned Invoice Ready Screen**:
+  - Removed confusing nested flows ("2 option ka 2 option" and broken "Open & attach" multi-step flow).
+  - Introduced clean, unified **Invoice Dispatch Center**:
+    - Direct Customer WhatsApp dispatch banner with customer name & normalized phone.
+    - One-tap "Choose Contact on WhatsApp" option.
+    - Utility tools: Direct PDF Download, Thermal/Receipt Print Bill, and 1-tap "Copy Bill Message & Links" with visual feedback.
+- **Universal Phone Number Normalization (`src/lib/phone-utils.ts`)**:
+  - Standardized phone number normalization across the application (10-digit Indian numbers, leading-0 formats, international codes) ensuring seamless deep-linking without URL errors.
+
+#### Added — Filter-Aware CSV Export for Transactions
+- **Export Filtered Transactions to CSV**:
+  - Added 1-tap **"Export CSV"** button to the Transactions page top bar and active filter summary banner.
+  - Dynamically encodes all active search terms, date presets (`today`, `yesterday`, `week`, `month`), and custom date ranges (`startDate`, `endDate`).
+  - `/api/v1/export-csv` (and `/api/export-csv`) now extracts query parameters and generates tenant-isolated CSVs matching the filtered dataset with intelligent file naming (`transactions_today_2026-11-04.csv`, `transactions_search-Vijay_2026-11-04.csv`).
+  - Extracted shared query builder [`src/lib/transaction-query.ts`](file:///Users/rishabhjoshi/Desktop/Test-Antigravity/whatsapp-invoice-app/src/lib/transaction-query.ts) ensuring 100% filter parity between the UI view and the exported CSV.
+
+---
+
+## [1.3.1] — 2026-11-03
+
+### 🛡️ S3 Access Security Proxy & Multi-Tenant Dynamic SSR Branding
+
+#### Fixed — S3 AccessDenied Resolution & Public Download Route
+- **Secure Download Proxy (`/api/invoices/[id]/download`)**:
+  - Implemented streaming proxy route that serves invoice PDFs using server-side AWS credentials or generates short-lived presigned URLs.
+  - Resolves AWS S3 `403 AccessDenied` XML errors caused by standard bucket Block Public Access policies.
+  - Replaced raw direct S3 links in customer WhatsApp share text with branded public invoice URLs (`/public/invoice/[id]`).
+
+#### Fixed — Multi-Tenant Dynamic SSR Branding & Tab Icon Flash
+- **Server-Side Dynamic Metadata (`src/app/(dashboard)/layout.tsx`)**:
+  - Added `generateMetadata()` to query the authenticated user's store profile (`businessName` and `logoUrl`) from MongoDB during server-side rendering (SSR).
+  - Browser tab title and favicon now immediately match the active merchant's branding (e.g. `Bakingbros · Invoicing & POS` with custom logo) with zero initial flash of default template assets.
+  - Removed static root icons (`icon.png`, `apple-icon.png`) that previously took precedence over dynamic tenant icons.
+- **Top Header Bar & PDF Generation Hardening**:
+  - Top navigation bar now displays the active merchant's logo across all viewports.
+  - Eliminated hardcoded `"PRIMEBAKE RAW MATERIAL"` subtitle in generated invoice PDFs, replacing it with dynamic business naming (`${bizName.toUpperCase()} • OFFICIAL INVOICE`).
+
+---
+
+## [1.3.0] — 2026-10-30
+
+### ⚡ Direct Server-Side S3 Uploads (Zero CORS), Credit Notes & UI Resiliency
+
+#### Added — Direct Server-Side S3 Upload Subsystem (`uploadFileDirect`)
+- **Server-Side File Pipe (`src/app/actions/invoice.ts`)**:
+  - Implemented `uploadFileDirect` server action to upload binary files (base64) directly from Node.js to AWS S3 using AWS SDK v3 `PutObjectCommand`.
+  - **Eliminates Browser CORS & Preflight Failures**: Bypasses browser cross-origin constraints, preflight `OPTIONS` blocks, and network proxy drops that affected direct client-to-S3 presigned PUTs.
+  - **Targeted Folder Organization**: Automatically routes files into designated S3 folders (`invoices/`, `logos/`, `bookings/`).
+  - **Auto-Persistence**: If `invoiceId` is supplied with an invoice PDF upload, automatically links the permanent public URL in the MongoDB invoice document and revalidates cached routes.
+  - **Defense-in-Depth**: Strictly verifies MIME types (`image/jpeg`, `image/png`, `image/webp`, `application/pdf`) and sanitizes filenames against directory traversal (`sanitizeFilename`) before writing to storage.
+- **Client Integration Across Workflows**:
+  - `CreateInvoiceForm.tsx`: Automatically encodes generated PDF receipts to Base64 via `FileReader` and persists them via `uploadFileDirect` with zero client warnings.
+  - `BookingsClient.tsx`: Custom cake reference photos now upload directly through server action.
+  - `SettingsClient.tsx`: Store logo uploads converted to server-side pipeline after client-side image compression.
+
+#### Added — Credit Notes, Refunds & Negative Price Support
+- **Accounting & Price Flexibility**:
+  - Relaxed schema constraints in `src/lib/schemas/index.ts` (`InvoiceItemSchema`, `CreateInvoiceSchema`, `UpdateInvoiceSchema`) to allow negative numbers for item prices and invoice grand totals.
+  - Supports legitimate retail workflows: customer refunds, credit notes, instant line-item discounts, and advance deposit deductions.
+  - Updated client-side validation in `CreateInvoiceForm.tsx` and `EditInvoiceModal.tsx` to permit negative grand totals.
+
+#### Added — Portaled UI Modals & Text Truncation Resiliency
+- **Portaled Item Catalog Modal (`MenuSelector.tsx`)**:
+  - Portaled the `MenuSelector` dialog directly to `document.body` via React 19 `createPortal`.
+  - Solves z-index conflicts, overflow clipping, and positioning bugs when opened within nested flex/grid parent containers.
+  - Added native hover tooltips (`title` attribute) on item cards, allowing staff to read long menu item names without clipping.
+- **Category Overflow Fixes (`CategorySelector.tsx`)**:
+  - Fixed flexbox shrinking and text truncation issues on categories with long names.
+  - Added title tooltips to ensure long category titles remain fully readable.
+
+#### Added — Native WhatsApp PDF Document Delivery & Short-Lived S3 Presigning
+- **`WhatsAppCloudAdapter` (`src/lib/adapters/messaging/WhatsAppCloudAdapter.ts`)**:
+  - Delivers invoice PDFs as native documents directly into customer WhatsApp chats via Meta's Graph API.
+  - Leverages temporary 15-minute S3 presigned URLs (`getPresignedInvoiceDownloadUrl`) via `@aws-sdk/s3-request-presigner`, allowing WhatsApp's media servers to ingest the buffer without exposing public, long-lived URLs.
+  - Ensures maximum customer privacy and permanent offline file retention on the customer's phone storage (file never expires for the customer).
+- **Client-Side Web Share API File Attachment (`CreateInvoiceForm.tsx` & `TransactionsClient.tsx`)**:
+  - Native POS sharing attaches the PDF file directly to WhatsApp using `navigator.share({ files: [file] })` on mobile, tablet, and macOS counter registers without incurring Meta API fees.
+  - Fallback gracefully switches to standard `wa.me` links when file sharing is unavailable.
+- **Direct Download Action (`getInvoiceDownloadUrlAction`)**:
+  - Secure server action to generate short-lived presigned download URLs on demand for verified store owners and staff.
+
+---
+
+## [1.2.0] — 2026-10-29
+
+### 🎂 Line Item Customization, Real-Time Descriptions & Invoice UX
+
+#### Added — Line Item Customization Modal & Description Box
+- **Item Description Modal Popup (`CreateInvoiceForm.tsx`)**:
+  - Added dedicated popup modal to capture real-time item specifications (e.g., custom cake flavor, weight, delivery notes).
+  - Quick-preset chips for rapid POS checkout (`Custom Cake`, `Eggless`, `1.5 kg`, `Special Message`).
+  - Auto-opens upon selecting custom or open items (e.g. `Open Item Wholesale Cake`).
+  - Direct `+ Description` / `+ Note` trigger button adjacent to `Select Menu Item`.
+  - Prominent line item description banner rendered beneath each configured line item row.
+- **Invoice Preview & Public Receipt Enhancements**:
+  - Updated table header from `Item Description` to clean `Item`.
+  - Renders item description box directly beneath item names on invoice preview, public invoice view (`/public/invoice/[id]`), and PDF receipts.
+- **Data Model & Schema Extensions**:
+  - `Invoice.ts`: Added `description?: string` to `IInvoiceItem` and schema.
+  - `src/lib/schemas/index.ts`: Added `description: z.string().max(500).optional()` to `InvoiceItemSchema`.
+  - `domain.ts`: Added `description?: string` to `InvoiceItemDTO`.
+  - `WhatsAppWebAdapter.ts` & `export-csv`: Included item descriptions in messaging payloads and CSV export.
+
+---
+
+## [1.1.0] — 2026-10-29
+
+### 🚀 Activity Log & Production Database Configuration Release
+
+#### Added — Activity Log & Audit Trail Subsystem
+- **`ActivityLog` Data Model** (`src/models/ActivityLog.ts`):
+  - Stores all operations performed by account administrators (`OWNER`) and staff (`STAFF`).
+  - Indexed on `{ tenantId: 1, createdAt: -1 }`, `{ tenantId: 1, userId: 1, createdAt: -1 }`, `{ tenantId: 1, entityType: 1, createdAt: -1 }`.
+  - Captures actor identity snapshot (`name`, `email`, `role`), action type, description, and detailed JSON context metadata.
+- **`ActivityLogService`** (`src/lib/services/ActivityLogService.ts`):
+  - Fire-and-forget, non-blocking asynchronous audit logging.
+  - Multi-criteria filtering: team member, entity type, action type, keyword search, date range.
+  - Aggregate statistics: 24-hour volume, 7-day volume, and Owner vs. Staff breakdown.
+- **Activity Log Server Actions** (`src/app/actions/activity.ts`):
+  - `fetchActivityLogs()`, `fetchActivityStats()`, and `fetchAccountMembers()`.
+- **Frontend Audit Dashboard** (`/activity` & `src/components/ActivityLogClient.tsx`):
+  - Live KPI cards for total actions, 24h activity, and owner/staff split.
+  - Interactive multi-filter bar with keyword search, member picker, module picker, and date range inputs.
+  - Chronological event timeline with color-coded entity badges and expandable metadata context tray.
+  - Navigation bar integration with `History` icon and `Audit` chip.
+- **Full Action Instrumentation**:
+  - Automatically records events for Invoices, Customers, Advance Bookings, Menu Items, Categories, Coupons, Team Members, and Business Profile updates.
+
+#### Added — Database Hardening & Production Configuration
+- **Production Database Enforcement**:
+  - `src/lib/mongoose.ts` now explicitly specifies `dbName: process.env.MONGODB_DB_NAME || 'primebake-prod'`.
+  - Guarantees MongoDB connections never silently default to the MongoDB Atlas `test` database.
+  - Updated `.env.local` to `MONGODB_URI=mongodb://127.0.0.1:27017/primebake-prod`.
+
+#### Fixed — Multi-Tenant Security & Isolation
+- **Advance Bookings Multi-Tenant Scoping**:
+  - Refactored all booking actions (`createAdvanceBooking`, `getAdvanceBookings`, `updateAdvanceBookingDetails`, `updateBookingStatus`, `completeAdvanceBooking`) to use `effectiveUserId`.
+- **CSV Export Scoping**:
+  - Scoped `/api/v1/export-csv` to `effectiveUserId` so staff can export business invoices accurately.
+
+---
+
+## [1.0.0] — 2026-10-29
+
+### 🎉 First Production Release
+
+#### Added — Architecture & Patterns (SOLID)
+- Introduced layered SOLID architecture: `Server Actions → Services → Repositories → Mongoose`
+- `src/lib/services/` — `InvoiceService.ts`, `CustomerService.ts`, `MenuService.ts`
+- `src/lib/repositories/` — `IRepository.ts` interface + concrete implementations (`InvoiceRepository`, `CustomerRepository`, `MenuRepository`)
+- `src/lib/adapters/messaging/` — `IMessagingAdapter.ts`, `WhatsAppWebAdapter.ts`, `SMSAdapter.ts`, `MessagingAdapterFactory.ts` (Strategy + Factory patterns)
+- `src/lib/schemas/index.ts` — Zod validation schemas as single source of truth for all data mutations
+- Typed singleton MongoDB connection cache in `src/lib/mongoose.ts` with `maxPoolSize: 10`
+
+#### Added — Security Hardening
+- **Rate Limiting** — `src/lib/rateLimit.ts`: in-memory sliding-window limiter (5 signups/5 min per IP), returns HTTP 429
+- **Input Validation** — Zod schemas enforced at `/api/signup`: email normalization, password length, name boundaries
+- **RBAC Guard** — `InvoiceService.updateInvoice()` rejects `STAFF` role edits with HTTP 403 Forbidden
+- **IDOR Fix** — All tenant queries use `getEffectiveUserId()` scoping staff to their `ownerId`
+- **HTTP Security Headers** — `next.config.mjs` now sets `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`
+- **Bcrypt hardened** — Increased bcrypt work factor from 10 to 12 rounds on signup
+
+#### Added — Database Performance
+- Compound indexes on `Invoice`: `{ userId, createdAt }`, `{ userId, customer, date }`
+- Compound indexes on `Customer`: `{ userId, name }`, `{ userId, phoneNumber }`
+- Mongoose 9 migration: replaced deprecated `{ new: true }` with `{ returnDocument: 'after' }` across all repositories
+
+#### Added — Responsive UI/UX (Mobile, Tablet, Desktop)
+- `DashboardLayoutClient.tsx`: Glassmorphic header, bottom thumb-navigation bar (mobile), collapsible drawer (tablet), persistent sidebar (desktop)
+- `TransactionsClient.tsx`: Dual-mode — touch cards on mobile, rich table on tablet/desktop
+- `CustomersClient.tsx`: Mobile card deck with direct WhatsApp/call buttons; table on desktop
+- `CustomerReportClient.tsx`: Mobile accordion item breakdowns; table with expand rows on desktop
+- `CreateInvoiceForm.tsx`: Sticky floating mobile checkout bar showing live total + "Preview & Bill" CTA
+- `globals.css`: `@media print` styles for 80mm thermal POS receipts and A4 invoice printing
+
+#### Added — API Versioning
+- `/api/v1/` namespace created for all REST API routes
+- Versioned routes: `POST /api/v1/signup`, `GET /api/v1/export-csv`, `GET /api/v1/health`
+- Original routes remain functional (backward-compatible re-exports)
+- `X-API-Version: 1.0.0` response header on all v1 endpoints
+
+#### Added — Documentation
+- `docs/FUNCTIONAL_REQUIREMENTS.md`
+- `docs/NON_FUNCTIONAL_REQUIREMENTS.md`
+- `docs/DATA_FLOW_DIAGRAMS.md`
+- `docs/ENTITY_RELATIONSHIP_DIAGRAM.md`
+- `docs/ARCHITECTURE_AND_DESIGN_PATTERNS.md`
+- `docs/SYSTEM_REQUIREMENTS_AND_ARCHITECTURE.md`
+- `docs/UI_UX_SECURITY_AND_TESTING_REPORT.md`
+- `docs/VERSIONING.md` — branching strategy, commit conventions, release runbook
+- `CHANGELOG.md` — this file
+
+#### Changed — Framework Upgrade
+- Upgraded from **Next.js 14** → **Next.js 16.4.3** (Turbopack)
+- Upgraded from **React 18** → **React 19.3.1**
+- All dynamic routes migrated to async `params` and `searchParams` (Next.js 16 standard)
+- Applied to: `public/invoice/[id]`, `customers/[id]/report`, `transactions`, `menu`, `customers`, `bookings`, `coupons`, `team`, `dashboard`
+
+#### Added — Versioning Infrastructure (this release)
+- `scripts/release.mjs` — automated semver bump, CHANGELOG entry, git commit & annotated tag
+- `npm run version:patch`, `npm run version:minor`, `npm run version:major`
+- `npm run release patch|minor|major`
+- `VERSIONING.md` — full branching and release guide
+
+---
+
+## [0.1.0] — 2026-05-01
+
+### Initial Development Release
+
+- Core Next.js app scaffold with NextAuth v5 authentication
+- MongoDB / Mongoose schema: `User`, `Customer`, `Invoice`, `MenuEntry`, `Category`, `Coupon`, `Booking`
+- Basic POS invoice creation with customer selector and menu item picker
+- WhatsApp `wa.me` deep-link bill sharing
+- jsPDF invoice generation with customer branding
+- Team management: invite staff cashiers scoped to owner
+- Public shareable invoice page (`/public/invoice/[id]`)
+- 90-day customer purchase report with Excel export
+- Coupon/discount engine (percentage and fixed-value)
+- S3 PDF backup with presigned upload URLs
+- Booking management with status tracking
+
+---
+
+*To generate the next release:*
+```bash
+npm run release patch    # bug fixes
+npm run release minor    # new features
+npm run release major    # breaking changes
+```
