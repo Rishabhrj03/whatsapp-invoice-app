@@ -201,6 +201,9 @@ The release runbook updates `package.json`, prepends an entry in `CHANGELOG.md`,
 ## 📚 Complete Documentation Index
 
 For in-depth architectural specifications and audit reports, refer to:
+* **[Vercel Deployment & Pre-Flight Verification Guide](docs/VERCEL_DEPLOYMENT_AND_PREFLIGHT_GUIDE.md)**
+* **[Comprehensive QA Testing Report (v1.3.4 Certified)](docs/COMPREHENSIVE_QA_TESTING_REPORT.md)**
+* **[Automated MongoDB Free Tier Backup & Restore Guide](docs/MONGODB_FREE_TIER_BACKUP_GUIDE.md)**
 * [Architectural & Design Patterns Specification](docs/ARCHITECTURE_AND_DESIGN_PATTERNS.md)
 * [Functional Requirements Specification (FRS)](docs/FUNCTIONAL_REQUIREMENTS.md)
 * [Non-Functional Requirements Specification (NFRS)](docs/NON_FUNCTIONAL_REQUIREMENTS.md)
