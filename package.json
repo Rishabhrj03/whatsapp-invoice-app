@@ -1,12 +1,33 @@
 {
   "name": "whatsapp-invoice-app",
-  "version": "0.1.0",
+  "version": "1.3.4",
+  "description": "WhatsApp-integrated POS & Digital Invoicing Platform for retail, bakeries, and service businesses.",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "test": "npx tsx scripts/test-comprehensive.mjs",
+    "test:e2e": "npx tsx test-e2e.mjs",
+    "test:security": "npx tsx scripts/test-security.mjs",
+    "test:activity": "npx tsx scripts/test-activity-log.mjs",
+    "test:whatsapp": "npx tsx scripts/test-whatsapp-document.mjs",
+    "test:menu-modes": "npx tsx scripts/test-menu-import-modes.mjs",
+    "db:backup": "node scripts/backup-db.mjs",
+    "db:restore": "node scripts/restore-db.mjs",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version",
+    "deploy": "node scripts/release.mjs patch --push",
+    "release": "node scripts/release.mjs patch --push",
+    "release:patch": "node scripts/release.mjs patch --push",
+    "release:minor": "node scripts/release.mjs minor --push",
+    "release:major": "node scripts/release.mjs major --push",
+    "release:local": "node scripts/release.mjs patch --no-push"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1009.0",
@@ -17,22 +38,29 @@
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.577.0",
     "mongoose": "^9.3.0",
-    "next": "14.2.15",
-    "next-auth": "^5.0.0-beta.20",
+    "next": "^16.4.6",
+    "next-auth": "^5.0.0-beta.32",
     "papaparse": "^5.5.3",
-    "react": "^18",
-    "react-dom": "^18"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "xlsx": "^0.18.5",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.27",
     "eslint": "^8",
     "eslint-config-next": "14.2.15",
+    "mongodb-memory-server": "^11.3.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "core-js": true,
+    "unrs-resolver": true
   }
 }
