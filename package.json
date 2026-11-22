@@ -17,6 +17,7 @@
     "test:activity": "npx tsx scripts/test-activity-log.mjs",
     "test:whatsapp": "npx tsx scripts/test-whatsapp-document.mjs",
     "test:menu-modes": "npx tsx scripts/test-menu-import-modes.mjs",
+    "db:backup": "node scripts/backup-db.mjs",
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version",
