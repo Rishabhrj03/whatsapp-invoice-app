@@ -4,7 +4,7 @@
 
 ### 🚀 Production Release v1.3.4 (Stable Patch)
 
-- feat(engine): update runtime engines to Node.js >=22.0.0 and npm >=10.0.0, upgrade @types/node to v26, and add tsx devDependency
+- feat(engine): update runtime engines to Node.js >=26.0.0 and npm >=11.0.0 (v26.13.1 LTS), upgrade @types/node to v26, and add tsx devDependency
 - feat(menu): add item availability toggle (disable/enable) without deletion, bulk actions, and bill creation filtering
 - fix(menu): resolve pagination desync and add append-after item workflow with reactive prop sync
 - feat(transactions): add Transaction Status filter and multi-version S3 PDF revision tracking

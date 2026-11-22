@@ -115,8 +115,8 @@ whatsapp-invoice-app/
 
 ### Prerequisites
 
-* **Node.js**: $\ge 22.0.0$ (LTS recommended)
-* **npm**: $\ge 10.0.0$
+* **Node.js**: $\ge 26.0.0$ (v26.13.1 LTS)
+* **npm**: $\ge 11.0.0$
 * **MongoDB**: Local instance running on `mongodb://127.0.0.1:27017` or MongoDB Atlas URI
 * **AWS S3 Bucket**: For invoice PDF archiving and logo storage
 
