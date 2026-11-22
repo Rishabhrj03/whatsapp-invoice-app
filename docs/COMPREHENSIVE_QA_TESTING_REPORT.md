@@ -4,7 +4,7 @@
 **Repository Path:** `/Users/rishabhjoshi/Desktop/Test-Antigravity/whatsapp-invoice-app`  
 **Target Branch:** `primebake--prod`  
 **Current Release Version:** `v1.3.4`  
-**Engine & Framework:** Node.js `>=20.0.0` | Next.js `16.4.6` (Turbopack) | React `19.3.1`  
+**Engine & Framework:** Node.js `>=22.0.0` (v26.13.1 LTS) | Next.js `16.4.6` (Turbopack) | React `19.3.1`  
 **Evaluation Role:** Senior Principal QA Lead & Systems Solutions Architect  
 **Audit Status:** **PASSED — 100% PRODUCTION READY & CERTIFIED**  
 **Audit Date:** 2026-11-22  
