@@ -150,13 +150,17 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
     useEffect(() => {
         if (view === "edit" && editingItem && formRef.current) {
             const form = formRef.current;
-            (form.elements.namedItem("name") as HTMLInputElement).value = editingItem.name || "";
-            (form.elements.namedItem("price") as HTMLInputElement).value = editingItem.price !== undefined ? String(editingItem.price) : "";
-            (form.elements.namedItem("category") as HTMLSelectElement).value = editingItem.category || "";
-            (form.elements.namedItem("description") as HTMLTextAreaElement).value = editingItem.description || "";
+            const nameEl = form.elements.namedItem("name") as HTMLInputElement | null;
+            if (nameEl) nameEl.value = editingItem.name || "";
+            const priceEl = form.elements.namedItem("price") as HTMLInputElement | null;
+            if (priceEl) priceEl.value = editingItem.price !== undefined ? String(editingItem.price) : "";
+            const catEl = form.elements.namedItem("category") as HTMLSelectElement | null;
+            if (catEl) catEl.value = editingItem.category || "";
+            const descEl = form.elements.namedItem("description") as HTMLTextAreaElement | null;
+            if (descEl) descEl.value = editingItem.description || "";
             const isAvail = editingItem.isAvailable !== false;
-            const availRadios = form.elements.namedItem("isAvailable") as RadioNodeList;
-            if (availRadios) {
+            const availRadios = form.elements.namedItem("isAvailable") as RadioNodeList | null;
+            if (availRadios && typeof availRadios.value !== "undefined") {
                 availRadios.value = isAvail ? "true" : "false";
             }
         }
@@ -165,12 +169,16 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
     useEffect(() => {
         if (view === "add" && formRef.current) {
             const form = formRef.current;
-            (form.elements.namedItem("name") as HTMLInputElement).value = prefillItem?.name || "";
-            (form.elements.namedItem("price") as HTMLInputElement).value = prefillItem?.price !== undefined ? String(prefillItem.price) : "";
-            (form.elements.namedItem("category") as HTMLSelectElement).value = prefillItem?.category || "";
-            (form.elements.namedItem("description") as HTMLTextAreaElement).value = prefillItem?.description || "";
-            const availRadios = form.elements.namedItem("isAvailable") as RadioNodeList;
-            if (availRadios) {
+            const nameEl = form.elements.namedItem("name") as HTMLInputElement | null;
+            if (nameEl) nameEl.value = prefillItem?.name || "";
+            const priceEl = form.elements.namedItem("price") as HTMLInputElement | null;
+            if (priceEl) priceEl.value = prefillItem?.price !== undefined ? String(prefillItem.price) : "";
+            const catEl = form.elements.namedItem("category") as HTMLSelectElement | null;
+            if (catEl) catEl.value = prefillItem?.category || "";
+            const descEl = form.elements.namedItem("description") as HTMLTextAreaElement | null;
+            if (descEl) descEl.value = prefillItem?.description || "";
+            const availRadios = form.elements.namedItem("isAvailable") as RadioNodeList | null;
+            if (availRadios && typeof availRadios.value !== "undefined") {
                 availRadios.value = "true";
             }
         }
@@ -582,6 +590,16 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                                 </div>
                             </div>
                             <div className="space-y-1.5">
+                                <label htmlFor="description" className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Description (Optional)</label>
+                                <textarea
+                                    id="description"
+                                    name="description"
+                                    rows={2}
+                                    placeholder="Brief item description or notes..."
+                                    className="block w-full px-5 py-3 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all text-sm text-black resize-none"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
                                 <label className="block text-xs font-black text-gray-400 uppercase tracking-widest px-1">Availability Status</label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <label className="flex items-center gap-3 p-3.5 border rounded-2xl cursor-pointer transition-all border-emerald-200 bg-emerald-50/30 hover:bg-emerald-50/60 has-[:checked]:border-emerald-500 has-[:checked]:ring-2 has-[:checked]:ring-emerald-400">
@@ -967,7 +985,8 @@ export default function MenuClient({ initialMenuItems, initialCategories = [], i
                     }
                     setTimeout(() => {
                         if (formRef.current && activeTab === "items") {
-                            (formRef.current.elements.namedItem("category") as HTMLSelectElement).value = newCat.name;
+                            const catEl = formRef.current.elements.namedItem("category") as HTMLSelectElement | null;
+                            if (catEl) catEl.value = newCat.name;
                         }
                     }, 50);
                     router.refresh();
