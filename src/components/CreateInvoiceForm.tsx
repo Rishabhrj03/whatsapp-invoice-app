@@ -51,6 +51,31 @@ export default function CreateInvoiceForm({
     const [isPreview, setIsPreview] = useState(false);
     const [hasDownloaded, setHasDownloaded] = useState(false);
     const [canShare, setCanShare] = useState(false);
+    const getTodayInputFormat = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const getYesterdayInputFormat = () => {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const getSelectedDateObj = (dateStr: string) => {
+        if (!dateStr) return new Date();
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const now = new Date();
+        return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
+    };
+
+    const [invoiceDate, setInvoiceDate] = useState<string>(getTodayInputFormat);
     const [currentDate, setCurrentDate] = useState("");
     const [logoBase64, setLogoBase64] = useState<string>("");
     const [copiedText, setCopiedText] = useState(false);
@@ -206,7 +231,7 @@ export default function CreateInvoiceForm({
                 couponCode: data.couponCode,
                 paymentType: data.paymentType,
                 comment: data.comment,
-                date: new Date(),
+                date: data.date ? new Date(data.date) : getSelectedDateObj(invoiceDate),
                 status: 'Paid',
                 customer: customer ? {
                     name: customer.name,
@@ -310,6 +335,7 @@ export default function CreateInvoiceForm({
             couponCode: getDiscountDescription() || appliedCoupon?.code,
             comment,
             paymentType,
+            date: getSelectedDateObj(invoiceDate).toISOString(),
         };
 
         const res = await createInvoice(invoiceData);
@@ -374,6 +400,7 @@ export default function CreateInvoiceForm({
             setItems([]);
             setCustomerId("");
             setComment("");
+            setInvoiceDate(getTodayInputFormat());
             setHasDownloaded(false);
             setCopiedText(false);
         };
@@ -552,7 +579,13 @@ export default function CreateInvoiceForm({
                     </div>
                     <div className="md:text-right space-y-1">
                         <h3 className="text-xs font-bold text-gray-400 uppercase">Invoice Date</h3>
-                        <p className="text-gray-800 font-medium">{currentDate}</p>
+                        <p className="text-gray-800 font-medium">
+                            {getSelectedDateObj(invoiceDate).toLocaleDateString("en-IN", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                            })}
+                        </p>
                     </div>
                 </div>
 
@@ -784,14 +817,77 @@ export default function CreateInvoiceForm({
                     </div>
 
                     <div className="space-y-6">
-                        <div className="relative">
-                            <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
-                                <Calendar size={14} className="text-gray-400" />
-                                Invoice Date
-                            </label>
-                            <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 flex items-center justify-between">
-                                <span>{currentDate || "Loading..."}</span>
-                                <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Current</span>
+                        <div className="relative space-y-2">
+                            <div className="flex items-center justify-between">
+                                <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                                    <Calendar size={14} className="text-blue-600" />
+                                    <span>Invoice Date</span>
+                                </label>
+                                {(() => {
+                                    const todayStr = getTodayInputFormat();
+                                    const yesterdayStr = getYesterdayInputFormat();
+                                    const isToday = invoiceDate === todayStr;
+                                    const isYesterday = invoiceDate === yesterdayStr;
+                                    return (
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tight inline-flex items-center gap-1 ${
+                                            isToday
+                                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                                : isYesterday
+                                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                                : 'bg-purple-100 text-purple-800 border border-purple-200'
+                                        }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${
+                                                isToday ? 'bg-emerald-500' : isYesterday ? 'bg-amber-500' : 'bg-purple-500'
+                                            }`} />
+                                            {isToday ? 'Current (Today)' : isYesterday ? 'Yesterday' : 'Custom Date'}
+                                        </span>
+                                    );
+                                })()}
+                            </div>
+
+                            <div className="relative">
+                                <input
+                                    type="date"
+                                    value={invoiceDate}
+                                    onChange={(e) => setInvoiceDate(e.target.value)}
+                                    className="block w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-bold text-gray-900 shadow-sm outline-none transition-all cursor-pointer hover:border-gray-300"
+                                    title="Choose invoice date"
+                                />
+                            </div>
+
+                            {/* Quick selection chips for mobile, tablet, and desktop */}
+                            <div className="flex items-center gap-1.5 pt-0.5">
+                                <button
+                                    type="button"
+                                    onClick={() => setInvoiceDate(getTodayInputFormat())}
+                                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all active:scale-95 ${
+                                        invoiceDate === getTodayInputFormat()
+                                            ? 'bg-blue-600 text-white shadow-xs'
+                                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                    }`}
+                                >
+                                    Today
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setInvoiceDate(getYesterdayInputFormat())}
+                                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all active:scale-95 ${
+                                        invoiceDate === getYesterdayInputFormat()
+                                            ? 'bg-blue-600 text-white shadow-xs'
+                                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                    }`}
+                                >
+                                    Yesterday
+                                </button>
+                                {invoiceDate !== getTodayInputFormat() && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setInvoiceDate(getTodayInputFormat())}
+                                        className="text-xs text-blue-600 hover:underline font-semibold ml-auto"
+                                    >
+                                        Reset to Today
+                                    </button>
+                                )}
                             </div>
                         </div>
 

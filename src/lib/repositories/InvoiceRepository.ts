@@ -106,7 +106,7 @@ class InvoiceRepository implements IRepository<InvoiceDTO, CreateInvoiceInput> {
             couponCode: dto.couponCode,
             comment: dto.comment,
             paymentType: dto.paymentType,
-            date: new Date(),
+            date: dto.date ? new Date(dto.date) : new Date(),
             status: dto.status || 'Paid',
             userId: dto.userId,
             createdBy: dto.createdBy,
@@ -133,6 +133,9 @@ class InvoiceRepository implements IRepository<InvoiceDTO, CreateInvoiceInput> {
             editedAt: editDate,
             $inc: { editCount: 1 },
         };
+        if (data.date) {
+            updatePayload.date = new Date(data.date);
+        }
         if (editMeta?.editedBy) {
             updatePayload.editedBy = new mongoose.Types.ObjectId(editMeta.editedBy);
         }

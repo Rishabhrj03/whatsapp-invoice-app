@@ -25,6 +25,7 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
     const [status, setStatus] = useState<'Paid' | 'Unpaid' | 'Cancelled'>('Paid');
     const [discountAmount, setDiscountAmount] = useState(0);
     const [comment, setComment] = useState('');
+    const [invoiceDate, setInvoiceDate] = useState('');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
@@ -42,6 +43,15 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
             setStatus(initialStatus);
             setDiscountAmount(invoice.discountAmount || 0);
             setComment(invoice.comment || '');
+            if (invoice.date) {
+                const d = new Date(invoice.date);
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                setInvoiceDate(`${y}-${m}-${day}`);
+            } else {
+                setInvoiceDate('');
+            }
             setSuccess(false);
         }
     }, [invoice, isOpen]);
@@ -78,6 +88,7 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
             discountAmount,
             comment,
             status,
+            date: invoiceDate ? new Date(invoiceDate) : undefined,
         });
         setLoading(false);
         if (res.success) {
@@ -171,6 +182,17 @@ export default function EditInvoiceModal({ isOpen, invoice, onClose, onSaved }: 
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Invoice Date */}
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Invoice Date</label>
+                        <input
+                            type="date"
+                            value={invoiceDate}
+                            onChange={e => setInvoiceDate(e.target.value)}
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-gray-800 focus:ring-2 focus:ring-orange-400 outline-none transition-all cursor-pointer"
+                        />
                     </div>
                     <div>
                         <div className="flex items-center justify-between mb-4">

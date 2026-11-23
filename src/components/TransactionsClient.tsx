@@ -79,11 +79,47 @@ export default function TransactionsClient({
     const isOwner = userRole === 'OWNER';
     const [origin, setOrigin] = useState<string>("");
     const [isMounted, setIsMounted] = useState(false);
+    const [currentDateFormatted, setCurrentDateFormatted] = useState<string>("");
+    const [currentDateShort, setCurrentDateShort] = useState<string>("");
+    const [todayIsoDate, setTodayIsoDate] = useState<string>("");
 
     useEffect(() => {
         setIsMounted(true);
         setOrigin(window.location.origin);
+
+        const now = new Date();
+        const full = now.toLocaleDateString("en-IN", {
+            weekday: "long",
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            timeZone: "Asia/Kolkata",
+        });
+        const short = now.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            timeZone: "Asia/Kolkata",
+        });
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const d = String(now.getDate()).padStart(2, "0");
+        setTodayIsoDate(`${y}-${m}-${d}`);
+        setCurrentDateFormatted(full);
+        setCurrentDateShort(short);
     }, []);
+
+    const isTodayInvoice = (invDate: string | Date) => {
+        if (!invDate || !todayIsoDate) return false;
+        try {
+            const d = new Date(invDate);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${day}` === todayIsoDate;
+        } catch {
+            return false;
+        }
+    };
 
     // Synchronize local invoices state when server props update from navigation
     useEffect(() => {
@@ -315,6 +351,62 @@ export default function TransactionsClient({
 
     return (
         <div className="space-y-6">
+            {/* 1. Responsive Current Date Field & System Status */}
+            <div className="bg-white border border-blue-100/90 rounded-2xl p-4 shadow-xs relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-blue-500/10 via-indigo-500/5 to-transparent rounded-full -mr-10 -mt-10 pointer-events-none" />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+                    <div className="flex items-center gap-3.5">
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 flex-shrink-0">
+                            <Calendar className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200/70 px-2 py-0.5 rounded-md">
+                                    Current Date
+                                </span>
+                                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    Live IST System Time
+                                </span>
+                            </div>
+                            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight mt-0.5">
+                                {currentDateFormatted || "Loading current date..."}
+                            </h2>
+                        </div>
+                    </div>
+
+                    {/* Quick filter action / state badge */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                        {datePreset === 'today' ? (
+                            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/80 shadow-2xs">
+                                <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                                <span>Showing Today&apos;s Transactions</span>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => handlePresetChange('today')}
+                                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-blue-500/20 active:scale-95"
+                            >
+                                <CalendarDays size={14} />
+                                <span>Filter By Current Date (Today)</span>
+                            </button>
+                        )}
+                        {datePreset !== 'all' && (
+                            <button
+                                type="button"
+                                onClick={handleClearDateFilter}
+                                className="inline-flex items-center gap-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors active:scale-95"
+                                title="Show All Invoices"
+                            >
+                                <RotateCcw size={13} />
+                                <span>All Bills</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {/* Top Toolbar: Search & Main Actions */}
             <div className="flex flex-col sm:flex-row gap-3.5 justify-between items-stretch sm:items-center">
                 <div className="relative flex-1 max-w-md">
@@ -381,7 +473,7 @@ export default function TransactionsClient({
                     <div className="flex flex-wrap items-center gap-1.5">
                         {[
                             { id: 'all', label: 'All Time' },
-                            { id: 'today', label: 'Today' },
+                            { id: 'today', label: currentDateShort ? `Today (${currentDateShort})` : 'Today' },
                             { id: 'yesterday', label: 'Yesterday' },
                             { id: 'week', label: 'Last 7 Days' },
                             { id: 'month', label: 'This Month' },
@@ -580,10 +672,17 @@ export default function TransactionsClient({
                                                 <p className="text-sm font-bold text-slate-900 truncate">
                                                     {inv.customer?.name || <span className="text-slate-400 italic">Guest Customer</span>}
                                                 </p>
-                                                <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                                    <Calendar size={12} className="text-slate-400" />
-                                                    {new Date(inv.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                                                </p>
+                                                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                                                        <Calendar size={12} className="text-slate-400" />
+                                                        {new Date(inv.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                                    </p>
+                                                    {isTodayInvoice(inv.date) && (
+                                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-tighter">
+                                                            Today
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="text-right flex-shrink-0">
@@ -749,13 +848,20 @@ export default function TransactionsClient({
                                                         <Calendar size={16} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-bold text-slate-900">
-                                                            {new Date(inv.date).toLocaleDateString("en-IN", {
-                                                                day: 'numeric',
-                                                                month: 'short',
-                                                                year: 'numeric'
-                                                            })}
-                                                        </p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-sm font-bold text-slate-900">
+                                                                {new Date(inv.date).toLocaleDateString("en-IN", {
+                                                                    day: 'numeric',
+                                                                    month: 'short',
+                                                                    year: 'numeric'
+                                                                })}
+                                                            </p>
+                                                            {isTodayInvoice(inv.date) && (
+                                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-tighter">
+                                                                    Today
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <p className="text-[11px] text-slate-400 font-medium">
                                                             {new Date(inv.date).toLocaleTimeString("en-IN", {
                                                                 hour: '2-digit',

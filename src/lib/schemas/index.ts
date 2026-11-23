@@ -23,6 +23,7 @@ export const CreateInvoiceSchema = z.object({
     comment: z.string().max(500).optional(),
     paymentType: z.enum(['Cash', 'Card', 'UPI']).default('Cash'),
     status: z.enum(['Draft', 'Sent', 'Paid', 'Unpaid', 'Cancelled']).optional().default('Paid'),
+    date: z.string().or(z.date()).optional(),
 });
 
 export const UpdateInvoiceSchema = z.object({
@@ -33,6 +34,7 @@ export const UpdateInvoiceSchema = z.object({
     couponCode: z.string().optional(),
     comment: z.string().max(500).optional(),
     status: z.enum(['Draft', 'Sent', 'Paid', 'Unpaid', 'Cancelled']).optional(),
+    date: z.string().or(z.date()).optional(),
 });
 
 // ─── Customer ────────────────────────────────────────────────────────────────

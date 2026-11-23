@@ -69,6 +69,7 @@ export interface CreateInvoiceInput {
     comment?: string;
     paymentType: PaymentType;
     status?: InvoiceStatus;
+    date?: string | Date;
 }
 
 export interface UpdateInvoiceInput {
@@ -79,6 +80,7 @@ export interface UpdateInvoiceInput {
     couponCode?: string;
     comment?: string;
     status?: InvoiceStatus;
+    date?: string | Date;
 }
 
 // ─── Customer ────────────────────────────────────────────────────────────────
