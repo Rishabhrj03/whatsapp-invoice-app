@@ -24,7 +24,9 @@ import {
     Users,
     Ban,
     AlertOctagon,
-    Loader2
+    Loader2,
+    Clock,
+    History
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
@@ -116,6 +118,52 @@ export default function TransactionsClient({
             const m = String(d.getMonth() + 1).padStart(2, "0");
             const day = String(d.getDate()).padStart(2, "0");
             return `${y}-${m}-${day}` === todayIsoDate;
+        } catch {
+            return false;
+        }
+    };
+
+    const formatBilledDate = (dateVal: string | Date) => {
+        if (!dateVal) return "N/A";
+        return new Date(dateVal).toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            timeZone: "Asia/Kolkata",
+        });
+    };
+
+    const formatCreationDateTime = (dateVal: string | Date) => {
+        if (!dateVal) return { date: "N/A", time: "" };
+        const d = new Date(dateVal);
+        return {
+            date: d.toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                timeZone: "Asia/Kolkata",
+            }),
+            time: d.toLocaleTimeString("en-IN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+                timeZone: "Asia/Kolkata",
+            }),
+        };
+    };
+
+    const isBackdated = (billedDate: string | Date, createdAt: string | Date) => {
+        if (!billedDate || !createdAt) return false;
+        try {
+            const b = new Date(billedDate);
+            const c = new Date(createdAt);
+            const bYear = b.getFullYear();
+            const bMonth = b.getMonth();
+            const bDay = b.getDate();
+            const cYear = c.getFullYear();
+            const cMonth = c.getMonth();
+            const cDay = c.getDate();
+            return bYear !== cYear || bMonth !== cMonth || bDay !== cDay;
         } catch {
             return false;
         }
@@ -672,17 +720,9 @@ export default function TransactionsClient({
                                                 <p className="text-sm font-bold text-slate-900 truncate">
                                                     {inv.customer?.name || <span className="text-slate-400 italic">Guest Customer</span>}
                                                 </p>
-                                                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                                                    <p className="text-xs text-slate-500 flex items-center gap-1">
-                                                        <Calendar size={12} className="text-slate-400" />
-                                                        {new Date(inv.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                                                    </p>
-                                                    {isTodayInvoice(inv.date) && (
-                                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-tighter">
-                                                            Today
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                <p className="text-xs text-slate-500 truncate">
+                                                    {inv.customer?.phoneNumber || "No phone number"}
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="text-right flex-shrink-0">
@@ -712,6 +752,44 @@ export default function TransactionsClient({
                                                     {inv.paymentType || "Cash"}
                                                 </span>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Responsive Dates Grid: Billed Date vs Creation Date & Time */}
+                                    <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50/90 rounded-xl border border-slate-100 text-xs">
+                                        <div className="space-y-0.5 min-w-0">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                                                <Calendar size={11} className="text-blue-600 flex-shrink-0" />
+                                                <span>Billed Date</span>
+                                            </span>
+                                            <div className="flex items-center gap-1 flex-wrap">
+                                                <span className="font-bold text-slate-900 truncate">
+                                                    {formatBilledDate(inv.date)}
+                                                </span>
+                                                {isTodayInvoice(inv.date) && (
+                                                    <span className="px-1 py-0.2 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-tighter">
+                                                        Today
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {isBackdated(inv.date, inv.createdAt) && (
+                                                <p className="text-[9px] font-bold text-amber-700 flex items-center gap-0.5">
+                                                    <History size={9} /> Backdated Bill
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-0.5 min-w-0 border-l border-slate-200/80 pl-2.5">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                                                <Clock size={11} className="text-indigo-600 flex-shrink-0" />
+                                                <span className="truncate">Creation Time</span>
+                                            </span>
+                                            <p className="font-bold text-slate-700 truncate">
+                                                {formatCreationDateTime(inv.createdAt || inv.date).date}
+                                            </p>
+                                            <p className="text-[10px] text-slate-500 font-medium">
+                                                {formatCreationDateTime(inv.createdAt || inv.date).time} <span className="text-[8px] uppercase text-slate-400 font-bold">IST</span>
+                                            </p>
                                         </div>
                                     </div>
 
@@ -830,55 +908,91 @@ export default function TransactionsClient({
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50/80 border-b border-slate-100">
-                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider">Date & Time</th>
-                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider">Customer</th>
-                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Status</th>
-                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Items</th>
-                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Payment</th>
-                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-right">Amount</th>
-                                        <th className="px-6 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                                        <th className="px-5 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                                            <div className="flex items-center gap-1.5">
+                                                <Calendar size={13} className="text-blue-600" />
+                                                <span>Billed Date</span>
+                                            </div>
+                                        </th>
+                                        <th className="px-5 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                                            <div className="flex items-center gap-1.5">
+                                                <Clock size={13} className="text-indigo-600" />
+                                                <span>Creation Date & Time</span>
+                                            </div>
+                                        </th>
+                                        <th className="px-5 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider">Customer</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Status</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Items</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-center">Payment</th>
+                                        <th className="px-5 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-right">Amount</th>
+                                        <th className="px-5 py-3.5 text-[11px] font-black text-slate-500 uppercase tracking-wider text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {invoices.map((inv) => (
-                                        <tr key={inv._id} className="hover:bg-blue-50/30 transition-colors group">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-blue-100 text-slate-600 group-hover:text-blue-600 transition-colors">
-                                                        <Calendar size={16} />
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <p className="text-sm font-bold text-slate-900">
-                                                                {new Date(inv.date).toLocaleDateString("en-IN", {
-                                                                    day: 'numeric',
-                                                                    month: 'short',
-                                                                    year: 'numeric'
-                                                                })}
-                                                            </p>
-                                                            {isTodayInvoice(inv.date) && (
-                                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-tighter">
-                                                                    Today
-                                                                </span>
-                                                            )}
+                                    {invoices.map((inv) => {
+                                        const creationMeta = formatCreationDateTime(inv.createdAt || inv.date);
+                                        const billedDateStr = formatBilledDate(inv.date);
+                                        const backdated = isBackdated(inv.date, inv.createdAt);
+
+                                        return (
+                                            <tr key={inv._id} className="hover:bg-blue-50/30 transition-colors group">
+                                                {/* 1. Billed Date Column */}
+                                                <td className="px-5 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="p-2 bg-blue-50 group-hover:bg-blue-100 text-blue-600 rounded-xl transition-colors">
+                                                            <Calendar size={16} />
                                                         </div>
-                                                        <p className="text-[11px] text-slate-400 font-medium">
-                                                            {new Date(inv.date).toLocaleTimeString("en-IN", {
-                                                                hour: '2-digit',
-                                                                minute: '2-digit'
-                                                            })}
-                                                        </p>
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <p className="text-sm font-bold text-slate-900">
+                                                                    {billedDateStr}
+                                                                </p>
+                                                                {isTodayInvoice(inv.date) && (
+                                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-tighter">
+                                                                        Today
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[11px] font-medium text-slate-400">
+                                                                {backdated ? (
+                                                                    <span className="text-amber-600 font-semibold inline-flex items-center gap-1">
+                                                                        <History size={10} /> Backdated Bill
+                                                                    </span>
+                                                                ) : (
+                                                                    <span>Effective Date</span>
+                                                                )}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <p className="text-sm font-bold text-slate-900 truncate max-w-[180px]">
-                                                    {inv.customer?.name || <span className="text-slate-400 italic">Guest</span>}
-                                                </p>
-                                                <p className="text-xs text-slate-500 truncate max-w-[150px]">
-                                                    {inv.customer?.phoneNumber || "No phone"}
-                                                </p>
-                                            </td>
+                                                </td>
+
+                                                {/* 2. Invoice Creation Date & Time Column */}
+                                                <td className="px-5 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="p-2 bg-slate-100 group-hover:bg-indigo-50 text-slate-500 group-hover:text-indigo-600 rounded-xl transition-colors">
+                                                            <Clock size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-800">
+                                                                {creationMeta.date}
+                                                            </p>
+                                                            <p className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                                                                <span>{creationMeta.time}</span>
+                                                                <span className="text-[9px] uppercase px-1 py-0.2 bg-slate-100 rounded text-slate-500 font-bold">IST</span>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* Customer */}
+                                                <td className="px-5 py-4">
+                                                    <p className="text-sm font-bold text-slate-900 truncate max-w-[170px]">
+                                                        {inv.customer?.name || <span className="text-slate-400 italic">Guest</span>}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500 truncate max-w-[150px]">
+                                                        {inv.customer?.phoneNumber || "No phone"}
+                                                    </p>
+                                                </td>
                                             <td className="px-6 py-4 text-center whitespace-nowrap">
                                                 <div className="flex flex-col items-center justify-center gap-1">
                                                     {(() => {
@@ -1013,7 +1127,8 @@ export default function TransactionsClient({
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                    );
+                                })}
                                 </tbody>
                             </table>
                         </div>
