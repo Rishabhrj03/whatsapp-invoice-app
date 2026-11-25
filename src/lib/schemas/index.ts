@@ -24,6 +24,27 @@ export const CreateInvoiceSchema = z.object({
     paymentType: z.enum(['Cash', 'Card', 'UPI']).default('Cash'),
     status: z.enum(['Draft', 'Sent', 'Paid', 'Unpaid', 'Cancelled']).optional().default('Paid'),
     date: z.string().or(z.date()).optional(),
+    holdId: z.string().optional(),
+});
+
+export const SaveOnHoldInvoiceSchema = z.object({
+    customerId: z.string().optional(),
+    customerName: z.string().optional(),
+    customerPhone: z.string().optional(),
+    customerAddress: z.string().optional(),
+    items: z.array(InvoiceItemSchema.extend({
+        categoryId: z.string().optional(),
+    })).min(1, 'At least one item is required to put bill on hold'),
+    totalAmount: z.number(),
+    discountAmount: z.number().optional().default(0),
+    manualDiscountType: z.enum(['FIXED', 'PERCENTAGE']).optional(),
+    manualDiscountValue: z.string().optional(),
+    couponCode: z.string().optional(),
+    appliedCoupon: z.any().optional(),
+    paymentType: z.enum(['Cash', 'Card', 'UPI']).default('Cash'),
+    comment: z.string().max(500).optional(),
+    invoiceDate: z.string().optional(),
+    holdReference: z.string().max(100).optional(),
 });
 
 export const UpdateInvoiceSchema = z.object({

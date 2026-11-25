@@ -64,6 +64,34 @@ export async function createInvoice(data: unknown): Promise<CreateInvoiceRespons
         revalidatePath("/dashboard");
         revalidatePath("/transactions");
 
+        // If this invoice was resumed from on-hold, clean up the on-hold record
+        const holdId = (data as any)?.holdId;
+        if (holdId) {
+            try {
+                const dbConnect = (await import("@/lib/mongoose")).default;
+                const OnHoldInvoice = (await import("@/models/OnHoldInvoice")).default;
+                await dbConnect();
+                const heldDoc = await OnHoldInvoice.findOneAndDelete({
+                    _id: holdId,
+                    userId: effectiveUserId,
+                });
+                if (heldDoc) {
+                    await activityLogService.logActivity({
+                        tenantId: effectiveUserId,
+                        user: { id: user._id, name: user.name, email: user.email, role: user.role },
+                        action: 'INVOICE_RESUMED',
+                        entityType: 'ON_HOLD_INVOICE',
+                        entityId: holdId,
+                        description: `Completed & billed held invoice #${holdId.slice(-6).toUpperCase()} (Auto-cleared from On-Hold)`,
+                    });
+                }
+                revalidatePath("/on-hold");
+                revalidatePath("/invoice/create");
+            } catch (err) {
+                console.error("Failed to cleanup on-hold invoice after billing:", err);
+            }
+        }
+
         return { success: true, invoiceId: result.invoiceId };
     } catch (error: any) {
         console.error("Failed to create invoice:", error);

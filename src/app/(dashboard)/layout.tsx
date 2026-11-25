@@ -58,11 +58,13 @@ export default async function DashboardLayout({
     await dbConnect();
     const effectiveUserId = await getEffectiveUserId();
 
-    const [dbUser, ownerUser] = await Promise.all([
+    const OnHoldInvoice = (await import("@/models/OnHoldInvoice")).default;
+    const [dbUser, ownerUser, heldCount] = await Promise.all([
         User.findById(session.user.id),
         effectiveUserId && effectiveUserId !== session.user.id
             ? User.findById(effectiveUserId)
-            : null
+            : null,
+        effectiveUserId ? OnHoldInvoice.countDocuments({ userId: effectiveUserId }) : 0,
     ]);
 
     if (!dbUser) {
@@ -74,6 +76,7 @@ export default async function DashboardLayout({
 
     return (
         <DashboardLayoutClient
+            heldCount={heldCount}
             user={{
                 id: session.user.id,
                 name: session.user.name,

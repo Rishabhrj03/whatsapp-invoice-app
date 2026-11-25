@@ -70,6 +70,57 @@ export interface CreateInvoiceInput {
     paymentType: PaymentType;
     status?: InvoiceStatus;
     date?: string | Date;
+    holdId?: string;
+}
+
+export interface OnHoldItemDTO {
+    categoryId?: string;
+    menuEntryId?: string;
+    name: string;
+    price: number;
+    quantity: number;
+    description?: string;
+}
+
+export interface OnHoldInvoiceDTO {
+    _id: string;
+    userId: string;
+    createdBy?: string;
+    customerId?: string;
+    customerName?: string;
+    customerPhone?: string;
+    customerAddress?: string;
+    items: OnHoldItemDTO[];
+    totalAmount: number;
+    discountAmount?: number;
+    manualDiscountType?: 'FIXED' | 'PERCENTAGE';
+    manualDiscountValue?: string;
+    couponCode?: string;
+    appliedCoupon?: any;
+    paymentType: PaymentType;
+    comment?: string;
+    invoiceDate?: string;
+    holdReference?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface SaveOnHoldInvoiceInput {
+    customerId?: string;
+    customerName?: string;
+    customerPhone?: string;
+    customerAddress?: string;
+    items: OnHoldItemDTO[];
+    totalAmount: number;
+    discountAmount?: number;
+    manualDiscountType?: 'FIXED' | 'PERCENTAGE';
+    manualDiscountValue?: string;
+    couponCode?: string;
+    appliedCoupon?: any;
+    paymentType: PaymentType;
+    comment?: string;
+    invoiceDate?: string;
+    holdReference?: string;
 }
 
 export interface UpdateInvoiceInput {

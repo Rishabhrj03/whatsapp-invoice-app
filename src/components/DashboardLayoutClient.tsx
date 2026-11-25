@@ -23,7 +23,8 @@ import {
     Plus,
     GitBranch,
     Info,
-    History
+    History,
+    PauseCircle
 } from "lucide-react";
 import AppVersion from "@/components/AppVersion";
 
@@ -32,6 +33,7 @@ const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0";
 
 interface DashboardLayoutClientProps {
     children: React.ReactNode;
+    heldCount?: number;
     user: {
         id?: string | null;
         name?: string | null;
@@ -44,6 +46,7 @@ interface DashboardLayoutClientProps {
 
 export default function DashboardLayoutClient({
     children,
+    heldCount = 0,
     user,
 }: DashboardLayoutClientProps) {
     const pathname = usePathname();
@@ -54,6 +57,7 @@ export default function DashboardLayoutClient({
     const navLinks = [
         { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
         { href: "/invoice/create", icon: FileText, label: "Generate Bill", badge: "POS" },
+        { href: "/on-hold", icon: PauseCircle, label: "On Hold", badge: heldCount > 0 ? String(heldCount) : undefined },
         { href: "/transactions", icon: MessageSquareShare, label: "Transactions" },
         { href: "/customers", icon: Users, label: "Customers" },
         { href: "/menu", icon: MenuIcon, label: "Menu Catalog" },

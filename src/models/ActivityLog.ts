@@ -23,10 +23,14 @@ export type ActivityActionType =
     | 'COUPON_DELETED'
     | 'STAFF_ADDED'
     | 'STAFF_REMOVED'
-    | 'BUSINESS_PROFILE_UPDATED';
+    | 'BUSINESS_PROFILE_UPDATED'
+    | 'INVOICE_HELD'
+    | 'INVOICE_RESUMED'
+    | 'HELD_INVOICE_DELETED';
 
 export type ActivityEntityType =
     | 'INVOICE'
+    | 'ON_HOLD_INVOICE'
     | 'CUSTOMER'
     | 'BOOKING'
     | 'MENU_ITEM'

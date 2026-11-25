@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { createInvoice, getUploadUrl, updateInvoicePdfUrl, getLogoBase64, uploadFileDirect } from "@/app/actions/invoice";
+import { holdInvoice, deleteHeldInvoice } from "@/app/actions/onHold";
 import {
     Plus, Trash2, Send, FileDown, Eye, Edit2,
     CheckCircle, UserPlus, ShoppingBag, CreditCard,
     ChevronRight, Calendar, Info, Tag, Check, Printer, ArrowLeft, Minus, Percent,
-    FileText, Edit3, X, MessageCircle, Users, Copy
+    FileText, Edit3, X, MessageCircle, Users, Copy, PauseCircle
 } from "lucide-react";
 // jspdf and jspdf-autotable removed for dynamic import optimization
 import CustomerSelector from "./CustomerSelector";
@@ -23,34 +25,59 @@ export default function CreateInvoiceForm({
     categories: initialCategories = [],
     user: initialUser,
     coupons = [],
+    initialHeldInvoice = null,
+    heldCount = 0,
 }: {
     customers: any[];
     menuItems: any[];
     categories?: any[];
     user?: any;
     coupons?: any[];
+    initialHeldInvoice?: any;
+    heldCount?: number;
 }) {
     const router = useRouter();
     const [customers, setCustomers] = useState(initialCustomers);
     const [categories, setCategories] = useState(initialCategories);
-    const [customerId, setCustomerId] = useState("");
-    const [paymentType, setPaymentType] = useState<'Cash' | 'Card' | 'UPI'>('Cash');
-    const [couponCode, setCouponCode] = useState("");
-    const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+    const [customerId, setCustomerId] = useState<string>(() => initialHeldInvoice?.customerId || "");
+    const [paymentType, setPaymentType] = useState<'Cash' | 'Card' | 'UPI'>(() => initialHeldInvoice?.paymentType || 'Cash');
+    const [couponCode, setCouponCode] = useState<string>(() => initialHeldInvoice?.couponCode || "");
+    const [appliedCoupon, setAppliedCoupon] = useState<any>(() => initialHeldInvoice?.appliedCoupon || null);
     const [isCouponDropdownOpen, setIsCouponDropdownOpen] = useState(false);
     const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
     const [pdfUrl, setPdfUrl] = useState("");
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-    const [items, setItems] = useState<{ categoryId: string; menuEntryId: string; name: string; price: number; quantity: number; description?: string; _menuOpenTrigger?: number }[]>([]);
+    const [items, setItems] = useState<{ categoryId: string; menuEntryId: string; name: string; price: number; quantity: number; description?: string; _menuOpenTrigger?: number }[]>(() => {
+        if (initialHeldInvoice?.items?.length) {
+            return initialHeldInvoice.items.map((it: any) => ({
+                categoryId: it.categoryId || "",
+                menuEntryId: it.menuEntryId || "",
+                name: it.name || "",
+                price: it.price || 0,
+                quantity: it.quantity || 1,
+                description: it.description || "",
+                _menuOpenTrigger: 0,
+            }));
+        }
+        return [];
+    });
     const [descriptionModalIndex, setDescriptionModalIndex] = useState<number | null>(null);
     const [descriptionText, setDescriptionText] = useState("");
-    const [comment, setComment] = useState("");
+    const [comment, setComment] = useState<string>(() => initialHeldInvoice?.comment || "");
     const [loading, setLoading] = useState(false);
     const [successData, setSuccessData] = useState<any>(null);
     const [invoiceId, setInvoiceId] = useState("");
     const [isPreview, setIsPreview] = useState(false);
     const [hasDownloaded, setHasDownloaded] = useState(false);
     const [canShare, setCanShare] = useState(false);
+
+    // On-Hold state
+    const [resumedHoldId, setResumedHoldId] = useState<string | null>(() => initialHeldInvoice?._id || null);
+    const [resumedHoldReference, setResumedHoldReference] = useState<string>(() => initialHeldInvoice?.holdReference || "");
+    const [isHoldModalOpen, setIsHoldModalOpen] = useState(false);
+    const [holdReferenceInput, setHoldReferenceInput] = useState("");
+    const [isHolding, setIsHolding] = useState(false);
+    const [holdNotification, setHoldNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const getTodayInputFormat = () => {
         const now = new Date();
         const year = now.getFullYear();
@@ -75,7 +102,7 @@ export default function CreateInvoiceForm({
         return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
     };
 
-    const [invoiceDate, setInvoiceDate] = useState<string>(getTodayInputFormat);
+    const [invoiceDate, setInvoiceDate] = useState<string>(() => initialHeldInvoice?.invoiceDate || getTodayInputFormat());
     const [currentDate, setCurrentDate] = useState("");
     const [logoBase64, setLogoBase64] = useState<string>("");
     const [copiedText, setCopiedText] = useState(false);
@@ -120,8 +147,99 @@ export default function CreateInvoiceForm({
         }
     }, []);
 
-    const [manualDiscountType, setManualDiscountType] = useState<'FIXED' | 'PERCENTAGE'>('FIXED');
-    const [manualDiscountValue, setManualDiscountValue] = useState<string>("");
+    const [manualDiscountType, setManualDiscountType] = useState<'FIXED' | 'PERCENTAGE'>(() => initialHeldInvoice?.manualDiscountType || 'FIXED');
+    const [manualDiscountValue, setManualDiscountValue] = useState<string>(() => initialHeldInvoice?.manualDiscountValue || "");
+
+    const handleClearResumedBill = () => {
+        setResumedHoldId(null);
+        setResumedHoldReference("");
+        setCustomerId("");
+        setItems([]);
+        setComment("");
+        setManualDiscountValue("");
+        setAppliedCoupon(null);
+        setCouponCode("");
+        setInvoiceDate(getTodayInputFormat());
+        router.replace("/invoice/create");
+    };
+
+    const handleHoldBill = async () => {
+        const validItems = items.filter(i => (i.name && i.name.trim()) || i.menuEntryId);
+        if (validItems.length === 0) {
+            alert("Please add at least one item before putting this bill on hold.");
+            return;
+        }
+
+        setIsHolding(true);
+        setHoldNotification(null);
+
+        try {
+            const customer = customers.find(c => c._id === customerId);
+            const holdData = {
+                customerId: customerId || undefined,
+                customerName: customer?.name || undefined,
+                customerPhone: customer?.phoneNumber || undefined,
+                customerAddress: customer?.address || undefined,
+                items: validItems.map(it => ({
+                    categoryId: it.categoryId || undefined,
+                    menuEntryId: it.menuEntryId || undefined,
+                    name: it.name || "Custom Item",
+                    price: it.price || 0,
+                    quantity: it.quantity || 1,
+                    description: it.description || undefined,
+                })),
+                totalAmount: grandTotal,
+                discountAmount,
+                manualDiscountType,
+                manualDiscountValue,
+                couponCode: appliedCoupon?.code || couponCode || undefined,
+                appliedCoupon: appliedCoupon || undefined,
+                paymentType,
+                comment: comment || undefined,
+                invoiceDate,
+                holdReference: holdReferenceInput.trim() || undefined,
+            };
+
+            const res = await holdInvoice(holdData);
+            if (res.success) {
+                // If this was an existing held invoice being re-held, delete previous one to prevent duplicates
+                if (resumedHoldId && resumedHoldId !== res.holdId) {
+                    await deleteHeldInvoice(resumedHoldId);
+                }
+
+                setIsHoldModalOpen(false);
+                setHoldReferenceInput("");
+                setResumedHoldId(null);
+                setResumedHoldReference("");
+
+                // Immediately clear the form so the cashier can invoice the waiting customer
+                setCustomerId("");
+                setItems([]);
+                setComment("");
+                setManualDiscountValue("");
+                setAppliedCoupon(null);
+                setCouponCode("");
+                setInvoiceDate(getTodayInputFormat());
+                setIsPreview(false);
+
+                setHoldNotification({
+                    type: "success",
+                    message: "Bill placed on hold! Workspace cleared for the next customer."
+                });
+
+                router.replace("/invoice/create");
+                router.refresh();
+                setTimeout(() => setHoldNotification(null), 6000);
+            } else {
+                alert(res.error || "Failed to hold bill");
+            }
+        } catch (err: any) {
+            console.error("Hold bill error:", err);
+            alert(err.message || "An unexpected error occurred");
+        } finally {
+            setIsHolding(false);
+        }
+    };
 
     const totalAmount = items.reduce(
         (sum, item) => sum + item.price * item.quantity,
@@ -336,6 +454,7 @@ export default function CreateInvoiceForm({
             comment,
             paymentType,
             date: getSelectedDateObj(invoiceDate).toISOString(),
+            holdId: resumedHoldId || undefined,
         };
 
         const res = await createInvoice(invoiceData);
@@ -403,6 +522,9 @@ export default function CreateInvoiceForm({
             setInvoiceDate(getTodayInputFormat());
             setHasDownloaded(false);
             setCopiedText(false);
+            setResumedHoldId(null);
+            setResumedHoldReference("");
+            router.replace("/invoice/create");
         };
 
         return (
@@ -648,17 +770,24 @@ export default function CreateInvoiceForm({
 
                 <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t">
                     <button
+                        type="button"
+                        onClick={() => setIsHoldModalOpen(true)}
+                        className="py-2 px-5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-md text-sm font-bold flex items-center justify-center gap-2 transition-all"
+                    >
+                        <PauseCircle size={16} /> Hold Bill Instead
+                    </button>
+                    <button
                         onClick={() => setIsPreview(false)}
                         className="py-2 px-6 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                     >
-                        Cancel
+                        Back & Edit
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
                         className="py-2 px-8 bg-blue-600 text-white rounded-md text-sm font-bold shadow-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                        {loading ? "Saving..." : "Confirm & Save Invoice"}
+                        {loading ? "Saving..." : (resumedHoldId ? "Confirm & Finalize Resumed Bill" : "Confirm & Save Invoice")}
                     </button>
                 </div>
             </div>
@@ -780,6 +909,90 @@ export default function CreateInvoiceForm({
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Top Toolbar / Status Indicators */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-2">
+                <div className="flex items-center gap-2">
+                    {heldCount > 0 && (
+                        <Link
+                            href="/on-hold"
+                            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 rounded-2xl text-xs font-bold transition-all shadow-2xs group"
+                        >
+                            <PauseCircle size={15} className="text-amber-600 group-hover:scale-110 transition-transform" />
+                            <span>{heldCount} Bill{heldCount === 1 ? '' : 's'} on Hold</span>
+                            <ChevronRight size={13} className="text-amber-500" />
+                        </Link>
+                    )}
+                </div>
+
+                {items.length > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => setIsHoldModalOpen(true)}
+                        disabled={isHolding}
+                        className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 rounded-2xl text-xs font-bold transition-all shadow-2xs active:scale-95"
+                    >
+                        <PauseCircle size={15} className="text-amber-600" />
+                        <span>Hold Current Bill</span>
+                    </button>
+                )}
+            </div>
+
+            {/* Resumed Bill Banner */}
+            {resumedHoldId && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-2 border-amber-300 rounded-3xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3 duration-300">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm shadow-amber-500/30">
+                            <PauseCircle size={22} className="stroke-[2.5]" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full">
+                                    Resumed From On-Hold
+                                </span>
+                                {resumedHoldReference && (
+                                    <span className="text-xs font-bold text-amber-950">
+                                        Ref: {resumedHoldReference}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-amber-800 font-medium mt-0.5">
+                                You are completing this held bill. Saving and confirming will automatically finalize the invoice and remove it from On-Hold.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <button
+                            type="button"
+                            onClick={handleClearResumedBill}
+                            className="px-3.5 py-2 text-xs font-bold text-amber-900 hover:text-red-700 hover:bg-amber-100 rounded-xl transition-all border border-amber-200 flex items-center gap-1.5"
+                        >
+                            <X size={14} /> Cancel & Start Fresh Bill
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Hold Notification toast/banner */}
+            {holdNotification && (
+                <div className={`mb-6 p-4 rounded-2xl border flex items-center justify-between gap-3 text-sm font-bold shadow-xs animate-in fade-in duration-300 ${
+                    holdNotification.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-red-50 text-red-800 border-red-200'
+                }`}>
+                    <div className="flex items-center gap-2.5">
+                        <CheckCircle size={18} className="text-emerald-600" />
+                        <span>{holdNotification.message}</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setHoldNotification(null)}
+                        className="text-gray-400 hover:text-gray-600 p-1"
+                    >
+                        <X size={16} />
+                    </button>
                 </div>
             )}
 
@@ -911,23 +1124,27 @@ export default function CreateInvoiceForm({
 
                 {/* Items Section */}
                 <div className="bg-white rounded-3xl shadow-sm border border-gray-100">
-                    <div className="px-6 py-5 border-b border-gray-50 bg-gray-50/30 flex items-center justify-between">
+                    <div className="sticky top-0 z-20 px-6 py-4 border-b border-gray-100 bg-white/95 backdrop-blur-md rounded-t-3xl flex items-center justify-between shadow-xs">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100">
                                 <ShoppingBag size={18} />
                             </div>
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 tracking-tight">Service Items</h3>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Pricing & Quantity</p>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                    {items.length} Item{items.length === 1 ? '' : 's'} {items.length > 0 ? `· ₹${totalAmount.toFixed(2)}` : '· Pricing & Quantity'}
+                                </p>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            onClick={handleAddItem}
-                            className="flex items-center gap-2 py-2.5 px-5 bg-white border border-gray-200 hover:border-blue-500 hover:text-blue-600 text-gray-700 rounded-xl font-black text-xs transition-all shadow-sm active:scale-95"
-                        >
-                            <Plus size={16} /> Add Item
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={handleAddItem}
+                                className="flex items-center gap-2 py-2 px-4 sm:px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs transition-all shadow-md shadow-blue-500/20 active:scale-95"
+                            >
+                                <Plus size={16} /> Add Item
+                            </button>
+                        </div>
                     </div>
 
                     <div className="p-6">
@@ -1135,6 +1352,23 @@ export default function CreateInvoiceForm({
                                         )}
                                     </div>
                                 ))}
+
+                                {/* Dedicated Bottom Full-Width Add Item Button */}
+                                <div className="pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleAddItem}
+                                        className="w-full py-3.5 px-4 bg-blue-50/70 hover:bg-blue-100/90 active:bg-blue-200/80 border-2 border-dashed border-blue-200 hover:border-blue-400 text-blue-700 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs group"
+                                    >
+                                        <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                                            <Plus size={14} className="stroke-[3]" />
+                                        </div>
+                                        <span>+ Add Another Item</span>
+                                        <span className="text-[11px] font-semibold text-blue-500/80 hidden sm:inline">
+                                            ({items.length} item{items.length === 1 ? '' : 's'} currently in bill)
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -1366,15 +1600,26 @@ export default function CreateInvoiceForm({
                                 </div>
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={items.length === 0}
-                                className="w-full flex items-center justify-center gap-3 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale group"
-                            >
-                                <Eye size={20} className="group-hover:scale-110 transition-transform" />
-                                Generate & Preview Bill
-                                <ChevronRight size={16} />
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsHoldModalOpen(true)}
+                                    disabled={items.length === 0 || isHolding}
+                                    className="flex-1 py-4 px-4 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    <PauseCircle size={18} className="text-amber-400" />
+                                    <span>Hold Bill</span>
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={items.length === 0}
+                                    className="flex-[2] flex items-center justify-center gap-3 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale group"
+                                >
+                                    <Eye size={20} className="group-hover:scale-110 transition-transform" />
+                                    Generate & Preview Bill
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1386,15 +1631,127 @@ export default function CreateInvoiceForm({
                             <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">{items.length} item{items.length > 1 ? 's' : ''} added</p>
                             <p className="text-lg font-black text-white">{grandTotal < 0 ? `-₹${Math.abs(grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `₹${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</p>
                         </div>
-                        <button
-                            type="submit"
-                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-xs shadow-lg shadow-blue-900/50 transition-all active:scale-95"
-                        >
-                            <Eye size={15} /> Preview & Bill
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsHoldModalOpen(true)}
+                                disabled={isHolding}
+                                className="p-2.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-xl font-bold text-xs transition-all active:scale-95"
+                                title="Hold Bill"
+                            >
+                                <PauseCircle size={16} />
+                            </button>
+                            <button
+                                type="submit"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-xs shadow-lg shadow-blue-900/50 transition-all active:scale-95"
+                            >
+                                <Eye size={15} /> Preview & Bill
+                            </button>
+                        </div>
                     </div>
                 )}
             </form>
+
+            {/* Put Bill on Hold Modal */}
+            {isHoldModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+                        onClick={() => !isHolding && setIsHoldModalOpen(false)}
+                    />
+                    <div className="relative bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-md w-full p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-200 z-10">
+                        <div className="flex items-start justify-between pb-3 border-b border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-amber-50 text-amber-600 rounded-2xl">
+                                    <PauseCircle size={22} className="stroke-[2.5]" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-gray-900 tracking-tight">Put Bill on Hold</h3>
+                                    <p className="text-xs text-gray-500 font-medium">
+                                        Temporarily park this bill to serve another customer
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                disabled={isHolding}
+                                onClick={() => setIsHoldModalOpen(false)}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Order Summary Pill */}
+                        <div className="p-4 bg-amber-50/60 rounded-2xl border border-amber-100/80 flex items-center justify-between text-xs">
+                            <div>
+                                <span className="font-bold text-gray-800 block">
+                                    {selectedCustomer?.name || "Walk-in Guest"}
+                                </span>
+                                <span className="text-gray-500 font-medium">
+                                    {items.length} item{items.length === 1 ? '' : 's'} in order
+                                </span>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-base font-black text-gray-900 block">
+                                    ₹{grandTotal.toFixed(2)}
+                                </span>
+                                <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">
+                                    {paymentType}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Hold Reference / Identifying Note <span className="text-gray-400 font-normal lowercase">(optional)</span>
+                            </label>
+                            <input
+                                type="text"
+                                autoFocus
+                                value={holdReferenceInput}
+                                onChange={(e) => setHoldReferenceInput(e.target.value)}
+                                placeholder={selectedCustomer?.name ? `Customer: ${selectedCustomer.name}` : "e.g. Counter Table 4 / Blue Shirt / Hold 1"}
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all placeholder:text-gray-400"
+                            />
+                            <p className="text-[11px] text-gray-400">
+                                This will help you easily identify the bill when you resume from the On-Hold list.
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-2">
+                            <button
+                                type="button"
+                                disabled={isHolding}
+                                onClick={() => setIsHoldModalOpen(false)}
+                                className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs sm:text-sm rounded-xl transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isHolding}
+                                onClick={handleHoldBill}
+                                className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                            >
+                                {isHolding ? (
+                                    <>
+                                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Holding Bill...
+                                    </>
+                                ) : (
+                                    <>
+                                        <PauseCircle size={16} /> Confirm & Hold
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
