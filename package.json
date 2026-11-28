@@ -13,6 +13,7 @@
     "start": "next start",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "test": "npx tsx scripts/test-comprehensive.mjs",
+    "test:auth": "npx tsx scripts/test-auth-suite.mjs",
     "test:e2e": "npx tsx test-e2e.mjs",
     "test:security": "npx tsx scripts/test-security.mjs",
     "test:activity": "npx tsx scripts/test-activity-log.mjs",
@@ -41,6 +42,7 @@
     "mongoose": "^9.3.0",
     "next": "^16.4.6",
     "next-auth": "^5.0.0-beta.32",
+    "nodemailer": "^8.0.11",
     "papaparse": "^5.5.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -49,6 +51,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "@types/nodemailer": "^8.0.2",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

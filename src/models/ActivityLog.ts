@@ -26,7 +26,12 @@ export type ActivityActionType =
     | 'BUSINESS_PROFILE_UPDATED'
     | 'INVOICE_HELD'
     | 'INVOICE_RESUMED'
-    | 'HELD_INVOICE_DELETED';
+    | 'HELD_INVOICE_DELETED'
+    | 'AUTH_LOGIN_SUCCESS'
+    | 'AUTH_LOGIN_FAILED'
+    | 'AUTH_OTP_REQUESTED'
+    | 'AUTH_PASSWORD_RESET_REQUESTED'
+    | 'AUTH_PASSWORD_RESET_COMPLETED';
 
 export type ActivityEntityType =
     | 'INVOICE'
@@ -37,7 +42,8 @@ export type ActivityEntityType =
     | 'CATEGORY'
     | 'COUPON'
     | 'TEAM'
-    | 'SETTINGS';
+    | 'SETTINGS'
+    | 'AUTH';
 
 export interface IActivityLog extends Document {
     tenantId: mongoose.Types.ObjectId;  // Root business account / owner ID

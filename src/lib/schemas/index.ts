@@ -106,6 +106,25 @@ export const SignupSchema = z.object({
     password: z.string().min(6, 'Password must be at least 6 characters').max(100),
 });
 
+export const SendOtpSchema = z.object({
+    email: z.string().email('Please enter a valid email address').max(200).toLowerCase().trim(),
+});
+
+export const VerifyOtpSchema = z.object({
+    email: z.string().email('Please enter a valid email address').max(200).toLowerCase().trim(),
+    otp: z.string().regex(/^\d{6}$/, 'OTP must be exactly 6 digits'),
+});
+
+export const RequestPasswordResetSchema = z.object({
+    email: z.string().email('Please enter a valid email address').max(200).toLowerCase().trim(),
+});
+
+export const ResetPasswordSchema = z.object({
+    email: z.string().email('Please enter a valid email address').max(200).toLowerCase().trim(),
+    token: z.string().min(1, 'Password reset token is required'),
+    newPassword: z.string().min(6, 'Password must be at least 6 characters').max(100),
+});
+
 // Inferred types from schemas
 export type CreateInvoiceInput = z.infer<typeof CreateInvoiceSchema>;
 export type UpdateInvoiceInput = z.infer<typeof UpdateInvoiceSchema>;
@@ -114,3 +133,7 @@ export type CreateMenuItemInput = z.infer<typeof CreateMenuItemSchema>;
 export type CreateCategoryInput = z.infer<typeof CreateCategorySchema>;
 export type UpdateBusinessProfileInput = z.infer<typeof UpdateBusinessProfileSchema>;
 export type SignupInput = z.infer<typeof SignupSchema>;
+export type SendOtpInput = z.infer<typeof SendOtpSchema>;
+export type VerifyOtpInput = z.infer<typeof VerifyOtpSchema>;
+export type RequestPasswordResetInput = z.infer<typeof RequestPasswordResetSchema>;
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
